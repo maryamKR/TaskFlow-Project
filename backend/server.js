@@ -13,7 +13,7 @@ const app = express();
 // Connect to MongoDB Atlas
 connectDB();
 
-// 🔓 CORS Middleware Configuration
+//  CORS Middleware Configuration
 app.use(cors({
     origin: 'http://localhost:5173', // Allows frontend port to connect
     credentials: true

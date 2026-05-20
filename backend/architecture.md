@@ -19,13 +19,15 @@ backend/
 ├── controllers/        # Request handlers (processes inputs, sends responses)
 │   └── authController.js
 ├── middleware/         # Request interceptors (security guards, error catches)
+├── validators/         # Request payload validation blueprints
+│   │   └── authValidator.js
 │   ├── authMiddleware.js
 │   └── errorHandler.js
 ├── models/             # Database schemas 
 │   └── User.js
 ├── routes/             # API Endpoints mapping to controllers
 │   └── authRoutes.js
-├── .env                # Local environment secrets (DO NOT COMMIT)
+├── .env                # Local environment secrets 
 ├── server.js           # Application entry point
 └── package.json        # Dependencies
 

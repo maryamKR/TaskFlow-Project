@@ -1,29 +1,51 @@
-// Centralized Error Handler Middleware
+const { ZodError } = require("zod");
+
 const errorHandler = (err, req, res, next) => {
-    let error = { ...err };
-    error.message = err.message;
+  // 1. Default fallback values
+  let statusCode = err.statusCode || (res.statusCode === 200 ? 500 : res.statusCode);
+  let message = err.message || "Internal Server Error";
 
-    // Log the error to the console for you to see while developing
-    console.error('❌ Backend Error:', err);
+  // 2. Zod Validation Errors (Request Body Validation)
+  if (err instanceof ZodError) {
+    statusCode = 400;
+    message = err.issues.map(issue => issue.message).join(", ");
+  }
 
-    // 1. Mongoose Duplicate Key Error (e.g., duplicate email or username)
-    if (err.code === 11000) {
-        const field = Object.keys(err.keyValue)[0];
-        return res.status(400).json({ 
-            message: `That ${field} is already registered. Please try another one.` 
-        });
-    }
+  // 3. Mongoose/MongoDB Duplicate Key Index Error (e.g., duplicate email)
+  else if (err.code === 11000) {
+    statusCode = 400;
+    const duplicateField = Object.keys(err.keyValue)[0];
+    message = `${duplicateField.charAt(0).toUpperCase() + duplicateField.slice(1)} already exists.`;
+  }
 
-    // 2. Mongoose Validation Error (e.g., password too short)
-    if (err.name === 'ValidationError') {
-        const message = Object.values(err.errors).map(val => val.message).join(', ');
-        return res.status(400).json({ message });
-    }
+  // 4.  Mongoose Schema Validation Errors (Fallback database safety net)
+  else if (err.name === "ValidationError") {
+    statusCode = 400;
+    message = Object.values(err.errors).map(val => val.message).join(", ");
+  }
 
-    // 3. Fallback for any other unexpected server error
-    res.status(error.statusCode || 500).json({
-        message: error.message || 'Server Error'
-    });
+  // 5. Invalid Mongoose Object IDs (e.g., GET /api/boards/123-invalid-id)
+  else if (err.name === "CastError") {
+    statusCode = 404;
+    message = `Resource not found with id of ${err.value}`;
+  }
+
+  // 6. JSON Web Token Authentication Errors
+  else if (err.name === "JsonWebTokenError") {
+    statusCode = 401;
+    message = "Not authorized, token failed.";
+  } 
+  
+  else if (err.name === "TokenExpiredError") {
+    statusCode = 401;
+    message = "Session expired, please log in again.";
+  }
+
+  // 7. Uniform payload structure 
+  res.status(statusCode).json({
+    success: false,
+    error: message
+  });
 };
 
 module.exports = errorHandler;
