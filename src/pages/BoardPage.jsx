@@ -1,4 +1,11 @@
 import { useState } from 'react';
+import {
+  DndContext,
+  closestCorners,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from '@dnd-kit/core';
 import Navbar from '../components/Navbar';
 import Column from '../components/Column';
 
@@ -58,8 +65,28 @@ const initialData = {
 function BoardPage() {
   const [data, setData] = useState(initialData);
 
+  const sensors = useSensors(useSensor(PointerSensor));
+
   const getTasksByColumn = (columnId) => {
     return data.tasks.filter(task => task.columnId === columnId);
+  };
+
+  const handleDragEnd = (event) => {
+    const { active, over } = event;
+
+    if (!over) return;
+
+    const taskId = active.id;
+    const newColumnId = over.id;
+
+    setData(prev => ({
+      ...prev,
+      tasks: prev.tasks.map(task =>
+        task.id === taskId
+          ? { ...task, columnId: newColumnId }
+          : task
+      )
+    }));
   };
 
   return (
@@ -77,17 +104,24 @@ function BoardPage() {
         </button>
       </div>
 
-      {/* Columns */}
-      <div className="flex gap-4 px-6 pb-6 overflow-x-auto">
-        {data.columns.map(column => (
-          <Column
-            key={column.id}
-            title={column.title}
-            color={column.color}
-            tasks={getTasksByColumn(column.id)}
-          />
-        ))}
-      </div>
+      {/* Drag & Drop Context */}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex gap-4 px-6 pb-6 overflow-x-auto">
+          {data.columns.map(column => (
+            <Column
+              key={column.id}
+              id={column.id}
+              title={column.title}
+              color={column.color}
+              tasks={getTasksByColumn(column.id)}
+            />
+          ))}
+        </div>
+      </DndContext>
 
     </div>
   );
