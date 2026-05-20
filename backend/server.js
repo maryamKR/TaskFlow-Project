@@ -22,10 +22,10 @@ require('./models/Board');
 require('./models/Column');
 require('./models/Task');
 
-//  CORS Middleware Configuration
+// CORS Middleware Configuration
 app.use(cors({
-    origin: 'http://localhost:5173', // Allows frontend port to connect
-    credentials: true
+  origin: ['http://localhost:3000', 'http://localhost:5173'],
+  credentials: true
 }));
 
 // Body parser middleware to read incoming JSON request bodies
