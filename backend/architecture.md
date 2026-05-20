@@ -36,6 +36,7 @@ backend/
 ## 3. Core Architectural Layers
 
 ### A. Security & Authentication Layer
+- **Payload Validation (Zod):** Request bodies are parsed and validated against Zod schemas at the routing layer before reaching the controllers, ensuring input strings match required data types and structural formats.
 - **Password Hashing:** Passwords are never stored in plain text.The `User.js` model automatically salts and hashes strings using `bcryptjs` before committing them to the database.
 - **Session Tracking:** Stateless authentication using JSON Web Tokens (JWT). Upon valid login/registration, the server issues a signed token valid for 30 days.
 - **Route Guarding:** The `authMiddleware.js` file intercepts requests to protected routes.It extracts the `Bearer <token>` from the HTTP Authorization header, verifies it, and attaches the user payload to `req.user`.
@@ -44,8 +45,16 @@ backend/
 To prevent server runtime crashes and keep error patterns predictable, the backend implements a centralized interception flow
 
  ```text
-[Controller Crash/Reject] ──> [express-async-handler] ──> [errorHandler.js Middleware] ──> [Clean JSON Frontend Response]
+[Incoming Request] ──> [Zod Validation] ──(Fails)───────────────────────┐
+                            │                                           │
+                         (Passes)                                       ▼
+                            ▼                                  [errorHandler.js] ──> [Clean JSON Response]
+                 [Controller Operations]                                ▲
+                            │                                           │
+                         (Rejects)                                      │
+                            ▼                                           │
+                 [express-async-handler] ───────────────────────────────┘
 ```
 
 - Controllers are wrapped in `express-async-handler` to forward asynchronous execution failures automatically.
--`errorHandler.js` catches all execution bugs globally, overrides default HTML stack traces, parses native MongoDB codes (like duplicate key index `11000`), and formats them into user friendly error messages
+-`errorHandler.js` catches all execution bugs globally, overrides default HTML stack traces,parses Zod structural validation errors, parses native MongoDB codes (like duplicate key index `11000`), and formats them into user friendly error messages
