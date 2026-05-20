@@ -14,23 +14,28 @@ const protect = asyncHandler(async (req, res, next) => {
             // 2. Decode and verify the token signature
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 
-            // 3. Fetch the user profile from the database using the ID inside the token
-            // Attach it directly to the 'req.user' object (minus the password)
-            req.user = await User.findById(decoded.id);
+            // 3. Fetch the user profile from the database using the ID inside the token (excluding the password hash for security)
+            req.user = await User.findById(decoded.id).select('-password');
+
+            // 4. Ensure the user actually exists in the DB
+            if (!req.user) {
+                res.status(401);
+                return next(new Error('User matching this token no longer exists'));
+            }
 
             // Move to the next controller function safely
             return next();
         } catch (error) {
             res.status(401);
-            throw new Error('Not authorized, token verification failed');
+            return next(error);
         }
     }
 
     // If no token was provided at all
     if (!token) {
         res.status(401);
-        throw new Error('Not authorized, no token provided');
+        return next(new Error('Not authorized, no token provided'));
     }
 });
 
-module.exports = { protect };
+module.exports =  {protect} ;

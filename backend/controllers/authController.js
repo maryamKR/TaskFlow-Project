@@ -9,6 +9,12 @@ const asyncHandler = require('express-async-handler');
 exports.registerUser = asyncHandler(async (req, res, next) => {
     const { username, email, password } = req.body;
 
+    const userExists = await User.findOne({ $or: [{ email }, { username }] });
+    if (userExists) {
+    res.status(400);
+    throw new Error('User with this email or username already exists');
+}
+
     // Hash the password before saving
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
@@ -23,7 +29,7 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
     // Generate a JWT Token
     const token = jwt.sign(
         { id: user._id }, 
-        process.env.JWT_SECRET || 'fallback_secret_for_testing', 
+        process.env.JWT_SECRET, 
         { expiresIn: '30d' }
     );
 
