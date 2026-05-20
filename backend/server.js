@@ -3,7 +3,12 @@ const cors = require('cors');
 const dotenv = require('dotenv');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/authRoutes');
+const boardRoutes = require('./routes/boardRoutes');
+const columnRoutes = require('./routes/columnRoutes');
+const taskRoutes = require('./routes/taskRoutes');
+
 const errorHandler = require('./middleware/errorHandler');
+
 
 // Load env
 dotenv.config();
@@ -12,6 +17,10 @@ const app = express();
 
 // Connect to MongoDB Atlas
 connectDB();
+
+require('./models/Board');
+require('./models/Column');
+require('./models/Task');
 
 //  CORS Middleware Configuration
 app.use(cors({
@@ -24,11 +33,14 @@ app.use(express.json());
 
 // Test Route 
 app.get('/api/test', (req, res) => {
-    res.json({ message: '🚀 TaskFlow Backend API is running smoothly!' });
+    res.json({ message: ' TaskFlow Backend API is running smoothly!' });
 });
 
-// Mount Authentication Routes
+// Mount Routes
 app.use('/api/auth', authRoutes);
+app.use('/api/boards', boardRoutes);
+app.use('/api/columns', columnRoutes);
+app.use('/api/tasks', taskRoutes)
 
 //Centralized Error Handler Middleware (Must be the last item mounted!)
 app.use(errorHandler);
