@@ -5,6 +5,7 @@ import {
 } from '@dnd-kit/core';
 import Navbar from '../components/Navbar';
 import Column from '../components/Column';
+import CreateBoardModal from '../components/CreateBoardModal';
 import { getBoards, getBoardById, moveTask } from '../services/board';
 
 const labelColors = {
@@ -23,9 +24,13 @@ const priorityColors = {
 };
 
 function BoardPage() {
+  const [boards, setBoards] = useState([]);
+  const [activeBoard, setActiveBoard] = useState(null);
   const [columns, setColumns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+
   const sensors = useSensors(useSensor(PointerSensor));
   const token = localStorage.getItem('token');
 
@@ -34,38 +39,47 @@ function BoardPage() {
       window.location.href = '/';
       return;
     }
+    fetchBoards();
+  }, [token]);
 
-    const fetchData = async () => {
-      try {
-        // Step 1: get all boards & log them
-        const boards = await getBoards();
-        console.log('📋 Available boards:', boards);
+  const fetchBoards = async () => {
+    try {
+      const data = await getBoards();
+      setBoards(data || []);
 
-        if (!boards || boards.length === 0) {
-          setError('No boards found. Ask Asmaa to create one!');
-          return;
-        }
-
-        // Step 2: use first board automatically
-        const boardId = boards[0]._id;
-        const board = await getBoardById(boardId);
-        console.log('📌 Board data:', board);
-
-        setColumns(board.columns);
-      } catch (err) {
-        if (err.response?.status === 401) {
-          localStorage.removeItem('token');
-          window.location.href = '/';
-        } else {
-          setError('Cannot connect to server. Is the backend running?');
-        }
-      } finally {
+      if (data && data.length > 0) {
+        loadBoard(data[0]._id);
+      } else {
         setLoading(false);
       }
-    };
+    } catch (err) {
+      if (err.response?.status === 401) {
+        localStorage.removeItem('token');
+        window.location.href = '/';
+      } else {
+        setError('Cannot connect to server.');
+        setLoading(false);
+      }
+    }
+  };
 
-    fetchData();
-  }, [token]);
+  const loadBoard = async (boardId) => {
+    setLoading(true);
+    try {
+      const board = await getBoardById(boardId);
+      setActiveBoard(board);
+      setColumns(board.columns || []);
+    } catch (err) {
+      setError('Failed to load board.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBoardCreated = (newBoard) => {
+    setBoards(prev => [...prev, newBoard]);
+    loadBoard(newBoard._id);
+  };
 
   const handleDragEnd = async (event) => {
     const { active, over } = event;
@@ -110,38 +124,89 @@ function BoardPage() {
   return (
     <div className="min-h-screen bg-gray-900">
       <Navbar />
+
+      {/* Board Header */}
       <div className="px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-white">Code Arena — Dev Board</h1>
-          <p className="text-gray-400 text-sm mt-1">Track your team's progress</p>
+        <div className="flex items-center gap-4">
+
+          {/* Board selector dropdown */}
+          {boards.length > 0 && (
+            <select
+              onChange={(e) => loadBoard(e.target.value)}
+              className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              {boards.map(board => (
+                <option key={board._id} value={board._id}>
+                  {board.title}
+                </option>
+              ))}
+            </select>
+          )}
+
+          <div>
+            <h1 className="text-2xl font-bold text-white">
+              {activeBoard ? activeBoard.title : 'No boards yet'}
+            </h1>
+            <p className="text-gray-400 text-sm mt-1">Track your team's progress</p>
+          </div>
         </div>
-        <button className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200">
-          + Add Task
+
+        {/* Create board button */}
+        <button
+          onClick={() => setShowCreateModal(true)}
+          className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+        >
+          + New Board
         </button>
       </div>
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCorners}
-        onDragEnd={handleDragEnd}
-      >
-        <div className="flex gap-4 px-6 pb-6 overflow-x-auto">
-          {columns.map(column => (
-            <Column
-              key={column._id}
-              id={column._id}
-              title={column.title}
-              color="bg-gray-400"
-              tasks={column.tasks.map(task => ({
-                ...task,
-                id: task._id,
-                labelColor: labelColors[task.label] || 'bg-gray-700 text-gray-300',
-                priorityColor: priorityColors[task.priority] || 'text-gray-400',
-              }))}
-            />
-          ))}
+      {/* Empty state */}
+      {boards.length === 0 && (
+        <div className="flex flex-col items-center justify-center mt-32 gap-4">
+          <p className="text-gray-400 text-xl">No boards yet!</p>
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200"
+          >
+            + Create your first board
+          </button>
         </div>
-      </DndContext>
+      )}
+
+      {/* Kanban columns */}
+      {columns.length > 0 && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCorners}
+          onDragEnd={handleDragEnd}
+        >
+          <div className="flex gap-4 px-6 pb-6 overflow-x-auto">
+            {columns.map(column => (
+              <Column
+                key={column._id}
+                id={column._id}
+                title={column.title}
+                color="bg-gray-400"
+                tasks={column.tasks.map(task => ({
+                  ...task,
+                  id: task._id,
+                  labelColor: labelColors[task.label] || 'bg-gray-700 text-gray-300',
+                  priorityColor: priorityColors[task.priority] || 'text-gray-400',
+                }))}
+              />
+            ))}
+          </div>
+        </DndContext>
+      )}
+
+      {/* Create Board Modal */}
+      {showCreateModal && (
+        <CreateBoardModal
+          onClose={() => setShowCreateModal(false)}
+          onBoardCreated={handleBoardCreated}
+        />
+      )}
+
     </div>
   );
 }

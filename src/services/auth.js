@@ -16,13 +16,14 @@ api.interceptors.request.use((config) => {
 });
 
 // Register
-export const register = async (username, email, password) => {
+export const register = async (name, email, password) => {
   const response = await api.post('/auth/register', {
-    username, email, password
+    username: name,  // ← send as username to match Asmaa's API
+    email,
+    password
   });
   return response.data;
 };
-
 // Login
 export const login = async (email, password) => {
   const response = await api.post('/auth/login', {

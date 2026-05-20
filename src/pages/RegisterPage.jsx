@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { register } from '../services/auth';
 
 function RegisterPage() {
   const [name, setName] = useState('');
@@ -28,7 +29,7 @@ function RegisterPage() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const foundErrors = validate();
 
@@ -38,7 +39,17 @@ function RegisterPage() {
     }
 
     setErrors({});
-    console.log('✅ Register submitted:', { name, email, password });
+
+    try {
+      await register(name, email, password);
+      window.location.href = '/';
+   } catch (err) {
+  const errorMessage = err.response?.data?.error 
+    || err.response?.data?.message 
+    || 'Registration failed';
+  setErrors({ general: errorMessage });
+  console.error('Full error details:', err.response?.data);
+}
   };
 
   return (
@@ -100,6 +111,11 @@ function RegisterPage() {
               <p className="text-red-400 text-xs mt-1">{errors.password}</p>
             )}
           </div>
+
+          {/* General API error */}
+          {errors.general && (
+            <p className="text-red-400 text-sm text-center">{errors.general}</p>
+          )}
 
           <button
             type="submit"
