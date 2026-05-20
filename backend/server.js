@@ -24,7 +24,7 @@ require('./models/Task');
 
 //  CORS Middleware Configuration
 app.use(cors({
-    origin: 'http://localhost:5173', // Allows frontend port to connect
+    origin: ['http://localhost:5173', 'http://localhost:3000'],// Allows frontend port to connect TEMPORARY
     credentials: true
 }));
 
