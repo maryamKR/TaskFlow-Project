@@ -41,4 +41,49 @@ if (!isOwner && !isCoworker) {
   res.status(201).json({ success: true, data: task });
 });
 
-module.exports = { createTask };
+const getTask = asyncHandler(async (req,res) => {
+  const task = await Task.findById(req.params.id);
+  if(!task){
+    res.status(404);
+    throw new Error("Task not found");
+  }
+  res.status(200).json({success: true, data:task})
+});
+
+const updateTask = asyncHandler(async(req,res) => {
+  const task = await Task.findById(req.params.id);
+
+  if (!task) {
+    res.status(404);
+    throw new Error("Task not found");
+  }
+
+    task.title = req.body.title || task.title;
+    task.description = req.body.description;
+    task.priority = req.body.priority;
+    task.dueDate = req.body.dueDate;
+
+    await task.save();
+    res.status(200).json({ success:true, data:task})
+  
+});
+
+const deleteTask = asyncHandler(async (req,res) => {
+  const task = await Task.findById(req.params.id);
+
+  if(!task){
+    res.status(400);
+    throw new Error("Task not found");
+  }
+
+  const column = await Column.findById(task.column);
+  if(column){
+    column.tasks.pull(task._id);
+    await column.save();
+  }
+
+  await task.deleteOne();
+  res.status(200).json({success : true, message: "Task deleted successfully" });
+})
+
+module.exports = { createTask, getTask, updateTask, deleteTask };
