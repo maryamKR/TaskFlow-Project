@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   DndContext,
   closestCorners,
@@ -9,91 +9,127 @@ import {
 import Navbar from '../components/Navbar';
 import Column from '../components/Column';
 
-const initialData = {
-  columns: [
-    { id: 'todo', title: 'To Do', color: 'bg-gray-400' },
-    { id: 'inprogress', title: 'In Progress', color: 'bg-blue-400' },
-    { id: 'review', title: 'Review', color: 'bg-yellow-400' },
-    { id: 'done', title: 'Done', color: 'bg-green-400' },
-  ],
-  tasks: [
-    {
-      id: '1', columnId: 'todo',
-      title: 'Design login page UI',
-      label: 'UI', labelColor: 'bg-purple-900 text-purple-300',
-      priority: '🔴 High', priorityColor: 'text-red-400',
-      assignee: 'S'
-    },
-    {
-      id: '2', columnId: 'todo',
-      title: 'Set up MongoDB schemas',
-      label: 'DB', labelColor: 'bg-blue-900 text-blue-300',
-      priority: '🔴 High', priorityColor: 'text-red-400',
-      assignee: 'A'
-    },
-    {
-      id: '3', columnId: 'inprogress',
-      title: 'Build login & register APIs',
-      label: 'BE', labelColor: 'bg-green-900 text-green-300',
-      priority: '🔴 High', priorityColor: 'text-red-400',
-      assignee: 'A'
-    },
-    {
-      id: '4', columnId: 'inprogress',
-      title: 'OpenAI API integration',
-      label: 'AI', labelColor: 'bg-yellow-900 text-yellow-300',
-      priority: '🟡 Med', priorityColor: 'text-yellow-400',
-      assignee: 'M'
-    },
-    {
-      id: '5', columnId: 'review',
-      title: 'JWT auth middleware',
-      label: 'BE', labelColor: 'bg-green-900 text-green-300',
-      priority: '🔴 High', priorityColor: 'text-red-400',
-      assignee: 'A'
-    },
-    {
-      id: '6', columnId: 'done',
-      title: 'Project repo & React setup',
-      label: 'FE', labelColor: 'bg-purple-900 text-purple-300',
-      priority: '✅ Done', priorityColor: 'text-green-400',
-      assignee: 'S'
-    },
-  ]
+const BOARD_ID = 'YOUR_BOARD_ID_HERE'; // ← ask Asmaa for a real board ID
+
+const labelColors = {
+  UI: 'bg-purple-900 text-purple-300',
+  DB: 'bg-blue-900 text-blue-300',
+  BE: 'bg-green-900 text-green-300',
+  AI: 'bg-yellow-900 text-yellow-300',
+  FE: 'bg-purple-900 text-purple-300',
+};
+
+const priorityColors = {
+  High: 'text-red-400',
+  Med: 'text-yellow-400',
+  Low: 'text-green-400',
+  Done: 'text-green-400',
 };
 
 function BoardPage() {
-  const [data, setData] = useState(initialData);
+  const [columns, setColumns] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   const sensors = useSensors(useSensor(PointerSensor));
 
-  const getTasksByColumn = (columnId) => {
-    return data.tasks.filter(task => task.columnId === columnId);
-  };
+  const token = localStorage.getItem('token');
 
-  const handleDragEnd = (event) => {
+  // ← redirect to login if no token
+  useEffect(() => {
+    if (!token) {
+      window.location.href = '/';
+    }
+  }, [token]);
+
+  // ← fetch board data from Asmaa's API
+  useEffect(() => {
+    const fetchBoard = async () => {
+      try {
+        const response = await fetch(`http://localhost:5000/api/boards/${BOARD_ID}`, {
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+
+        if (response.status === 401) {
+          localStorage.removeItem('token');
+          window.location.href = '/';
+          return;
+        }
+
+        if (response.status === 403) {
+          setError('You are not authorized to view this board.');
+          return;
+        }
+
+        const data = await response.json();
+        setColumns(data.columns); // ← nested structure from Asmaa
+      } catch (err) {
+        setError('Cannot connect to server. Is the backend running?');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchBoard();
+  }, [token]);
+
+  const handleDragEnd = async (event) => {
     const { active, over } = event;
-
     if (!over) return;
 
     const taskId = active.id;
     const newColumnId = over.id;
 
-    setData(prev => ({
-      ...prev,
-      tasks: prev.tasks.map(task =>
-        task.id === taskId
-          ? { ...task, columnId: newColumnId }
-          : task
-      )
-    }));
+    // Update UI instantly
+    setColumns(prev =>
+      prev.map(col => ({
+        ...col,
+        tasks: col.tasks
+          .filter(t => t._id !== taskId)
+          .concat(
+            col.tasks.find(t => t._id === taskId)
+              ? []
+              : prev
+                  .flatMap(c => c.tasks)
+                  .filter(t => t._id === taskId)
+                  .map(t => ({ ...t, columnId: newColumnId }))
+          )
+      }))
+    );
+
+    // Tell Asmaa's API about the move
+    try {
+      await fetch(`http://localhost:5000/api/tasks/${taskId}/move`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ columnId: newColumnId })
+      });
+    } catch (err) {
+      console.error('Failed to save card move:', err);
+    }
   };
+
+  if (loading) return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <p className="text-white text-xl">Loading board...</p>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <p className="text-red-400 text-xl">{error}</p>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-gray-900">
       <Navbar />
 
-      {/* Board Header */}
       <div className="px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Code Arena — Dev Board</h1>
@@ -104,20 +140,24 @@ function BoardPage() {
         </button>
       </div>
 
-      {/* Drag & Drop Context */}
       <DndContext
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragEnd={handleDragEnd}
       >
         <div className="flex gap-4 px-6 pb-6 overflow-x-auto">
-          {data.columns.map(column => (
+          {columns.map(column => (
             <Column
-              key={column.id}
-              id={column.id}
+              key={column._id}
+              id={column._id}
               title={column.title}
-              color={column.color}
-              tasks={getTasksByColumn(column.id)}
+              color="bg-gray-400"
+              tasks={column.tasks.map(task => ({
+                ...task,
+                id: task._id,           // ← map _id to id for dnd-kit
+                labelColor: labelColors[task.label] || 'bg-gray-700 text-gray-300',
+                priorityColor: priorityColors[task.priority] || 'text-gray-400',
+              }))}
             />
           ))}
         </div>

@@ -23,7 +23,7 @@ function LoginPage() {
     return newErrors;
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const foundErrors = validate();
 
@@ -33,7 +33,25 @@ function LoginPage() {
     }
 
     setErrors({});
-    console.log('✅ Login submitted:', { email, password });
+
+    try {
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        localStorage.setItem('token', data.token);
+        window.location.href = '/board';
+      } else {
+        setErrors({ general: data.message || 'Login failed' });
+      }
+    } catch (err) {
+      setErrors({ general: 'Cannot connect to server' });
+    }
   };
 
   return (
@@ -78,6 +96,11 @@ function LoginPage() {
               <p className="text-red-400 text-xs mt-1">{errors.password}</p>
             )}
           </div>
+
+          {/* General error (from API) */}
+          {errors.general && (
+            <p className="text-red-400 text-sm text-center">{errors.general}</p>
+          )}
 
           <button
             type="submit"
