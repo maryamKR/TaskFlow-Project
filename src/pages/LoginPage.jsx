@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { login } from '../services/auth';
 
 function LoginPage() {
   const [email, setEmail] = useState('');
@@ -7,19 +8,16 @@ function LoginPage() {
 
   const validate = () => {
     const newErrors = {};
-
     if (!email) {
       newErrors.email = 'Email is required';
     } else if (!email.includes('@')) {
       newErrors.email = 'Please enter a valid email';
     }
-
     if (!password) {
       newErrors.password = 'Password is required';
     } else if (password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
     }
-
     return newErrors;
   };
 
@@ -35,22 +33,10 @@ function LoginPage() {
     setErrors({});
 
     try {
-      const response = await fetch('http://localhost:5000/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, password })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem('token', data.token);
-        window.location.href = '/board';
-      } else {
-        setErrors({ general: data.message || 'Login failed' });
-      }
+      await login(email, password);
+      window.location.href = '/board';
     } catch (err) {
-      setErrors({ general: 'Cannot connect to server' });
+      setErrors({ general: err.response?.data?.message || 'Login failed' });
     }
   };
 
@@ -97,7 +83,7 @@ function LoginPage() {
             )}
           </div>
 
-          {/* General error (from API) */}
+          {/* General API error */}
           {errors.general && (
             <p className="text-red-400 text-sm text-center">{errors.general}</p>
           )}

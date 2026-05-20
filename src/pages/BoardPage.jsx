@@ -1,15 +1,11 @@
 import { useState, useEffect } from 'react';
 import {
-  DndContext,
-  closestCorners,
-  PointerSensor,
-  useSensor,
-  useSensors,
+  DndContext, closestCorners,
+  PointerSensor, useSensor, useSensors,
 } from '@dnd-kit/core';
 import Navbar from '../components/Navbar';
 import Column from '../components/Column';
-
-const BOARD_ID = 'YOUR_BOARD_ID_HERE'; // ← ask Asmaa for a real board ID
+import { getBoards, getBoardById, moveTask } from '../services/board';
 
 const labelColors = {
   UI: 'bg-purple-900 text-purple-300',
@@ -30,49 +26,45 @@ function BoardPage() {
   const [columns, setColumns] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-
   const sensors = useSensors(useSensor(PointerSensor));
-
   const token = localStorage.getItem('token');
 
-  // ← redirect to login if no token
   useEffect(() => {
     if (!token) {
       window.location.href = '/';
+      return;
     }
-  }, [token]);
 
-  // ← fetch board data from Asmaa's API
-  useEffect(() => {
-    const fetchBoard = async () => {
+    const fetchData = async () => {
       try {
-        const response = await fetch(`http://localhost:5000/api/boards/${BOARD_ID}`, {
-          headers: {
-            'Authorization': `Bearer ${token}`
-          }
-        });
+        // Step 1: get all boards & log them
+        const boards = await getBoards();
+        console.log('📋 Available boards:', boards);
 
-        if (response.status === 401) {
+        if (!boards || boards.length === 0) {
+          setError('No boards found. Ask Asmaa to create one!');
+          return;
+        }
+
+        // Step 2: use first board automatically
+        const boardId = boards[0]._id;
+        const board = await getBoardById(boardId);
+        console.log('📌 Board data:', board);
+
+        setColumns(board.columns);
+      } catch (err) {
+        if (err.response?.status === 401) {
           localStorage.removeItem('token');
           window.location.href = '/';
-          return;
+        } else {
+          setError('Cannot connect to server. Is the backend running?');
         }
-
-        if (response.status === 403) {
-          setError('You are not authorized to view this board.');
-          return;
-        }
-
-        const data = await response.json();
-        setColumns(data.columns); // ← nested structure from Asmaa
-      } catch (err) {
-        setError('Cannot connect to server. Is the backend running?');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchBoard();
+    fetchData();
   }, [token]);
 
   const handleDragEnd = async (event) => {
@@ -82,41 +74,30 @@ function BoardPage() {
     const taskId = active.id;
     const newColumnId = over.id;
 
-    // Update UI instantly
     setColumns(prev =>
-      prev.map(col => ({
-        ...col,
-        tasks: col.tasks
-          .filter(t => t._id !== taskId)
-          .concat(
-            col.tasks.find(t => t._id === taskId)
-              ? []
-              : prev
-                  .flatMap(c => c.tasks)
-                  .filter(t => t._id === taskId)
-                  .map(t => ({ ...t, columnId: newColumnId }))
-          )
-      }))
+      prev.map(col => {
+        const hasTask = col.tasks.some(t => t._id === taskId);
+        if (hasTask) {
+          return { ...col, tasks: col.tasks.filter(t => t._id !== taskId) };
+        }
+        const task = prev.flatMap(c => c.tasks).find(t => t._id === taskId);
+        if (col._id === newColumnId && task) {
+          return { ...col, tasks: [...col.tasks, task] };
+        }
+        return col;
+      })
     );
 
-    // Tell Asmaa's API about the move
     try {
-      await fetch(`http://localhost:5000/api/tasks/${taskId}/move`, {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({ columnId: newColumnId })
-      });
+      await moveTask(taskId, newColumnId);
     } catch (err) {
-      console.error('Failed to save card move:', err);
+      console.error('Failed to save move:', err);
     }
   };
 
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-      <p className="text-white text-xl">Loading board...</p>
+      <p className="text-white text-xl animate-pulse">Loading board...</p>
     </div>
   );
 
@@ -129,7 +110,6 @@ function BoardPage() {
   return (
     <div className="min-h-screen bg-gray-900">
       <Navbar />
-
       <div className="px-6 py-4 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-white">Code Arena — Dev Board</h1>
@@ -154,7 +134,7 @@ function BoardPage() {
               color="bg-gray-400"
               tasks={column.tasks.map(task => ({
                 ...task,
-                id: task._id,           // ← map _id to id for dnd-kit
+                id: task._id,
                 labelColor: labelColors[task.label] || 'bg-gray-700 text-gray-300',
                 priorityColor: priorityColors[task.priority] || 'text-gray-400',
               }))}
@@ -162,7 +142,6 @@ function BoardPage() {
           ))}
         </div>
       </DndContext>
-
     </div>
   );
 }
