@@ -1,6 +1,11 @@
 const Board = require("../models/Board");
 const asyncHandler = require("express-async-handler");
 
+const { hasBoardAccess } = require('../utils/boardAuth');
+
+const Column = require("../models/Column");
+const Task = require("../models/Task");
+
 // @desc    Create a new project board
 // @route   POST /api/boards
 // @access  Private
@@ -10,7 +15,7 @@ const createBoard = asyncHandler(async (req, res, next) => {
   // 1. Create the new board document, setting the logged-in user as the creator
   const newBoard = await Board.create({
     title,
-    user: req.user._id, // Coming directly from your updated protect middleware!
+    user: req.user._id, // Coming directly from  protect middleware!
     coworkers: coworkers || [], // Defaults to an empty list if none provided yet
     columns: [] // Fresh board starts with no columns
   });
@@ -41,26 +46,23 @@ const getBoards = asyncHandler(async(req,res) =>{
     })
 })
 
-
 const getBoardById = asyncHandler(async (req, res)=>{
     const board = await Board.findById(req.params.id).populate({
         path: 'columns',
         populate: {path: "tasks"} //Get task inside the columns
-    });
+    }).populate({
+        path: 'user',
+        select: '-password'
+});
 
     if(!board){
         res.status(404);
         throw new Error("Board not found")
     }
 
-    const isOwner = board.user.toString() === req.user._id.toString();
-    const isCoworker  = board.coworkers.some(
-        (coworkerId) => coworkerId.toString() === req.user._id.toString()
-    );
-
-    if(!isOwner && !isCoworker){
-        res.status(403);
-        throw new Error("You do not have permission to view this board");
+    if (!hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("You do not have permission to view this board");
     }
 
     res.status(200).json({success: true, data: board})
@@ -80,12 +82,10 @@ const deleteBoard = asyncHandler(async (req, res) => {
         throw new Error("Only the owner can delete this board");
     }
 
-    const Column = require("../models/Column");
-    const Task = require("../models/Task");
-
+   
+    //Cascade delete 
     await Task.deleteMany({column:{ $in: board.columns}});
     await Column.deleteMany({board: board._id});
-
     await board.deleteOne();
 
     res.status(200).json({ success: true, message: "Board and all associated data removed" });
