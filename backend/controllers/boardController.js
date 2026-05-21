@@ -37,7 +37,12 @@ const getBoards = asyncHandler(async(req,res) =>{
             {user: req.user._id},
             {coworkers: req.user._id}
         ]
-    }).sort({createdAt: -1});
+    })
+    .sort({createdAt: -1})
+    .populate({
+        path: 'columns',
+        populate: { path: 'tasks' }});
+        
 
     res.status(200).json({
         success : true,

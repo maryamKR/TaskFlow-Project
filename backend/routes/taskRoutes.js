@@ -2,7 +2,7 @@ const express = require('express');
 
 const router = express.Router();
 
-const { createTask,getTask,updateTask,deleteTask } = require('../controllers/taskController');
+const { createTask,getTask,updateTask,deleteTask, moveTask } = require('../controllers/taskController');
 
 const { protect } = require('../middleware/authMiddleware');
 
@@ -13,6 +13,8 @@ const { createTaskSchema } = require('../middleware/validators/taskValidator');
 router.get('/:id', protect, getTask);
 router.post('/', protect, validate(createTaskSchema), createTask);
 router.put('/:id', protect, updateTask);
+router.patch('/move', protect, moveTask);
+
 router.delete('/:id', protect, deleteTask);
 
 module.exports = router;

@@ -1,8 +1,8 @@
-const Task = require('../models/Task');
-const Column = require('../models/Column');
-const Board = require('../models/Board');
-const asyncHandler = require('express-async-handler');
-const { hasBoardAccess } = require('../utils/boardAuth');
+const Task = require("../models/Task");
+const Column = require("../models/Column");
+const Board = require("../models/Board");
+const asyncHandler = require("express-async-handler");
+const { hasBoardAccess } = require("../utils/boardAuth");
 
 // @desc    Create a task
 // @route   POST /api/tasks
@@ -35,7 +35,7 @@ const createTask = asyncHandler(async (req, res) => {
     description,
     priority,
     dueDate,
-    column: columnId
+    column: columnId,
   });
 
   // 4. Link task to column
@@ -49,7 +49,7 @@ const createTask = asyncHandler(async (req, res) => {
 // @route   GET /api/tasks/:id
 // @access  Private
 const getTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id).populate('column', 'title');
+  const task = await Task.findById(req.params.id).populate("column", "title");
 
   if (!task) {
     res.status(404);
@@ -124,4 +124,53 @@ const deleteTask = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, message: "Task deleted successfully" });
 });
 
-module.exports = { createTask, getTask, updateTask, deleteTask };
+//// @desc   Move a task
+// @route   PATCH /api/tasks/move
+// @access  Private
+const moveTask = asyncHandler(async (req, res) => {
+  const { taskId, sourceColumnId, destinationColumnId } = req.body;
+
+  // 2. Validate input
+  if (!taskId || !sourceColumnId || !destinationColumnId) {
+    res.status(400);
+    throw new Error(
+      "Missing required fields: taskId, sourceColumnId, or destinationColumnId",
+    );
+  }
+
+  const task = await Task.findById(taskId);
+
+  if (!task) throw new Error("Task not found");
+
+  const column = await Column.findById(task.column);
+  const board = await Board.findById(column?.board);
+
+  if (!board || !hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("Not authorized to delete this task");
+  }
+
+  //Move logic :
+  // If it's already in the destination, just return succes
+  if (task.column.toString() === destinationColumnId) {
+    return res
+      .status(200)
+      .json({ success: true, message: "Task already in destination" });
+  }
+
+  //A remove the task from source column
+  await Column.findByIdAndUpdate(sourceColumnId, { $pull: { tasks: taskId } });
+
+  //B add task to description column
+  await Column.findByIdAndUpdate(destinationColumnId, {
+    $push: { tasks: taskId },
+  });
+
+  //C Update the column reference on the task itself
+  task.Column = destinationColumnId;
+  await task.save();
+
+  res.status(200).json({ success: true, message: "Task moved successfully" });
+});
+
+module.exports = { createTask, getTask, updateTask, deleteTask, moveTask };
