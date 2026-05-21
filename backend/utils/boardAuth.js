@@ -1,16 +1,12 @@
-/**
- * Checks if the user is the owner of the board or a coworker
- * @param {Object} board - The Mongoose Board document
- * @param {String} userId - The ID of the current user (req.user._id)
- * @returns {Boolean}
- */
-
-
 const hasBoardAccess = (board, userId) => {
-  const isOwner = board.user.toString() === userId.toString();
-  const isCoworker = board.coworkers.some(
-    (coworkerId) => coworkerId.toString() === userId.toString()
-  );
+
+  // Extract ID string
+  const boardOwnerId = board.user?._id ? board.user._id.toString() : board.user.toString();
+  const currentUserId = userId.toString();
+
+  const isOwner = boardOwnerId === currentUserId;
+  const isCoworker = board.coworkers.some(id => id.toString() === currentUserId);
+  
   return isOwner || isCoworker;
 };
 
