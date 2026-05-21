@@ -6,15 +6,8 @@ import {
 import Navbar from '../components/Navbar';
 import Column from '../components/Column';
 import CreateBoardModal from '../components/CreateBoardModal';
+import AddColumnButton from '../components/AddColumnButton';
 import { getBoards, getBoardById, moveTask } from '../services/board';
-
-const labelColors = {
-  UI: 'bg-purple-900 text-purple-300',
-  DB: 'bg-blue-900 text-blue-300',
-  BE: 'bg-green-900 text-green-300',
-  AI: 'bg-yellow-900 text-yellow-300',
-  FE: 'bg-purple-900 text-purple-300',
-};
 
 const priorityColors = {
   High: 'text-red-400',
@@ -46,7 +39,6 @@ function BoardPage() {
     try {
       const data = await getBoards();
       setBoards(data || []);
-
       if (data && data.length > 0) {
         loadBoard(data[0]._id);
       } else {
@@ -79,6 +71,20 @@ function BoardPage() {
   const handleBoardCreated = (newBoard) => {
     setBoards(prev => [...prev, newBoard]);
     loadBoard(newBoard._id);
+  };
+
+  const handleColumnAdded = (newColumn) => {
+    setColumns(prev => [...prev, newColumn]);
+  };
+
+  const handleTaskCreated = (columnId, newTask) => {
+    setColumns(prev =>
+      prev.map(col =>
+        col._id === columnId
+          ? { ...col, tasks: [...(col.tasks || []), { ...newTask, id: newTask._id }] }
+          : col
+      )
+    );
   };
 
   const handleDragEnd = async (event) => {
@@ -128,8 +134,6 @@ function BoardPage() {
       {/* Board Header */}
       <div className="px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-4">
-
-          {/* Board selector dropdown */}
           {boards.length > 0 && (
             <select
               onChange={(e) => loadBoard(e.target.value)}
@@ -142,7 +146,6 @@ function BoardPage() {
               ))}
             </select>
           )}
-
           <div>
             <h1 className="text-2xl font-bold text-white">
               {activeBoard ? activeBoard.title : 'No boards yet'}
@@ -150,8 +153,6 @@ function BoardPage() {
             <p className="text-gray-400 text-sm mt-1">Track your team's progress</p>
           </div>
         </div>
-
-        {/* Create board button */}
         <button
           onClick={() => setShowCreateModal(true)}
           className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
@@ -174,30 +175,34 @@ function BoardPage() {
       )}
 
       {/* Kanban columns */}
-      {columns.length > 0 && (
-        <DndContext
-          sensors={sensors}
-          collisionDetection={closestCorners}
-          onDragEnd={handleDragEnd}
-        >
-          <div className="flex gap-4 px-6 pb-6 overflow-x-auto">
-            {columns.map(column => (
-              <Column
-                key={column._id}
-                id={column._id}
-                title={column.title}
-                color="bg-gray-400"
-                tasks={column.tasks.map(task => ({
-                  ...task,
-                  id: task._id,
-                  labelColor: labelColors[task.label] || 'bg-gray-700 text-gray-300',
-                  priorityColor: priorityColors[task.priority] || 'text-gray-400',
-                }))}
-              />
-            ))}
-          </div>
-        </DndContext>
-      )}
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCorners}
+        onDragEnd={handleDragEnd}
+      >
+        <div className="flex gap-4 px-6 pb-6 overflow-x-auto">
+          {columns.map(column => (
+            <Column
+              key={column._id}
+              id={column._id}
+              title={column.title}
+              color="bg-gray-400"
+              onTaskCreated={handleTaskCreated}
+              tasks={(column.tasks || []).map(task => ({
+                ...task,
+                id: task._id,
+                priorityColor: priorityColors[task.priority] || 'text-gray-400',
+              }))}
+            />
+          ))}
+          {activeBoard && (
+            <AddColumnButton
+              boardId={activeBoard._id}
+              onColumnAdded={handleColumnAdded}
+            />
+          )}
+        </div>
+      </DndContext>
 
       {/* Create Board Modal */}
       {showCreateModal && (
