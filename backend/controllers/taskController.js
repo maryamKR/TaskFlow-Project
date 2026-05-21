@@ -49,7 +49,7 @@ const createTask = asyncHandler(async (req, res) => {
 // @route   GET /api/tasks/:id
 // @access  Private
 const getTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id);
+  const task = await Task.findById(req.params.id).populate('column', 'title');
 
   if (!task) {
     res.status(404);
