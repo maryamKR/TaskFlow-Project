@@ -28,4 +28,23 @@ const boardSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+
+
+// DEFAULT COLUMNS CREATION
+boardSchema.pre("save", async function (next) {
+  if (this.isNew) {
+    const Column = mongoose.model("Column");
+
+    const defaultColumns = await Column.insertMany([
+      { title: "To Do", board: this._id },
+      { title: "In Progress", board: this._id },
+      { title: "Done", board: this._id }
+    ]);
+
+    this.columns = defaultColumns.map(col => col._id);
+  }
+
+  next();
+});
+
 module.exports = mongoose.model("Board", boardSchema);
