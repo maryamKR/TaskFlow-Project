@@ -38,6 +38,7 @@ boardSchema.pre("save", async function (next) {
     const defaultColumns = await Column.insertMany([
       { title: "To Do", board: this._id },
       { title: "In Progress", board: this._id },
+      { title: "Review", board: this._id },
       { title: "Done", board: this._id }
     ]);
 
