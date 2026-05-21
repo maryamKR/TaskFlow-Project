@@ -9,5 +9,14 @@ const createColumnSchema = z.object({
   }),
 });
 
-// Notice we only export the RAW schema structure now—no repetitive local middleware code!
-module.exports = { createColumnSchema };
+const updateColumnSchema = z.object({
+  body: z.object({
+    title: z.string().optional(),
+    position: z.number().optional(),
+  }),
+  params: z.object({
+    id: z.string().min(1), 
+  }),
+});
+
+module.exports = { createColumnSchema, updateColumnSchema};
