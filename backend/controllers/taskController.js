@@ -8,7 +8,7 @@ const { hasBoardAccess } = require("../utils/boardAuth");
 // @route   POST /api/tasks
 // @access  Private
 const createTask = asyncHandler(async (req, res) => {
-  const { title, columnId, description, priority, dueDate } = req.body;
+  const { title, columnId, description, priority, dueDate, assignedTo } = req.body;
 
   // 1. Ensure the column exists
   const column = await Column.findById(columnId);
@@ -36,6 +36,9 @@ const createTask = asyncHandler(async (req, res) => {
     priority,
     dueDate,
     column: columnId,
+    assignedTo: assignedTo || null,
+    position: column.tasks.length
+    
   });
 
   // 4. Link task to column
@@ -91,6 +94,7 @@ const updateTask = asyncHandler(async (req, res) => {
   task.description = req.body.description ?? task.description;
   task.priority = req.body.priority ?? task.priority;
   task.dueDate = req.body.dueDate ?? task.dueDate;
+  task.assignedTo = req.body.assignedTo ?? task.assignedTo;
 
   await task.save();
   res.status(200).json({ success: true, data: task });
@@ -142,8 +146,8 @@ const moveTask = asyncHandler(async (req, res) => {
 
   if (!task) throw new Error("Task not found");
 
-  const column = await Column.findById(task.column);
-  const board = await Board.findById(column?.board);
+  const sourceColumn = await Column.findById(sourceColumnId);
+  const board = await Board.findById(sourceColumn?.board);
 
   if (!board || !hasBoardAccess(board, req.user._id)) {
     res.status(403);
@@ -159,7 +163,8 @@ const moveTask = asyncHandler(async (req, res) => {
   }
 
   //A remove the task from source column
-  await Column.findByIdAndUpdate(sourceColumnId, { $pull: { tasks: taskId } });
+  await Column.findByIdAndUpdate(sourceColumnId, {
+    $pull: { tasks: taskId } });
 
   //B add task to description column
   await Column.findByIdAndUpdate(destinationColumnId, {
@@ -167,10 +172,10 @@ const moveTask = asyncHandler(async (req, res) => {
   });
 
   //C Update the column reference on the task itself
-  task.Column = destinationColumnId;
+  task.column = destinationColumnId;
   await task.save();
 
-  res.status(200).json({ success: true, message: "Task moved successfully" });
+  res.status(200).json({ success: true, message: "Task moved successfully" , data: task });
 });
 
 module.exports = { createTask, getTask, updateTask, deleteTask, moveTask };

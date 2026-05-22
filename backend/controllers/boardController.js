@@ -1,83 +1,75 @@
-const Board = require("../models/Board");
 const asyncHandler = require("express-async-handler");
-
 const { hasBoardAccess } = require('../utils/boardAuth');
 
-const Column = require("../models/Column");
-const Task = require("../models/Task");
-
 // @desc    Create a new project board
-// @route   POST /api/boards
-// @access  Private
-const createBoard = asyncHandler(async (req, res, next) => {
+const createBoard = asyncHandler(async (req, res) => {
+  const Board = require("../models/Board");
+  const Column = require("../models/Column");
+  
   const { title, coworkers } = req.body;
 
-  // 1. Create the new board document, setting the logged-in user as the creator
-  const newBoard = await Board.create({
+  const board = await Board.create({ 
+      title, 
+      user: req.user._id, 
+      coworkers: coworkers || [] 
+  });
+
+  const DEFAULT_COLUMNS = ["To Do", "In Progress", "Review", "Done"];
+  const columnData = DEFAULT_COLUMNS.map((title, index) => ({
     title,
-    user: req.user._id, // Coming directly from  protect middleware!
-    coworkers: coworkers || [], // Defaults to an empty list if none provided yet
-    columns: [] // Fresh board starts with no columns
-  });
+    board: board._id,
+    position: index,
+  }));
 
-  // 2. Return the populated or clean board object back to the client
-  res.status(201).json({
-    success: true,
-    data: newBoard
-  });
+  const createdColumns = await Column.insertMany(columnData);
+
+  board.columns = createdColumns.map(col => col._id);
+  await board.save();
+
+  const populatedBoard = await Board.findById(board._id).populate("columns");
+  res.status(201).json({ success: true, data: populatedBoard });
 });
 
-
-// @desc    Get all boards for user (owned or shared)
-// @route   GET /api/boards
-// @access  Private
-const getBoards = asyncHandler(async(req,res) =>{
+// @desc    Get all boards
+const getBoards = asyncHandler(async(req, res) => {
+    const Board = require("../models/Board");
     const boards = await Board.find({
-        $or: [
-            {user: req.user._id},
-            {coworkers: req.user._id}
-        ]
+        $or: [{ user: req.user._id }, { coworkers: req.user._id }]
     })
-    .sort({createdAt: -1})
-    .populate({
-        path: 'columns',
-        populate: { path: 'tasks' }});
-        
+    .sort({ createdAt: -1 })
+    .populate({ path: 'columns', populate: { path: 'tasks' }});
 
-    res.status(200).json({
-        success : true,
-        count : boards.length,
-        data: boards
-    })
-})
-
-const getBoardById = asyncHandler(async (req, res)=>{
-    const board = await Board.findById(req.params.id).populate({
-        path: 'columns',
-        populate: {path: "tasks"} //Get task inside the columns
-    }).populate({
-        path: 'user',
-        select: '-password'
+    res.status(200).json({ success: true, count: boards.length, data: boards });
 });
 
-    if(!board){
+// @desc    Get board by ID
+const getBoardById = asyncHandler(async (req, res) => {
+    const Board = require("../models/Board");
+    const board = await Board.findById(req.params.id)
+        .populate({ path: 'columns', populate: { path: "tasks" }})
+        .populate({ path: 'user', select: '-password' });
+
+    if(!board) {
         res.status(404);
-        throw new Error("Board not found")
+        throw new Error("Board not found");
     }
 
     if (!hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("You do not have permission to view this board");
+        res.status(403);
+        throw new Error("You do not have permission to view this board");
     }
 
-    res.status(200).json({success: true, data: board})
+    res.status(200).json({ success: true, data: board });
 });
 
-
+// @desc    Delete board
 const deleteBoard = asyncHandler(async (req, res) => {
-    const board = await Board.findById(req.params.id);
+    const Board = require("../models/Board");
+    const Column = require("../models/Column");
+    const Task = require("../models/Task");
 
-    if(!board){
+    const board = await Board.findById(req.params.id);
+    if(!board) {
         res.status(404);
         throw new Error("Board not found");
     }
@@ -87,18 +79,11 @@ const deleteBoard = asyncHandler(async (req, res) => {
         throw new Error("Only the owner can delete this board");
     }
 
-   
-    //Cascade delete 
-    await Task.deleteMany({column:{ $in: board.columns}});
-    await Column.deleteMany({board: board._id});
+    await Task.deleteMany({ column: { $in: board.columns } });
+    await Column.deleteMany({ board: board._id });
     await board.deleteOne();
 
     res.status(200).json({ success: true, message: "Board and all associated data removed" });
-})
+});
 
-module.exports = {
-  createBoard,
-  getBoards,
-  getBoardById,
-  deleteBoard
-};
+module.exports = { createBoard, getBoards, getBoardById, deleteBoard };
