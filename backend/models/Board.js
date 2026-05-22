@@ -36,11 +36,11 @@ boardSchema.pre("save", async function (next) {
     const Column = mongoose.model("Column");
 
     const defaultColumns = await Column.insertMany([
-      { title: "To Do", board: this._id },
-      { title: "In Progress", board: this._id },
-      { title: "Review", board: this._id },
-      { title: "Done", board: this._id }
-    ]);
+    { title: "To Do", board: this._id, position: 0 },
+    { title: "In Progress", board: this._id, position: 1 },
+    { title: "Review", board: this._id, position: 2 },
+    { title: "Done", board: this._id, position: 3 }
+]);
 
     this.columns = defaultColumns.map(col => col._id);
   }
