@@ -1,24 +1,12 @@
 import { useState } from 'react';
 import { createTask } from '../services/board';
 
-function CreateTaskModal({ columnId, onClose, onTaskCreated }) {
+function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
   const [title, setTitle] = useState('');
-  const [priority, setPriority] = useState('Low');
+  const [priority, setPriority] = useState('low');
   const [assignee, setAssignee] = useState('');
-  const [subtasks, setSubtasks] = useState([]);
-  const [newSubtask, setNewSubtask] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-
-  const handleAddSubtask = () => {
-    if (!newSubtask.trim()) return;
-    setSubtasks(prev => [...prev, { title: newSubtask, completed: false }]);
-    setNewSubtask('');
-  };
-
-  const handleRemoveSubtask = (index) => {
-    setSubtasks(prev => prev.filter((_, i) => i !== index));
-  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -35,23 +23,24 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated }) {
         title,
         columnId,
         priority,
-        assignee,
-        subtasks,
+        assignedTo: assignee || undefined,
       });
       onTaskCreated(columnId, newTask);
       onClose();
     } catch (err) {
-  console.log('Task error:', err.response?.data);
-  const errorMessage = err.response?.data?.error 
-    || err.response?.data?.message
-    || 'Failed to create task';
-  setError(errorMessage);
-}
+      console.log('Task error:', err.response?.data);
+      const errorMessage = err.response?.data?.error
+        || err.response?.data?.message
+        || 'Failed to create task';
+      setError(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
-      <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl max-h-[90vh] overflow-y-auto">
+      <div className="bg-gray-800 rounded-2xl p-6 w-full max-w-md shadow-xl">
 
         {/* Header */}
         <div className="flex items-center justify-between mb-6">
@@ -92,9 +81,9 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated }) {
               onChange={(e) => setPriority(e.target.value)}
               className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
-              <option value="High">🔴 High</option>
-              <option value="Med">🟡 Medium</option>
-              <option value="Low">🟢 Low</option>
+              <option value="high">🔴 High</option>
+              <option value="medium">🟡 Medium</option>
+              <option value="low">🟢 Low</option>
             </select>
           </div>
 
@@ -107,61 +96,12 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated }) {
               className="w-full px-4 py-3 rounded-lg bg-gray-700 text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
               <option value="">Unassigned</option>
-              <option value="Selma">Selma</option>
-              <option value="Asmaa">Asmaa</option>
-              <option value="Maryam">Maryam</option>
+              {members.map(member => (
+                <option key={member._id} value={member._id}>
+                  {member.username}
+                </option>
+              ))}
             </select>
-          </div>
-
-          {/* Subtasks */}
-          <div>
-            <label className="text-gray-300 text-sm mb-1 block">Subtasks</label>
-
-            {/* Existing subtasks */}
-            {subtasks.length > 0 && (
-              <div className="flex flex-col gap-2 mb-2">
-                {subtasks.map((subtask, index) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between bg-gray-700 px-3 py-2 rounded-lg"
-                  >
-                    <span className="text-gray-300 text-sm">☐ {subtask.title}</span>
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveSubtask(index)}
-                      className="text-gray-500 hover:text-red-400 text-lg leading-none"
-                    >
-                      ×
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Add subtask input */}
-            <div className="flex gap-2">
-              <input
-                type="text"
-                placeholder="Add a subtask..."
-                value={newSubtask}
-                onChange={(e) => setNewSubtask(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    handleAddSubtask();
-                  }
-                }}
-                className="flex-1 px-3 py-2 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
-              />
-              <button
-                type="button"
-                onClick={handleAddSubtask}
-                className="px-3 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg text-sm transition duration-200"
-              >
-                + Add
-              </button>
-            </div>
-            <p className="text-gray-500 text-xs mt-1">Press Enter or click Add</p>
           </div>
 
           {/* Buttons */}

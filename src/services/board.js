@@ -22,6 +22,12 @@ export const deleteBoard = async (boardId) => {
   return response.data;
 };
 
+// ── Members ──────────────────────────────
+export const getBoardMembers = async (boardId) => {
+  const response = await api.get(`/boards/${boardId}/members`);
+  return response.data;
+};
+
 // ── Columns ──────────────────────────────
 export const createColumn = async (title, boardId) => {
   const response = await api.post('/columns', { title, boardId });
@@ -31,9 +37,10 @@ export const createColumn = async (title, boardId) => {
 // ── Tasks ────────────────────────────────
 export const createTask = async (taskData) => {
   const response = await api.post('/tasks', taskData);
-  console.log('Create task response:', response.data); // ← see what Asmaa returns
-  return response.data.data || response.data;
+  console.log('Create task response:', response.data);
+  return response.data.data;
 };
+
 export const updateTask = async (taskId, taskData) => {
   const response = await api.put(`/tasks/${taskId}`, taskData);
   return response.data.data;
@@ -44,7 +51,28 @@ export const deleteTask = async (taskId) => {
   return response.data;
 };
 
-export const moveTask = async (taskId, columnId) => {
-  const response = await api.put(`/tasks/${taskId}`, { columnId });
-  return response.data.data;
+export const moveTask = async (taskId, sourceColumnId, destinationColumnId) => {
+  const response = await api.patch('/tasks/move', {
+    taskId,
+    sourceColumnId,
+    destinationColumnId
+  });
+  return response.data;
+};
+
+export const inviteMember = async (boardId, email) => {
+  const response = await api.post(`/boards/${boardId}/invite`, { email });
+  return response.data;
+};
+
+// Reorder columns
+export const reorderColumns = async (boardId, orderedIds) => {
+  const response = await api.put(`/boards/${boardId}/reorder`, { orderedIds });
+  return response.data;
+};
+
+// Reorder tasks within a column
+export const reorderTasks = async (columnId, orderedIds) => {
+  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { orderedIds });
+  return response.data;
 };
