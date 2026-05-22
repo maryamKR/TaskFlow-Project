@@ -30,22 +30,30 @@ const boardSchema = new mongoose.Schema(
 
 
 
-// DEFAULT COLUMNS CREATION
+// Easy to add/remove/rename default columns here
+const DEFAULT_COLUMNS = ["To Do", "In Progress", "Review", "Done"];
+
 boardSchema.pre("save", async function (next) {
   if (this.isNew) {
-    const Column = mongoose.model("Column");
+    try {
+      const Column = mongoose.model("Column");
 
-    const defaultColumns = await Column.insertMany([
-    { title: "To Do", board: this._id, position: 0 },
-    { title: "In Progress", board: this._id, position: 1 },
-    { title: "Review", board: this._id, position: 2 },
-    { title: "Done", board: this._id, position: 3 }
-]);
+      const defaultColumns = await Column.insertMany(
+        DEFAULT_COLUMNS.map((title, index) => ({
+          title,
+          board: this._id,
+          position: index,
+        }))
+      );
 
-    this.columns = defaultColumns.map(col => col._id);
+      this.columns = defaultColumns.map(col => col._id);
+      next();
+    } catch (error) {
+      next(error); // passes error to global errorHandler
+    }
+  } else {
+    next();
   }
-
-  next();
 });
 
 module.exports = mongoose.model("Board", boardSchema);
