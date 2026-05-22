@@ -122,6 +122,23 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     }
     ```
 
+#### Reorder Columns
+*   **URL:** `/boards/:boardId/reorder`
+*   **Method:** `PUT`
+*   **Body:**
+    ```json
+    {
+      "columnIds": ["60d5ef...", "60d5f0...", "60d5f2..."]
+    }
+    ```
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": ["60d5ef...", "60d5f0...", "60d5f2..."]
+    }
+    ```
+
 ---
 
 ### 3. Member Endpoints (Collaborators)
@@ -274,6 +291,23 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 *   **Success Response (200):**
     ```json
     { "success": true, "message": "Task moved successfully" }
+    ```
+
+#### Reorder Tasks (Within Column)
+*   **URL:** `/tasks/column/:columnId/reorder`
+*   **Method:** `PATCH`
+*   **Body:**
+    ```json
+    {
+      "taskIds": ["60d5f3...", "60d5f4...", "60d5f5..."]
+    }
+    ```
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": ["60d5f3...", "60d5f4...", "60d5f5..."]
+    }
     ```
 
 #### Delete Task
