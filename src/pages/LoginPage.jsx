@@ -36,8 +36,11 @@ function LoginPage() {
       await login(email, password);
       window.location.href = '/board';
     } catch (err) {
-      setErrors({ general: err.response?.data?.message || 'Login failed' });
-    }
+  const errorMessage = err.response?.data?.error
+    || err.response?.data?.message
+    || 'Login failed';
+  setErrors({ general: errorMessage });
+}
   };
 
   return (
