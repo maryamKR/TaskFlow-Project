@@ -42,6 +42,8 @@ app.use('/api/boards', boardRoutes);
 app.use('/api/columns', columnRoutes);
 app.use('/api/tasks', taskRoutes)
 
+
+
 //Centralized Error Handler Middleware (Must be the last item mounted!)
 app.use(errorHandler);
 

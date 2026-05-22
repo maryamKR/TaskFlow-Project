@@ -24,7 +24,6 @@ const createColumn = asyncHandler(async (req, res) => {
   const column = await Column.create({
     title,
     board: boardId,
-    position: board.columns.length // Simple auto-position
   });
 
   // Add column reference to the Board
@@ -38,7 +37,7 @@ const createColumn = asyncHandler(async (req, res) => {
 // @route   GET /api/columns/board/:boardId
 // @access  Private
 const getColumnsByBoard = asyncHandler(async (req, res) => {
-  const board = await Board.findById(req.params.boardId);
+  const board = await Board.findById(req.params.boardId).populate('columns');;
   if (!board) {
     res.status(404);
     throw new Error("Board not found");
@@ -73,7 +72,7 @@ const updateColumn = asyncHandler(async (req, res) => {
   const updatedColumn = await Column.findByIdAndUpdate(
     req.params.id,
     req.body,
-    { new: true, runValidators: true }
+    { returnDocument: 'after', runValidators: true }
   );
 
   res.status(200).json({ success: true, data: updatedColumn });
@@ -98,7 +97,7 @@ const deleteColumn = asyncHandler(async (req, res) => {
 
   // Cleanup: Remove reference from board and delete all tasks inside
   await Board.findByIdAndUpdate(column.board, { $pull: { columns: column._id } });
-  await Task.deleteMany({ column: column._id });
+  await Task.deleteMany({ _id: { $in: column.tasks } });
   
   await column.deleteOne();
   

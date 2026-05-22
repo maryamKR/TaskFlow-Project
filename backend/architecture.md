@@ -53,7 +53,7 @@ backend/
 ## 3. Core Architectural Layers
 
 ### A. Security & Authentication Layer
-- **Payload Validation (Zod):** Request bodies are parsed and validated against Zod schemas at the routing layer before reaching the controllers, ensuring input strings match required data types and structural formats.
+- **Payload Validation (Zod):** Request bodies are parsed and validated against Zod schemas at the routing layer before reaching the controllers. This ensures strict data typing for both resource creation (POST) and updates (PUT/PATCH).
 - **Password Hashing:** Passwords are never stored in plain text. Secure hashing is managed via the `authHelpers.js` utility using `bcryptjs` (10 salts) before user creation or login.
 - **Session Tracking:** Stateless authentication using JSON Web Tokens (JWT). Upon valid login/registration, the server issues a signed token valid for 30 days.
 - **Route Guarding:** The `authMiddleware.js` file intercepts requests to protected routes. It extracts the `Bearer <token>` from the HTTP Authorization header, verifies it, and attaches the user payload to `req.user`.
@@ -65,15 +65,15 @@ TaskFlow supports multi-user collaboration on boards:
 - **Access Control:** The `boardAuth.js` utility provides a `hasBoardAccess` check that allows both the owner and coworkers to view and modify columns/tasks, while restricting destructive actions like board deletion to the owner only.
 
 ### C. Data Layer & Relational Schema Tree
-TaskFlow enforces a hierarchical MongoDB relational document pattern. Data is split across collections bound by reference ObjectIDs:
+TaskFlow enforces a hierarchical MongoDB relational document pattern with bidirectional references to ensure data integrity:
 - **User:** Root identity.
 - **Board:** Parent container referencing an owning User, an array of Column ObjectIDs, and an array of coworker User ObjectIDs.
 - **Column:** Middle structural tier referencing its parent Board and containing an ordered array of Task ObjectIDs.
-- **Task:** The standalone work node containing metadata (priority, dueDate, description), referencing its current parent Column, and optionally an `assignedTo` User.
+- **Task:** The work node containing metadata. It maintains a **back-reference** to its parent Column (indexed for performance) to ensure every task has a single, verifiable source of truth for its location.
 
 ### D. Automated Data Linkage & Deep Population
 The system uses explicit controller logic to maintain atomic operations:
-- **Board Initialization:** When a board is created, the `boardController` explicitly generates the default Kanban columns ("To Do", "In Progress", etc.) and links them, ensuring a predictable initial state.
+- **Pointer Synchronization:** During task movement, the system updates both the parent Column arrays and the task's internal column reference, preventing data desynchronization.
 - **Nested Sub-Document Population:** To avoid making multiple round-trips, the system relies on **Deep Population**. Calling a board loads the root element and recursively populates the column and task hierarchies into a single nested tree for the frontend.
 
 ## 4. Error Handling Flow

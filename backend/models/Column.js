@@ -12,11 +12,6 @@ const columnSchema = new mongoose.Schema(
       ref: "Board",
       required: true,
     },
-    position: {
-      type: Number,
-      required: true,
-      default: 0,
-    },
     tasks:[
       {
       type: mongoose.Schema.Types.ObjectId,

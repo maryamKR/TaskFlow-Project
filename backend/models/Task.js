@@ -16,11 +16,6 @@ const taskSchema = new mongoose.Schema(
       enum: ["low", "medium", "high"],
       default: "medium",
     },
-    column: {
-      type: mongoose.Schema.Types.ObjectId,
-      ref: "Column",
-      required: true,
-    },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
@@ -30,9 +25,11 @@ const taskSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
-    position: {
-      type: Number,
-      default: 0,
+    column: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Column",
+      required: true,
+      index: true, // Ensuring every task belongs to a column and is indexed
     },
   },
   { timestamps: true }

@@ -16,6 +16,7 @@ const {
   getBoards,
   getBoardById,
   deleteBoard,
+  reorderColumns
 } = require("../controllers/boardController");
 
 const {
@@ -38,5 +39,7 @@ router.route("/:id").get(protect, getBoardById).delete(protect, deleteBoard);
 router.route("/:boardId/members").get(protect, getBoardMembers);
 
 router.route("/:boardId/invite").post(protect, inviteMember);
+
+router.put('/:boardId/reorder', protect, reorderColumns);
 
 module.exports = router;

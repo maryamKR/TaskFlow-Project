@@ -8,7 +8,8 @@ const { hasBoardAccess } = require("../utils/boardAuth");
 // @route   POST /api/tasks
 // @access  Private
 const createTask = asyncHandler(async (req, res) => {
-  const { title, columnId, description, priority, dueDate, assignedTo } = req.body;
+  const { title, columnId, description, priority, dueDate, assignedTo } =
+    req.body;
 
   // 1. Ensure the column exists
   const column = await Column.findById(columnId);
@@ -35,10 +36,8 @@ const createTask = asyncHandler(async (req, res) => {
     description,
     priority,
     dueDate,
-    column: columnId,
     assignedTo: assignedTo || null,
-    position: column.tasks.length
-    
+    column: columnId, // FIX: Model expects 'column', not 'columnId'
   });
 
   // 4. Link task to column
@@ -52,15 +51,16 @@ const createTask = asyncHandler(async (req, res) => {
 // @route   GET /api/tasks/:id
 // @access  Private
 const getTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id).populate("column", "title");
+  const task = await Task.findById(req.params.id);
 
   if (!task) {
     res.status(404);
     throw new Error("Task not found");
   }
 
-  const column = await Column.findById(task.column);
-  const board = await Board.findById(column?.board);
+  const column = await Column.findOne({ tasks: req.params.id });
+  if (!column) throw new Error("Task not found in any column");
+  const board = await Board.findById(column.board);
 
   if (!board || !hasBoardAccess(board, req.user._id)) {
     res.status(403);
@@ -81,8 +81,9 @@ const updateTask = asyncHandler(async (req, res) => {
     throw new Error("Task not found");
   }
 
-  const column = await Column.findById(task.column);
-  const board = await Board.findById(column?.board);
+  const column = await Column.findOne({ tasks: req.params.id });
+  if (!column) throw new Error("Task not found in any column");
+  const board = await Board.findById(column.board);
 
   if (!board || !hasBoardAccess(board, req.user._id)) {
     res.status(403);
@@ -105,21 +106,22 @@ const updateTask = asyncHandler(async (req, res) => {
 // @access  Private
 const deleteTask = asyncHandler(async (req, res) => {
   const task = await Task.findById(req.params.id);
-
   if (!task) {
     res.status(404);
     throw new Error("Task not found");
   }
 
-  const column = await Column.findById(task.column);
-  const board = await Board.findById(column?.board);
-
-  if (!board || !hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("Not authorized to delete this task");
-  }
+  // Find the column containing this task
+  const column = await Column.findOne({ tasks: task._id });
 
   if (column) {
+    const board = await Board.findById(column.board);
+    if (!board || !hasBoardAccess(board, req.user._id)) {
+      res.status(403);
+      throw new Error("Not authorized");
+    }
+
+    // Pull from the array
     column.tasks.pull(task._id);
     await column.save();
   }
@@ -134,48 +136,64 @@ const deleteTask = asyncHandler(async (req, res) => {
 const moveTask = asyncHandler(async (req, res) => {
   const { taskId, sourceColumnId, destinationColumnId } = req.body;
 
-  // 2. Validate input
   if (!taskId || !sourceColumnId || !destinationColumnId) {
     res.status(400);
-    throw new Error(
-      "Missing required fields: taskId, sourceColumnId, or destinationColumnId",
-    );
+    throw new Error("Missing required fields");
   }
 
-  const task = await Task.findById(taskId);
+  if (sourceColumnId === destinationColumnId) {
+    return res.status(200).json({ success: true, message: "No move needed" });
+  }
 
-  if (!task) throw new Error("Task not found");
+  // 1. Validate destination column and board access
+  const destColumn = await Column.findById(destinationColumnId);
+  if (!destColumn) throw new Error("Destination column not found");
 
-  const sourceColumn = await Column.findById(sourceColumnId);
-  const board = await Board.findById(sourceColumn?.board);
-
+  const board = await Board.findById(destColumn.board);
   if (!board || !hasBoardAccess(board, req.user._id)) {
     res.status(403);
-    throw new Error("Not authorized to delete this task");
+    throw new Error("Not authorized");
   }
 
-  //Move logic :
-  // If it's already in the destination, just return succes
-  if (task.column.toString() === destinationColumnId) {
-    return res
-      .status(200)
-      .json({ success: true, message: "Task already in destination" });
-  }
+  // 2. Perform atomic array updates and task reference update
+  // A. Remove from source
+  await Column.findByIdAndUpdate(sourceColumnId, { $pull: { tasks: taskId } });
 
-  //A remove the task from source column
-  await Column.findByIdAndUpdate(sourceColumnId, {
-    $pull: { tasks: taskId } });
-
-  //B add task to description column
+  // B. Add to destination
   await Column.findByIdAndUpdate(destinationColumnId, {
     $push: { tasks: taskId },
   });
 
-  //C Update the column reference on the task itself
-  task.column = destinationColumnId;
-  await task.save();
+  // C. Update the task itself to point to the new column (Pointer Synchronization)
+  await Task.findByIdAndUpdate(taskId, { column: destinationColumnId }, { runValidators: true });
 
-  res.status(200).json({ success: true, message: "Task moved successfully" , data: task });
+  res.status(200).json({ success: true, message: "Task moved successfully" });
 });
 
-module.exports = { createTask, getTask, updateTask, deleteTask, moveTask };
+// @desc    Reorder tasks within a column
+// @route   PATCH /api/columns/:columnId/reorder
+// @access  Private
+const reorderTask = asyncHandler(async (req, res) => {
+  const { taskIds } = req.body;
+  const { columnId } = req.params;
+
+  const column = await Column.findById(columnId);
+  if (!column) throw new Error("Column not found");
+
+  const board = await Board.findById(column.board);
+  if (!board || !hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("Not authorized to reorder this board");
+  }
+
+  // 2. Perform the update
+  const updatedColumn = await Column.findByIdAndUpdate(
+    columnId, 
+    { tasks: taskIds }, 
+    { returnDocument: 'after' }
+  );
+
+  res.status(200).json({ success: true, data: updatedColumn.tasks });
+});
+
+module.exports = { createTask, getTask, updateTask, deleteTask, moveTask, reorderTask};

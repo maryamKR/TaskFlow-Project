@@ -1,11 +1,11 @@
 const asyncHandler = require("express-async-handler");
+const Board = require("../models/Board");
+const Column = require("../models/Column");
+const Task = require("../models/Task");
 const { hasBoardAccess } = require('../utils/boardAuth');
 
 // @desc    Create a new project board
 const createBoard = asyncHandler(async (req, res) => {
-  const Board = require("../models/Board");
-  const Column = require("../models/Column");
-  
   const { title, coworkers } = req.body;
 
   const board = await Board.create({ 
@@ -32,7 +32,6 @@ const createBoard = asyncHandler(async (req, res) => {
 
 // @desc    Get all boards
 const getBoards = asyncHandler(async(req, res) => {
-    const Board = require("../models/Board");
     const boards = await Board.find({
         $or: [{ user: req.user._id }, { coworkers: req.user._id }]
     })
@@ -44,7 +43,6 @@ const getBoards = asyncHandler(async(req, res) => {
 
 // @desc    Get board by ID
 const getBoardById = asyncHandler(async (req, res) => {
-    const Board = require("../models/Board");
     const board = await Board.findById(req.params.id)
         .populate({ path: 'columns', populate: { path: "tasks" }})
         .populate({ path: 'user', select: '-password' });
@@ -64,10 +62,6 @@ const getBoardById = asyncHandler(async (req, res) => {
 
 // @desc    Delete board
 const deleteBoard = asyncHandler(async (req, res) => {
-    const Board = require("../models/Board");
-    const Column = require("../models/Column");
-    const Task = require("../models/Task");
-
     const board = await Board.findById(req.params.id);
     if(!board) {
         res.status(404);
@@ -78,7 +72,7 @@ const deleteBoard = asyncHandler(async (req, res) => {
         res.status(403);
         throw new Error("Only the owner can delete this board");
     }
-
+    
     await Task.deleteMany({ column: { $in: board.columns } });
     await Column.deleteMany({ board: board._id });
     await board.deleteOne();
@@ -86,4 +80,33 @@ const deleteBoard = asyncHandler(async (req, res) => {
     res.status(200).json({ success: true, message: "Board and all associated data removed" });
 });
 
-module.exports = { createBoard, getBoards, getBoardById, deleteBoard };
+// @desc    Reorder columns in a board
+// @route   PUT /api/boards/:boardId/reorder
+// @access  Private
+const reorderColumns = asyncHandler(async (req, res) => {
+  const { boardId } = req.params;
+  const { columnIds } = req.body;
+
+  const board = await Board.findById(boardId);
+  if (!board) {
+    res.status(404);
+    throw new Error("Board not found");
+  }
+
+  if (!hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("Not authorized to reorder columns");
+  }
+
+  if (columnIds.length !== board.columns.length) {
+    res.status(400);
+    throw new Error("Invalid reorder: Column count mismatch");
+  }
+
+  board.columns = columnIds;
+  await board.save();
+
+  res.status(200).json({ success: true, data: board.columns });
+});
+
+module.exports = { createBoard, getBoards, getBoardById, deleteBoard, reorderColumns };
