@@ -1,20 +1,32 @@
-const { z } = require('zod');
+const { z } = require("zod");
 
 const createTaskSchema = z.object({
-  title: z.string().min(1, "Task title is required"),
-  columnId: z.string().min(1, "Column ID is required"),
-  description: z.string().optional(),
-  priority: z.enum(['low', 'medium', 'high']).default('medium'),
-  dueDate: z.string().datetime().nullable().optional() // Validates ISO date strings
+  body: z.object({
+    title: z.string().min(1, "Task title is required"),
+    columnId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Column ID format"),
+    description: z.string().optional(),
+    priority: z.enum(["low", "medium", "high"]).default("medium"),
+    dueDate: z.string().datetime().nullable().optional(),
+    assignedTo: z
+      .string()
+      .regex(/^[0-9a-fA-F]{24}$/, "Invalid User ID format")
+      .nullable()
+      .optional(),
+  }),
 });
 
-const validateTask = (req, res, next) => {
-  try {
-   req.body = createTaskSchema.parse(req.body);
-    next();
-  } catch (error) {
-    res.status(400).json({ success: false, error: error.errors[0].message });
-  }
-};
+const updateTaskSchema = z.object({
+  body: z.object({
+    title: z.string().min(1, "Task title is required").optional(),
+    description: z.string().optional(),
+    priority: z.enum(["low", "medium", "high"]).optional(),
+    dueDate: z.string().datetime().nullable().optional(),
+    assignedTo: z
+      .string()
+      .regex(/^[0-9a-fA-F]{24}$/, "Invalid User ID format")
+      .nullable()
+      .optional(),
+  }),
+});
 
-module.exports = { validateTask };
+module.exports = { createTaskSchema, updateTaskSchema };
