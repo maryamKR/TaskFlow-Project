@@ -148,6 +148,9 @@ function BoardPage() {
 
   const loadBoard = async (boardId) => {
     setLoading(true);
+
+    
+
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
@@ -327,6 +330,7 @@ function BoardPage() {
         <div className="flex items-center gap-4">
           {boards.length > 0 && (
             <select
+              value={activeBoard?._id}
               onChange={(e) => loadBoard(e.target.value)}
               className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >
