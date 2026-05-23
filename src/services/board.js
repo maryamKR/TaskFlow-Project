@@ -73,6 +73,6 @@ export const reorderColumns = async (boardId, orderedIds) => {
 
 // Reorder tasks within a column
 export const reorderTasks = async (columnId, orderedIds) => {
-  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { orderedIds });
+  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { taskIds: orderedIds });
   return response.data;
 };

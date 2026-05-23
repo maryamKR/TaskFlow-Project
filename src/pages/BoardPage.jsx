@@ -247,66 +247,67 @@ function BoardPage() {
   };
 
   const handleDragEnd = async ({ active, over }) => {
-    setActiveItem(null);
-    if (!over) return;
+  setActiveItem(null);
+  if (!over) return;
 
-    const activeType = active.data.current?.type;
+  const activeType = active.data.current?.type;
 
-    // ── Column reorder ──────────────────
-    if (activeType === 'column') {
-      if (active.id === over.id) return;
-      const oldIndex = columns.findIndex(c => c._id === active.id);
-      const newIndex = columns.findIndex(c => c._id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-      const newCols = arrayMove(columns, oldIndex, newIndex);
-      setColumns(newCols);
-      try {
-        await reorderColumns(activeBoard._id, newCols.map(c => c._id));
-      } catch (err) {
-        console.error('Column reorder failed:', err);
-      }
-      return;
-    }
-
-    // ── Task dropped ────────────────────
-    const sourceCol = getColumnByTaskId(active.id);
-    if (!sourceCol) return;
-
-    let destColId;
-    if (over.data.current?.type === 'column') {
-      destColId = over.id;
-    } else {
-      const overCol = getColumnByTaskId(over.id);
-      destColId = overCol?._id;
-    }
-
-    if (!destColId) return;
-
-    // Same column → reorder
-    if (sourceCol._id === destColId) {
-      const currentCol = columns.find(c => c._id === sourceCol._id);
-      const oldIndex = currentCol.tasks.findIndex(t => t.id === active.id);
-      const newIndex = currentCol.tasks.findIndex(t => t.id === over.id);
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-      const newTasks = arrayMove(currentCol.tasks, oldIndex, newIndex);
-      setColumns(prev => prev.map(col =>
-        col._id === sourceCol._id ? { ...col, tasks: newTasks } : col
-      ));
-      try {
-        await reorderTasks(sourceCol._id, newTasks.map(t => t._id));
-      } catch (err) {
-        console.error('Task reorder failed:', err);
-      }
-      return;
-    }
-
-    // Different column → already moved visually in onDragOver, just save
+  // ── Column reorder ──────────────────
+  if (activeType === 'column') {
+    if (active.id === over.id) return;
+    const oldIndex = columns.findIndex(c => c._id === active.id);
+    const newIndex = columns.findIndex(c => c._id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newCols = arrayMove(columns, oldIndex, newIndex);
+    setColumns(newCols);
     try {
-      await moveTask(active.id, sourceCol._id, destColId);
+      await reorderColumns(activeBoard._id, newCols.map(c => c._id));
     } catch (err) {
-      console.error('Task move failed:', err);
+      console.error('Column reorder failed:', err);
     }
-  };
+    return;
+  }
+
+  // ── Task dropped ────────────────────
+  const sourceCol = getColumnByTaskId(active.id);
+  if (!sourceCol) return;
+
+  let destColId;
+  if (over.data.current?.type === 'column') {
+    destColId = over.id;
+  } else {
+    const overCol = getColumnByTaskId(over.id);
+    destColId = overCol?._id;
+  }
+
+  if (!destColId) return;
+
+  // Same column → reorder
+  if (sourceCol._id === destColId) {
+    const currentCol = columns.find(c => c._id === sourceCol._id);
+    const taskIds = currentCol.tasks.map(t => t._id || t.id);
+    const oldIndex = taskIds.indexOf(active.id);
+    const newIndex = taskIds.indexOf(over.id);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+    const newTasks = arrayMove(currentCol.tasks, oldIndex, newIndex);
+    setColumns(prev => prev.map(col =>
+      col._id === sourceCol._id ? { ...col, tasks: newTasks } : col
+    ));
+    try {
+      await reorderTasks(sourceCol._id, newTasks.map(t => t._id));
+    } catch (err) {
+      console.error('Task reorder failed:', err);
+    }
+    return;
+  }
+
+  // Different column → already moved visually in onDragOver, just save
+  try {
+    await moveTask(active.id, sourceCol._id, destColId);
+  } catch (err) {
+    console.error('Task move failed:', err);
+  }
+};
 
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
