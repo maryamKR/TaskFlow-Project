@@ -39,7 +39,7 @@ const createTask = asyncHandler(async (req, res) => {
     priority,
     dueDate,
     assignedTo: assignedTo || null,
-    column: columnId, // FIX: Model expects 'column', not 'columnId'
+    column: columnId, //
   });
 
   await task.populate("assignedTo", "username");

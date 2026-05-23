@@ -3,6 +3,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
 
+const { hashPassword } = require('../utils/authHelpers');
+
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
@@ -16,8 +18,7 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
 }
 
     // Hash the password before saving
-    const salt = await bcrypt.genSalt(10);
-    const hashedPassword = await bcrypt.hash(password, salt);
+    const hashedPassword = await hashPassword(password);
 
     // Create the user in MongoDB 
     const user = await User.create({
