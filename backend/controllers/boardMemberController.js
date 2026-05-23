@@ -9,13 +9,17 @@ exports.getBoardMembers = asyncHandler(async (req, res) => {
   const board = await Board.findById(req.params.boardId).populate(
     "coworkers",
     "username email",
-  );
+  ).populate(
+    "user",
+    "username email");
+
+    const members = [board.user, ...board.coworkers];
 
   if (!board) {
     res.status(404);
     throw new Error("Board not found");
   }
-  res.status(200).json(board.coworkers);
+  res.status(200).json(members);
 });
 
 
