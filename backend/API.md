@@ -331,7 +331,61 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 
 ---
 
-## 6. Common Error Responses
+### 6. Comment Endpoints
+
+#### Add Comment to Task
+*   **URL:** `/tasks/:taskId/comments`
+*   **Method:** `POST`
+*   **Body:**
+    ```json
+    { "content": "I am working on this task." }
+    ```
+*   **Success Response (201):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "_id": "60d5f6...",
+        "content": "I am working on this task.",
+        "task": "60d5f3...",
+        "author": { "_id": "60d5ec...", "username": "johndoe" },
+        "createdAt": "2023-10-27T10:00:00Z"
+      }
+    }
+    ```
+
+#### Get Comments for Task
+*   **URL:** `/tasks/:taskId/comments`
+*   **Method:** `GET`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": [
+        {
+          "_id": "60d5f6...",
+          "content": "I am working on this task.",
+          "author": { "_id": "60d5ec...", "username": "johndoe" },
+          "createdAt": "2023-10-27T10:00:00Z"
+        }
+      ]
+    }
+    ```
+
+#### Delete Comment
+*   **URL:** `/comments/:commentId`
+*   **Method:** `DELETE`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "Comment deleted successfully"
+    }
+    ```
+
+---
+
+## 7. Common Error Responses
 
 ### Standard Error Format
 TaskFlow guarantees a consistent JSON structure for all error responses. Frontend developers can always expect the following object:

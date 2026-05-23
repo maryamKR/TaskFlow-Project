@@ -6,6 +6,7 @@ const authRoutes = require('./routes/authRoutes');
 const boardRoutes = require('./routes/boardRoutes');
 const columnRoutes = require('./routes/columnRoutes');
 const taskRoutes = require('./routes/taskRoutes');
+const commentRoutes =require('./routes/commentRoutes')
 
 const http = require("http");
 const { initSocket } = require("./socket");
@@ -20,9 +21,6 @@ const app = express();
 // Connect to MongoDB Atlas
 connectDB();
 
-require('./models/Board');
-require('./models/Column');
-require('./models/Task');
 
 // CORS Middleware Configuration
 app.use(cors({
@@ -43,8 +41,9 @@ app.use('/api/auth', authRoutes);
 app.use('/api/boards', boardRoutes);
 app.use('/api/columns', columnRoutes);
 app.use('/api/tasks', taskRoutes);
+app.use('/api',commentRoutes );
 
-// Centralized Error Handler Middleware (Must be the last item mounted!)
+// Centralized Error Handler Middleware
 app.use(errorHandler);
 
 const server = http.createServer(app);
