@@ -3,6 +3,7 @@ const Board = require("../models/Board");
 const Column = require("../models/Column");
 const Task = require("../models/Task");
 const { hasBoardAccess } = require('../utils/boardAuth');
+const { getIO } = require("../socket");
 
 // @desc    Create a new project board
 const createBoard = asyncHandler(async (req, res) => {
@@ -105,6 +106,8 @@ const reorderColumns = asyncHandler(async (req, res) => {
 
   board.columns = columnIds;
   await board.save();
+
+  getIO().to(boardId).emit("columns_reordered", { columnIds });
 
   res.status(200).json({ success: true, data: board.columns });
 });
