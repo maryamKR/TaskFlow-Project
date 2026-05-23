@@ -113,11 +113,19 @@ function BoardPage() {
     });
   });
 
- 
+  socket.on("columns_reordered", ({ columnIds }) => {
+    setColumns(prev => {
+      const reordered = columnIds
+        .map(id => prev.find(col => col._id === id))
+        .filter(Boolean);
+      return reordered.length === prev.length ? reordered : prev;
+    });
+  });
 
   return () => {
     socket.emit("leave_board", activeBoard._id);
     socket.off("task_moved");
+    socket.off("columns_reordered");
   };
   }, [activeBoard?._id]);
 

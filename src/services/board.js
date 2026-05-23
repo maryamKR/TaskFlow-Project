@@ -67,7 +67,7 @@ export const inviteMember = async (boardId, email) => {
 
 // Reorder columns
 export const reorderColumns = async (boardId, orderedIds) => {
-  const response = await api.put(`/boards/${boardId}/reorder`, { orderedIds });
+  const response = await api.put(`/boards/${boardId}/reorder`, { columnIds: orderedIds });
   return response.data;
 };
 
