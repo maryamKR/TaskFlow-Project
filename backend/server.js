@@ -7,8 +7,10 @@ const boardRoutes = require('./routes/boardRoutes');
 const columnRoutes = require('./routes/columnRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
-const errorHandler = require('./middleware/errorHandler');
+const http = require("http");
+const { initSocket } = require("./socket");
 
+const errorHandler = require('./middleware/errorHandler');
 
 // Load env
 dotenv.config();
@@ -22,10 +24,10 @@ require('./models/Board');
 require('./models/Column');
 require('./models/Task');
 
-//  CORS Middleware Configuration
+// CORS Middleware Configuration
 app.use(cors({
-    origin: ['http://localhost:5173', 'http://localhost:3000'],// Allows frontend port to connect TEMPORARY
-    credentials: true
+  origin: ['http://localhost:5173', 'http://localhost:3000'],
+  credentials: true
 }));
 
 // Body parser middleware to read incoming JSON request bodies
@@ -33,19 +35,22 @@ app.use(express.json());
 
 // Test Route 
 app.get('/api/test', (req, res) => {
-    res.json({ message: ' TaskFlow Backend API is running smoothly!' });
+  res.json({ message: 'TaskFlow Backend API is running smoothly!' });
 });
 
 // Mount Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/boards', boardRoutes);
 app.use('/api/columns', columnRoutes);
-app.use('/api/tasks', taskRoutes)
+app.use('/api/tasks', taskRoutes);
 
-//Centralized Error Handler Middleware (Must be the last item mounted!)
+// Centralized Error Handler Middleware (Must be the last item mounted!)
 app.use(errorHandler);
 
+const server = http.createServer(app);
+initSocket(server);
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(` Server listening on port ${PORT}`);
+server.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
