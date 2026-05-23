@@ -168,6 +168,17 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     }
     ```
 
+#### Remove Member from Board
+*   **URL:** `/boards/:boardId/members/:memberId`
+*   **Method:** `DELETE`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "Member removed successfully"
+    }
+    ```
+
 ---
 
 ### 4. Column Endpoints

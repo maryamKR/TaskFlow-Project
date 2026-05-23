@@ -22,6 +22,7 @@ const {
 const {
   getBoardMembers,
   inviteMember,
+  removeMember,
 } = require("../controllers/boardMemberController");
 
 // console.log("DEBUG: createBoardSchema is", createBoardSchema);
@@ -36,10 +37,14 @@ router
 
 router.route("/:id").get(protect, getBoardById).delete(protect, deleteBoard);
 
-router.route("/:boardId/members").get(protect, getBoardMembers);
-
 router.route("/:boardId/invite").post(protect, inviteMember);
 
 router.put('/:boardId/reorder', protect, reorderColumns);
+
+router.route("/:boardId/members").get(protect, getBoardMembers);
+
+router.delete("/:boardId/members/:memberId", protect, removeMember);
+
+
 
 module.exports = router;
