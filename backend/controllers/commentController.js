@@ -2,6 +2,7 @@ const Comment = require("../models/Comment");
 const Board = require("../models/Board");
 const Column = require("../models/Column");
 const Task = require("../models/Task");
+const Notification = require("../models/Notification");
 const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
 
@@ -34,9 +35,21 @@ exports.addComment = asyncHandler(async (req, res) => {
     author: req.user._id,
   });
 
-  // 4. Add reference to Task array
   task.comments.push(comment._id);
   await task.save();
+
+  //notification integration//
+  if (task.assignee && task.assignee.toString() !== req.user._id.toString()) {
+    await Notification.create({
+      user: task.assignee,
+      sender: req.user._id,
+      message: `${req.user.username} commented on your task: ${task.title}`,
+      type: "COMMENT",
+      relatedId: taskId,
+    });
+  }
+
+  await comment.populate("author", "username");
 
   await comment.populate("author", "username");
 

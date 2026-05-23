@@ -385,7 +385,77 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 
 ---
 
-## 7. Common Error Responses
+### 7. Notification Endpoints
+
+#### Get own Notifications
+*   **URL:** `/notifications`
+*   **Method:** `GET`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "count": 5,
+      "data": [
+        {
+          "_id": "60d5f7...",
+          "user": "60d5ec...",
+          "sender": { "_id": "60d5ed...", "username": "jane_doe" },
+          "type": "task_assigned",
+          "message": "jane_doe assigned you to 'Fix Auth Bug'",
+          "isRead": false,
+          "createdAt": "2023-10-27T11:00:00Z"
+        }
+      ]
+    }
+    ```
+
+#### Mark All as Read
+*   **URL:** `/notifications/read-all`
+*   **Method:** `PATCH`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "All notifications marked as read"
+    }
+    ```
+
+#### Mark Specific Notification as Read
+*   **URL:** `/notifications/:id/read`
+*   **Method:** `PATCH`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": { "_id": "60d5f7...", "isRead": true, "message": "...", "createdAt": "..." }
+    }
+    ```
+
+#### Delete Read Notifications
+*   **URL:** `/notifications/read`
+*   **Method:** `DELETE`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "Read notifications cleared"
+    }
+    ```
+
+#### Delete Specific Notification
+*   **URL:** `/notifications/:id`
+*   **Method:** `DELETE`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "Notification deleted"
+    }
+    ```
+
+---
+
+## 8. Common Error Responses
 
 ### Standard Error Format
 TaskFlow guarantees a consistent JSON structure for all error responses. Frontend developers can always expect the following object:
