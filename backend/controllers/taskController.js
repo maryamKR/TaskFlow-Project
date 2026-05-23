@@ -42,6 +42,8 @@ const createTask = asyncHandler(async (req, res) => {
     column: columnId, // FIX: Model expects 'column', not 'columnId'
   });
 
+  await task.populate("assignedTo", "username");
+
   // 4. Link task to column
   column.tasks.push(task._id);
   await column.save();
@@ -53,7 +55,7 @@ const createTask = asyncHandler(async (req, res) => {
 // @route   GET /api/tasks/:id
 // @access  Private
 const getTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id);
+  const task = await Task.findById(req.params.id).populate("assignedTo", "username");
 
   if (!task) {
     res.status(404);
@@ -100,6 +102,7 @@ const updateTask = asyncHandler(async (req, res) => {
   task.assignedTo = req.body.assignedTo ?? task.assignedTo;
 
   await task.save();
+  await task.populate("assignedTo", "username");
 
   res.status(200).json({ success: true, data: task });
 });
