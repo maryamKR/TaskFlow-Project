@@ -206,6 +206,12 @@ const reorderTask = asyncHandler(async (req, res) => {
     { returnDocument: 'after' }
   );
 
+  // 3. Emit real-time event 
+  getIO().to(board._id.toString()).emit("tasks_reordered", {
+    columnId,
+    taskIds,
+  });
+
   res.status(200).json({ success: true, data: updatedColumn.tasks });
 });
 

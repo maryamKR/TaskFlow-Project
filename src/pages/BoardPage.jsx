@@ -122,10 +122,22 @@ function BoardPage() {
     });
   });
 
+
+  socket.on("tasks_reordered", ({ columnId, taskIds }) => {
+    setColumns(prev => prev.map(col => {
+      if (col._id !== columnId) return col;
+      const reordered = taskIds
+        .map(id => col.tasks.find(t => t._id === id || t.id === id))
+        .filter(Boolean);
+      return { ...col, tasks: reordered };
+    }));
+  });
+
   return () => {
     socket.emit("leave_board", activeBoard._id);
     socket.off("task_moved");
     socket.off("columns_reordered");
+    socket.off("tasks_reordered");
   };
   }, [activeBoard?._id]);
 
