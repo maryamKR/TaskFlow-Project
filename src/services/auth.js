@@ -1,4 +1,5 @@
 import axios from 'axios';
+import socket from "../socket"; // eslint-disable-line no-unused-vars
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -31,5 +32,9 @@ export const login = async (email, password) => {
   });
   const { token } = response.data;
   localStorage.setItem('token', token);
+  
+  socket.io.opts.auth = { token };
+  socket.connect();
+
   return response.data;
 };

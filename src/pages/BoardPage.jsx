@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import socket from '../socket';
 import {
   DndContext,
   closestCenter,
@@ -77,7 +78,48 @@ function BoardPage() {
   useEffect(() => {
     if (!token) { window.location.href = '/'; return; }
     fetchBoards();
-  }, [token]);
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      socket.auth = { token };
+      socket.connect();
+    }
+  }, []);
+
+  useEffect(() => {
+  if (!activeBoard) return;
+
+  socket.emit("join_board", activeBoard._id);
+
+  socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
+    setColumns(prev => {
+      const task = prev
+        .find(col => col._id === sourceColumnId)
+        ?.tasks.find(t => t._id === taskId || t.id === taskId);
+      
+      if (!task) return prev; // already moved visually by the user who dragged
+
+      return prev.map(col => {
+        if (col._id === sourceColumnId) {
+          return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
+        }
+        if (col._id === destinationColumnId) {
+          return { ...col, tasks: [...col.tasks, task] };
+        }
+        return col;
+      });
+    });
+  });
+
+ 
+
+  return () => {
+    socket.emit("leave_board", activeBoard._id);
+    socket.off("task_moved");
+  };
+  }, [activeBoard?._id]);
 
   const fetchBoards = async () => {
     try {

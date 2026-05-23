@@ -4,6 +4,8 @@ const Board = require("../models/Board");
 const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
 
+const { getIO } = require("../socket");
+
 // @desc    Create a task
 // @route   POST /api/tasks
 // @access  Private
@@ -98,6 +100,7 @@ const updateTask = asyncHandler(async (req, res) => {
   task.assignedTo = req.body.assignedTo ?? task.assignedTo;
 
   await task.save();
+
   res.status(200).json({ success: true, data: task });
 });
 
@@ -166,6 +169,13 @@ const moveTask = asyncHandler(async (req, res) => {
 
   // C. Update the task itself to point to the new column (Pointer Synchronization)
   await Task.findByIdAndUpdate(taskId, { column: destinationColumnId }, { runValidators: true });
+
+  // D. Emit real-time event 
+  getIO().to(board._id.toString()).emit("task_moved", {
+    taskId,
+    sourceColumnId,
+    destinationColumnId,
+  });
 
   res.status(200).json({ success: true, message: "Task moved successfully" });
 });

@@ -7,6 +7,9 @@ const boardRoutes = require('./routes/boardRoutes');
 const columnRoutes = require('./routes/columnRoutes');
 const taskRoutes = require('./routes/taskRoutes');
 
+const http = require("http");
+const { initSocket } = require("./socket");
+
 const errorHandler = require('./middleware/errorHandler');
 
 // Load env
@@ -44,7 +47,10 @@ app.use('/api/tasks', taskRoutes);
 // Centralized Error Handler Middleware (Must be the last item mounted!)
 app.use(errorHandler);
 
+const server = http.createServer(app);
+initSocket(server);
+
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
