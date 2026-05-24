@@ -107,6 +107,7 @@ export const deleteComment = async (commentId) => {
 // ── Notifications ─────────────────────────
 export const getNotifications = async () => {
   const response = await api.get('/notifications');
+  console.log('Raw notifications response:', response.data);
   return response.data.data;
 };
 

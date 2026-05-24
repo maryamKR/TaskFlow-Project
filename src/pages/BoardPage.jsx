@@ -1,32 +1,27 @@
 import { useState, useEffect } from 'react';
-import socket from '../socket';
 import {
   DndContext,
   closestCenter,
   PointerSensor,
   useSensor,
   useSensors,
-  DragOverlay,
 } from '@dnd-kit/core';
 import {
   SortableContext,
   horizontalListSortingStrategy,
-  verticalListSortingStrategy,
   arrayMove,
   useSortable,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import Navbar from '../components/Navbar';
+import Sidebar from '../components/Sidebar';
 import Column from '../components/Column';
 import CreateBoardModal from '../components/CreateBoardModal';
 import AddColumnButton from '../components/AddColumnButton';
-import InviteMemberModal from '../components/InviteMemberModal';
 import {
   getBoards, getBoardById, getBoardMembers,
   moveTask, reorderColumns, reorderTasks
 } from '../services/board';
-import ManageMembersModal from '../components/ManageMembersModal';
-import { deleteBoard } from '../services/board';
 
 const priorityColors = {
   high: 'text-red-400',
@@ -68,93 +63,26 @@ function BoardPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [showInviteModal, setShowInviteModal] = useState(false);
-  const [activeItem, setActiveItem] = useState(null); // { type, data }
-  const [showManageMembers, setShowManageMembers] = useState(false);
-  const [filter, setFilter] = useState({ priority: '', search: '' });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [activeType, setActiveType] = useState(null);
+  const [filter, setFilter] = useState({
+    priority: '',
+    search: '',
+    assignee: '',
+    dueDate: ''
+  });
 
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: { distance: 8 },
   }));
 
   const token = localStorage.getItem('token');
-  const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
-  const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
+
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!token) { window.location.href = '/'; return; }
     fetchBoards();
-  }, []);
-
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      socket.auth = { token };
-      socket.connect();
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!activeBoard) return;
-
-    socket.emit("join_board", activeBoard._id);
-
-    socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
-      setColumns(prev => {
-        const task = prev
-          .find(col => col._id === sourceColumnId)
-          ?.tasks.find(t => t._id === taskId || t.id === taskId);
-
-        if (!task) return prev; // already moved visually by the user who dragged
-
-        return prev.map(col => {
-          if (col._id === sourceColumnId) {
-            return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
-          }
-          if (col._id === destinationColumnId) {
-            return { ...col, tasks: [...col.tasks, task] };
-          }
-          return col;
-        });
-      });
-    });
-
-    socket.on("columns_reordered", ({ columnIds }) => {
-      setColumns(prev => {
-        const reordered = columnIds
-          .map(id => prev.find(col => col._id === id))
-          .filter(Boolean);
-        return reordered.length === prev.length ? reordered : prev;
-      });
-    });
-
-
-    socket.on("tasks_reordered", ({ columnId, taskIds }) => {
-      setColumns(prev => prev.map(col => {
-        if (col._id !== columnId) return col;
-        const reordered = taskIds
-          .map(id => col.tasks.find(t => t._id === id || t.id === id))
-          .filter(Boolean);
-        return { ...col, tasks: reordered };
-      }));
-    });
-
-    socket.on("task_created", ({ columnId, task, createdBy }) => {
-      if (createdBy === currentUserId) return;
-      setColumns(prev => prev.map(col =>
-        col._id === columnId
-          ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }
-          : col
-      ));
-    });
-
-    return () => {
-      socket.emit("leave_board", activeBoard._id);
-      socket.off("task_moved");
-      socket.off("columns_reordered");
-      socket.off("tasks_reordered");
-      socket.off("task_created");
-    };
-  }, [activeBoard?._id]);
+  }, [token]);
 
   const fetchBoards = async () => {
     try {
@@ -172,14 +100,9 @@ function BoardPage() {
       }
     }
   };
-  const handleColumnDeleted = (columnId) => {
-    setColumns(prev => prev.filter(col => col._id !== columnId));
-  };
+
   const loadBoard = async (boardId) => {
     setLoading(true);
-
-
-
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
@@ -198,28 +121,22 @@ function BoardPage() {
     loadBoard(newBoard._id);
   };
 
-  const handleColumnAdded = (newColumn) => {
-    setColumns(prev => [...prev, newColumn]);
-  };
-  const handleDeleteBoard = async () => {
-    if (!window.confirm(`Delete board "${activeBoard.title}" and all its data?`)) return;
-    try {
-      await deleteBoard(activeBoard._id);
-      setBoards(prev => prev.filter(b => b._id !== activeBoard._id));
+  const handleBoardDeleted = (boardId) => {
+    const remaining = boards.filter(b => b._id !== boardId);
+    setBoards(remaining);
+    if (remaining.length > 0) {
+      loadBoard(remaining[0]._id);
+    } else {
       setActiveBoard(null);
       setColumns([]);
-      if (boards.length > 1) {
-        const remaining = boards.filter(b => b._id !== activeBoard._id);
-        loadBoard(remaining[0]._id);
-      }
-    } catch (err) {
-      console.error('Failed to delete board:', err);
+      setMembers([]);
     }
   };
 
-  const handleMemberRemoved = (memberId) => {
-    setMembers(prev => prev.filter(m => m._id !== memberId));
+  const handleColumnAdded = (newColumn) => {
+    setColumns(prev => [...prev, newColumn]);
   };
+
   const handleTaskCreated = (columnId, newTask) => {
     setColumns(prev =>
       prev.map(col =>
@@ -227,6 +144,15 @@ function BoardPage() {
           ? { ...col, tasks: [...(col.tasks || []), { ...newTask, id: newTask._id }] }
           : col
       )
+    );
+  };
+
+  const handleTaskDeleted = (taskId) => {
+    setColumns(prev =>
+      prev.map(col => ({
+        ...col,
+        tasks: col.tasks.filter(t => t._id !== taskId)
+      }))
     );
   };
 
@@ -241,38 +167,32 @@ function BoardPage() {
     );
   };
 
-  const handleTaskDeleted = (taskId) => {
-    setColumns(prev =>
-      prev.map(col => ({
-        ...col,
-        tasks: col.tasks.filter(t => t._id !== taskId)
-      }))
-    );
+  const handleColumnDeleted = (columnId) => {
+    setColumns(prev => prev.filter(col => col._id !== columnId));
+  };
+
+  const handleMemberRemoved = (memberId) => {
+    setMembers(prev => prev.filter(m => m._id !== memberId));
+  };
+
+  const handleInviteSent = async (boardId) => {
+    const membersData = await getBoardMembers(boardId);
+    setMembers(Array.isArray(membersData) ? membersData : []);
   };
 
   const getColumnByTaskId = (taskId) =>
     columns.find(col => col.tasks.some(t => t.id === taskId || t._id === taskId));
 
-  const getColumnById = (colId) =>
-    columns.find(col => col._id === colId);
-
   const handleDragStart = ({ active }) => {
-    const type = active.data.current?.type;
-    if (type === 'column') {
-      setActiveItem({ type: 'column', data: columns.find(c => c._id === active.id) });
-    } else {
-      const col = getColumnByTaskId(active.id);
-      const task = col?.tasks.find(t => t.id === active.id);
-      setActiveItem({ type: 'task', data: task });
-    }
+    const isCol = columns.some(c => c._id === active.id);
+    setActiveType(isCol ? 'column' : 'task');
   };
 
   const handleDragOver = ({ active, over }) => {
     if (!over) return;
-    const activeType = active.data.current?.type;
-    if (activeType === 'column') return; // columns handled in dragEnd
+    if (activeType !== 'task') return;
+    if (active.id === over.id) return;
 
-    // Task dragging over a different column
     const activeCol = getColumnByTaskId(active.id);
     if (!activeCol) return;
 
@@ -280,7 +200,6 @@ function BoardPage() {
     if (over.data.current?.type === 'column') {
       overColId = over.id;
     } else {
-      // over a task — find its column
       const overCol = getColumnByTaskId(over.id);
       if (!overCol) return;
       overColId = overCol._id;
@@ -288,7 +207,6 @@ function BoardPage() {
 
     if (activeCol._id === overColId) return;
 
-    // Move task to new column visually
     setColumns(prev => {
       const task = activeCol.tasks.find(t => t.id === active.id);
       if (!task) return prev;
@@ -305,65 +223,61 @@ function BoardPage() {
   };
 
   const handleDragEnd = async ({ active, over }) => {
-    setActiveItem(null);
+    setActiveType(null);
     if (!over) return;
 
-    const activeType = active.data.current?.type;
-
-    // ── Column reorder ──────────────────
     if (activeType === 'column') {
-      if (active.id === over.id) return;
-      const oldIndex = columns.findIndex(c => c._id === active.id);
-      const newIndex = columns.findIndex(c => c._id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-      const newCols = arrayMove(columns, oldIndex, newIndex);
-      setColumns(newCols);
-      try {
-        await reorderColumns(activeBoard._id, newCols.map(c => c._id));
-      } catch (err) {
-        console.error('Column reorder failed:', err);
+      if (active.id !== over.id) {
+        const oldIndex = columns.findIndex(c => c._id === active.id);
+        const newIndex = columns.findIndex(c => c._id === over.id);
+        if (oldIndex === -1 || newIndex === -1) return;
+        const newCols = arrayMove(columns, oldIndex, newIndex);
+        setColumns(newCols);
+        try {
+          await reorderColumns(activeBoard._id, newCols.map(c => c._id));
+        } catch (err) {
+          console.error('Column reorder failed:', err);
+        }
       }
       return;
     }
 
-    // ── Task dropped ────────────────────
-    const sourceCol = getColumnByTaskId(active.id);
-    if (!sourceCol) return;
+    if (activeType === 'task') {
+      const sourceCol = columns.find(c => c.tasks.some(t => t.id === active.id));
+      if (!sourceCol) return;
 
-    let destColId;
-    if (over.data.current?.type === 'column') {
-      destColId = over.id;
-    } else {
-      const overCol = getColumnByTaskId(over.id);
-      destColId = overCol?._id;
-    }
-
-    if (!destColId) return;
-
-    // Same column → reorder
-    if (sourceCol._id === destColId) {
-      const currentCol = columns.find(c => c._id === sourceCol._id);
-      const taskIds = currentCol.tasks.map(t => t._id || t.id);
-      const oldIndex = taskIds.indexOf(active.id);
-      const newIndex = taskIds.indexOf(over.id);
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-      const newTasks = arrayMove(currentCol.tasks, oldIndex, newIndex);
-      setColumns(prev => prev.map(col =>
-        col._id === sourceCol._id ? { ...col, tasks: newTasks } : col
-      ));
-      try {
-        await reorderTasks(sourceCol._id, newTasks.map(t => t._id));
-      } catch (err) {
-        console.error('Task reorder failed:', err);
+      let destColId;
+      if (over.data.current?.type === 'column') {
+        destColId = over.id;
+      } else {
+        const overCol = getColumnByTaskId(over.id);
+        destColId = overCol?._id;
       }
-      return;
-    }
 
-    // Different column → already moved visually in onDragOver, just save
-    try {
-      await moveTask(active.id, sourceCol._id, destColId);
-    } catch (err) {
-      console.error('Task move failed:', err);
+      if (!destColId) return;
+
+      if (sourceCol._id === destColId) {
+        const currentCol = columns.find(c => c._id === sourceCol._id);
+        const oldIndex = currentCol.tasks.findIndex(t => t.id === active.id);
+        const newIndex = currentCol.tasks.findIndex(t => t.id === over.id);
+        if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+        const newTasks = arrayMove(currentCol.tasks, oldIndex, newIndex);
+        setColumns(prev => prev.map(col =>
+          col._id === sourceCol._id ? { ...col, tasks: newTasks } : col
+        ));
+        try {
+          await reorderTasks(sourceCol._id, newTasks.map(t => t._id));
+        } catch (err) {
+          console.error('Task reorder failed:', err);
+        }
+        return;
+      }
+
+      try {
+        await moveTask(active.id, sourceCol._id, destColId);
+      } catch (err) {
+        console.error('Task move failed:', err);
+      }
     }
   };
 
@@ -382,175 +296,195 @@ function BoardPage() {
   const columnIds = columns.map(c => c._id);
 
   return (
-    <div className="min-h-screen bg-gray-900">
+    <div className="min-h-screen bg-gray-900 flex flex-col">
       <Navbar />
 
-      <div className="px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          {boards.length > 0 && (
-            <select
-              value={activeBoard?._id}
-              onChange={(e) => loadBoard(e.target.value)}
-              className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-            >
-              {boards.map(board => (
-                <option key={board._id} value={board._id}>
-                  {board.title}
-                </option>
-              ))}
-            </select>
-          )}
-          <div>
-            <h1 className="text-2xl font-bold text-white">
-              {activeBoard ? activeBoard.title : 'No boards yet'}
-            </h1>
-            <p className="text-gray-400 text-sm mt-1">Track your team's progress</p>
-          </div>
-        </div>
-        <div className="flex gap-3">
-          {activeBoard && (
-            <>
-              <button
-                onClick={() => setShowManageMembers(true)}
-                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
-              >
-                👥 Members
-              </button>
-              <button
-                onClick={() => setShowInviteModal(true)}
-                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
-              >
-                + Invite
-              </button>
-              <button
-                onClick={handleDeleteBoard}
-                className="bg-gray-700 hover:bg-red-600 text-gray-400 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
-              >
-                🗑️ Delete Board
-              </button>
-            </>
-          )}
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
-          >
-            + New Board
-          </button>
-        </div>
-        {showManageMembers && activeBoard && (
-          <ManageMembersModal
-            boardId={activeBoard._id}
+      <div className="flex flex-1">
+
+        {/* Sidebar */}
+        {sidebarOpen && (
+          <Sidebar
+            boards={boards}
+            activeBoard={activeBoard}
             members={members}
-            onClose={() => setShowManageMembers(false)}
+            onBoardSelect={loadBoard}
+            onBoardCreated={handleBoardCreated}
+            onBoardDeleted={handleBoardDeleted}
             onMemberRemoved={handleMemberRemoved}
+            onInviteSent={handleInviteSent}
+            setShowCreateModal={setShowCreateModal}
           />
         )}
-      </div>
 
-      {boards.length === 0 && (
-        <div className="flex flex-col items-center justify-center mt-32 gap-4">
-          <p className="text-gray-400 text-xl">No boards yet!</p>
-          <button
-            onClick={() => setShowCreateModal(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200"
-          >
-            + Create your first board
-          </button>
-        </div>
-      )}
-      {/* Filter bar */}
-      {activeBoard && (
-        <div className="px-6 pb-3 flex items-center gap-3">
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            value={filter.search}
-            onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
-            className="bg-gray-700 text-white placeholder-gray-500 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
-          />
-          <select
-            value={filter.priority}
-            onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))}
-            className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            <option value="">All priorities</option>
-            <option value="high">🔴 High</option>
-            <option value="medium">🟡 Medium</option>
-            <option value="low">🟢 Low</option>
-          </select>
-          {(filter.search || filter.priority) && (
-            <button
-              onClick={() => setFilter({ priority: '', search: '' })}
-              className="text-gray-400 hover:text-white text-sm transition duration-200"
-            >
-              Clear filters ×
-            </button>
-          )}
-        </div>
-      )}
+        {/* Main content */}
+        <div className="flex-1 flex flex-col overflow-hidden">
 
-      <DndContext
-        sensors={sensors}
-        collisionDetection={closestCenter}
-        onDragStart={handleDragStart}
-        onDragOver={handleDragOver}
-        onDragEnd={handleDragEnd}
-      >
-        <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-          <div className="flex gap-4 px-6 pb-6 overflow-x-auto">
-            {columns.map(column => (
-              <SortableColumnWrapper key={column._id} column={column}>
-                {({ dragHandleProps }) => (
-                  <Column
-                    key={column._id}
-                    id={column._id}
-                    title={column.title}
-                    color="bg-gray-400"
-                    onTaskCreated={handleTaskCreated}
-                    onTaskDeleted={handleTaskDeleted}
-                    onColumnDeleted={handleColumnDeleted}
-                    members={members}
-                    dragHandleProps={dragHandleProps}
-                    onTaskUpdated={handleTaskUpdated}
-                    tasks={(column.tasks || [])
-                      .filter(task => {
-                        const matchesPriority = !filter.priority || task.priority === filter.priority;
-                        const matchesSearch = !filter.search ||
-                          task.title.toLowerCase().includes(filter.search.toLowerCase());
-                        return matchesPriority && matchesSearch;
-                      })
-                      .map(task => ({
-                        ...task,
-                        id: task._id,
-                        priorityColor: priorityColors[task.priority] || 'text-gray-400',
-                      }))
-                    }
-                  />
-                )}
-              </SortableColumnWrapper>
-            ))}
-            {activeBoard && (
-              <AddColumnButton
-                boardId={activeBoard._id}
-                onColumnAdded={handleColumnAdded}
-              />
+          {/* Board header */}
+          <div className="px-6 py-4 flex items-center justify-between border-b border-gray-700">
+            <div className="flex items-center gap-4">
+
+              {/* ☰ Toggle sidebar */}
+              <button
+                onClick={() => setSidebarOpen(prev => !prev)}
+                className="text-gray-400 hover:text-white transition duration-200 flex flex-col gap-1"
+                title="Toggle sidebar"
+              >
+                <span className="w-5 h-0.5 bg-current rounded"></span>
+                <span className="w-5 h-0.5 bg-current rounded"></span>
+                <span className="w-5 h-0.5 bg-current rounded"></span>
+              </button>
+
+              <div>
+                <h1 className="text-2xl font-bold text-white">
+                  {activeBoard ? activeBoard.title : 'No boards yet'}
+                </h1>
+                <p className="text-gray-400 text-sm mt-0.5">Track your team's progress</p>
+              </div>
+            </div>
+
+            {!activeBoard && (
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+              >
+                + Create your first board
+              </button>
             )}
           </div>
-        </SortableContext>
-      </DndContext>
 
+          {/* Filter bar */}
+          {activeBoard && (
+            <div className="px-6 py-3 flex items-center gap-3 border-b border-gray-700 flex-wrap">
+
+              {/* Search */}
+              <input
+                type="text"
+                placeholder="Search tasks..."
+                value={filter.search}
+                onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
+                className="bg-gray-700 text-white placeholder-gray-500 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-44"
+              />
+
+              {/* Priority */}
+              <select
+                value={filter.priority}
+                onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))}
+                className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All priorities</option>
+                <option value="high">🔴 High</option>
+                <option value="medium">🟡 Medium</option>
+                <option value="low">🟢 Low</option>
+              </select>
+
+              {/* Assignee */}
+              <select
+                value={filter.assignee}
+                onChange={(e) => setFilter(prev => ({ ...prev, assignee: e.target.value }))}
+                className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              >
+                <option value="">All assignees</option>
+                {members.map(member => (
+                  <option key={member._id} value={member._id}>
+                    {member.username}
+                  </option>
+                ))}
+              </select>
+
+              {/* Due date */}
+              <input
+                type="date"
+                value={filter.dueDate}
+                onChange={(e) => setFilter(prev => ({ ...prev, dueDate: e.target.value }))}
+                className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+
+              {/* Clear filters */}
+              {(filter.search || filter.priority || filter.assignee || filter.dueDate) && (
+                <button
+                  onClick={() => setFilter({ priority: '', search: '', assignee: '', dueDate: '' })}
+                  className="text-gray-400 hover:text-white text-sm transition duration-200"
+                >
+                  Clear ×
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Empty state */}
+          {boards.length === 0 && (
+            <div className="flex flex-col items-center justify-center flex-1 gap-4">
+              <p className="text-gray-400 text-xl">No boards yet!</p>
+              <button
+                onClick={() => setShowCreateModal(true)}
+                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200"
+              >
+                + Create your first board
+              </button>
+            </div>
+          )}
+
+          {/* Kanban Board */}
+          {activeBoard && (
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
+                <div className="flex gap-4 p-6 overflow-x-auto flex-1">
+                  {columns.map(column => (
+                    <SortableColumnWrapper key={column._id} column={column}>
+                      {({ dragHandleProps }) => (
+                        <Column
+                          id={column._id}
+                          title={column.title}
+                          color="bg-gray-400"
+                          onTaskCreated={handleTaskCreated}
+                          onTaskDeleted={handleTaskDeleted}
+                          onTaskUpdated={handleTaskUpdated}
+                          onColumnDeleted={handleColumnDeleted}
+                          members={members}
+                          dragHandleProps={dragHandleProps}
+                          tasks={(column.tasks || [])
+                            .filter(task => {
+                              const matchesPriority = !filter.priority || task.priority === filter.priority;
+                              const matchesSearch = !filter.search ||
+                                task.title.toLowerCase().includes(filter.search.toLowerCase());
+                              const matchesAssignee = !filter.assignee ||
+                                task.assignedTo?._id === filter.assignee ||
+                                task.assignedTo === filter.assignee;
+                              const matchesDueDate = !filter.dueDate ||
+                                (task.dueDate && task.dueDate.split('T')[0] === filter.dueDate);
+                              return matchesPriority && matchesSearch && matchesAssignee && matchesDueDate;
+                            })
+                            .map(task => ({
+                              ...task,
+                              id: task._id,
+                              priorityColor: priorityColors[task.priority] || 'text-gray-400',
+                            }))}
+                        />
+                      )}
+                    </SortableColumnWrapper>
+                  ))}
+                  <AddColumnButton
+                    boardId={activeBoard._id}
+                    onColumnAdded={handleColumnAdded}
+                  />
+                </div>
+              </SortableContext>
+            </DndContext>
+          )}
+        </div>
+      </div>
+
+      {/* Create Board Modal */}
       {showCreateModal && (
         <CreateBoardModal
           onClose={() => setShowCreateModal(false)}
           onBoardCreated={handleBoardCreated}
-        />
-      )}
-
-      {showInviteModal && activeBoard && (
-        <InviteMemberModal
-          boardId={activeBoard._id}
-          onClose={() => setShowInviteModal(false)}
-          onMembersUpdated={setMembers}
         />
       )}
     </div>
