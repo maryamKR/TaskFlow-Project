@@ -70,10 +70,9 @@ const createTask = asyncHandler(async (req, res) => {
 // @route   GET /api/tasks/:id
 // @access  Private
 const getTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id).populate(
-    "assignedTo",
-    "username",
-  );
+  const task = await Task.findById(req.params.id)
+    .populate("assignedTo", "username")
+    .populate("comments");
 
   if (!task) {
     res.status(404);
@@ -276,6 +275,49 @@ const reorderTask = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: updatedColumn.tasks });
 });
 
+// @desc    Get all tasks for a board with optional filtering
+// @route   GET /api/tasks?boardId=...&columnId=...&assignedTo=...&priority=...
+// @access  Private
+const getTasks = asyncHandler(async (req, res) => {
+  const { boardId, columnId, assignedTo, priority, search, startDate, endDate} = req.query;
+
+
+  const board = await Board.findById(boardId);
+
+  if (!board) {
+    res.status(404);
+    throw new Error("Board not found");
+  }
+  
+  if (!hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("Not authorized");
+  }
+
+  const columns = await Column.find({ board: boardId }).select("_id");
+  const columnIds = columns.map((c) => c._id);
+
+  let query = { column: { $in: columnIds } };
+
+  if (search) {
+    query.$text = { $search: search };
+  }
+
+  if (columnId) query.column = columnId;
+  if (assignedTo) query.assignedTo = assignedTo;
+  if (priority) query.priority = priority;
+
+  if (startDate || endDate) {
+    query.dueDate = {};
+    if (startDate) query.dueDate.$gte = new Date(startDate);
+    if (endDate) query.dueDate.$lte = new Date(endDate);
+  }
+
+  const tasks = await Task.find(query).populate("assignedTo", "username");
+
+  res.status(200).json({ success: true, count: tasks.length, data: tasks });
+});
+
 module.exports = {
   createTask,
   getTask,
@@ -283,4 +325,5 @@ module.exports = {
   deleteTask,
   moveTask,
   reorderTask,
+  getTasks,
 };

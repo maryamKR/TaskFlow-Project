@@ -13,12 +13,12 @@ exports.getBoardMembers = asyncHandler(async (req, res) => {
     "user",
     "username email");
 
-    const members = [board.user, ...board.coworkers];
-
   if (!board) {
     res.status(404);
     throw new Error("Board not found");
   }
+
+  const members = [board.user, ...board.coworkers];
   res.status(200).json(members);
 });
 
