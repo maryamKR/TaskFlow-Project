@@ -25,6 +25,8 @@ import {
   getBoards, getBoardById, getBoardMembers,
   moveTask, reorderColumns, reorderTasks
 } from '../services/board';
+import ManageMembersModal from '../components/ManageMembersModal';
+import { deleteBoard } from '../services/board';
 
 const priorityColors = {
   high: 'text-red-400',
@@ -68,6 +70,8 @@ function BoardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showInviteModal, setShowInviteModal] = useState(false);
   const [activeItem, setActiveItem] = useState(null); // { type, data }
+  const [showManageMembers, setShowManageMembers] = useState(false);
+  const [filter, setFilter] = useState({ priority: '', search: '' });
 
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: { distance: 8 },
@@ -90,66 +94,66 @@ function BoardPage() {
   }, []);
 
   useEffect(() => {
-  if (!activeBoard) return;
+    if (!activeBoard) return;
 
-  socket.emit("join_board", activeBoard._id);
+    socket.emit("join_board", activeBoard._id);
 
-  socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
-    setColumns(prev => {
-      const task = prev
-        .find(col => col._id === sourceColumnId)
-        ?.tasks.find(t => t._id === taskId || t.id === taskId);
-      
-      if (!task) return prev; // already moved visually by the user who dragged
+    socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
+      setColumns(prev => {
+        const task = prev
+          .find(col => col._id === sourceColumnId)
+          ?.tasks.find(t => t._id === taskId || t.id === taskId);
 
-      return prev.map(col => {
-        if (col._id === sourceColumnId) {
-          return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
-        }
-        if (col._id === destinationColumnId) {
-          return { ...col, tasks: [...col.tasks, task] };
-        }
-        return col;
+        if (!task) return prev; // already moved visually by the user who dragged
+
+        return prev.map(col => {
+          if (col._id === sourceColumnId) {
+            return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
+          }
+          if (col._id === destinationColumnId) {
+            return { ...col, tasks: [...col.tasks, task] };
+          }
+          return col;
+        });
       });
     });
-  });
 
-  socket.on("columns_reordered", ({ columnIds }) => {
-    setColumns(prev => {
-      const reordered = columnIds
-        .map(id => prev.find(col => col._id === id))
-        .filter(Boolean);
-      return reordered.length === prev.length ? reordered : prev;
+    socket.on("columns_reordered", ({ columnIds }) => {
+      setColumns(prev => {
+        const reordered = columnIds
+          .map(id => prev.find(col => col._id === id))
+          .filter(Boolean);
+        return reordered.length === prev.length ? reordered : prev;
+      });
     });
-  });
 
 
-  socket.on("tasks_reordered", ({ columnId, taskIds }) => {
-    setColumns(prev => prev.map(col => {
-      if (col._id !== columnId) return col;
-      const reordered = taskIds
-        .map(id => col.tasks.find(t => t._id === id || t.id === id))
-        .filter(Boolean);
-      return { ...col, tasks: reordered };
-    }));
-  });
+    socket.on("tasks_reordered", ({ columnId, taskIds }) => {
+      setColumns(prev => prev.map(col => {
+        if (col._id !== columnId) return col;
+        const reordered = taskIds
+          .map(id => col.tasks.find(t => t._id === id || t.id === id))
+          .filter(Boolean);
+        return { ...col, tasks: reordered };
+      }));
+    });
 
-  socket.on("task_created", ({ columnId, task, createdBy }) => {
-    if (createdBy === currentUserId) return;
-    setColumns(prev => prev.map(col =>
-      col._id === columnId
-        ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }
-        : col
-    ));
-  });
+    socket.on("task_created", ({ columnId, task, createdBy }) => {
+      if (createdBy === currentUserId) return;
+      setColumns(prev => prev.map(col =>
+        col._id === columnId
+          ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }
+          : col
+      ));
+    });
 
-  return () => {
-    socket.emit("leave_board", activeBoard._id);
-    socket.off("task_moved");
-    socket.off("columns_reordered");
-    socket.off("tasks_reordered");
-    socket.off("task_created");
-  };
+    return () => {
+      socket.emit("leave_board", activeBoard._id);
+      socket.off("task_moved");
+      socket.off("columns_reordered");
+      socket.off("tasks_reordered");
+      socket.off("task_created");
+    };
   }, [activeBoard?._id]);
 
   const fetchBoards = async () => {
@@ -168,11 +172,13 @@ function BoardPage() {
       }
     }
   };
-
+  const handleColumnDeleted = (columnId) => {
+    setColumns(prev => prev.filter(col => col._id !== columnId));
+  };
   const loadBoard = async (boardId) => {
     setLoading(true);
 
-    
+
 
     try {
       const board = await getBoardById(boardId);
@@ -195,7 +201,25 @@ function BoardPage() {
   const handleColumnAdded = (newColumn) => {
     setColumns(prev => [...prev, newColumn]);
   };
+  const handleDeleteBoard = async () => {
+    if (!window.confirm(`Delete board "${activeBoard.title}" and all its data?`)) return;
+    try {
+      await deleteBoard(activeBoard._id);
+      setBoards(prev => prev.filter(b => b._id !== activeBoard._id));
+      setActiveBoard(null);
+      setColumns([]);
+      if (boards.length > 1) {
+        const remaining = boards.filter(b => b._id !== activeBoard._id);
+        loadBoard(remaining[0]._id);
+      }
+    } catch (err) {
+      console.error('Failed to delete board:', err);
+    }
+  };
 
+  const handleMemberRemoved = (memberId) => {
+    setMembers(prev => prev.filter(m => m._id !== memberId));
+  };
   const handleTaskCreated = (columnId, newTask) => {
     setColumns(prev =>
       prev.map(col =>
@@ -203,6 +227,17 @@ function BoardPage() {
           ? { ...col, tasks: [...(col.tasks || []), { ...newTask, id: newTask._id }] }
           : col
       )
+    );
+  };
+
+  const handleTaskUpdated = (taskId, updatedTask) => {
+    setColumns(prev =>
+      prev.map(col => ({
+        ...col,
+        tasks: col.tasks.map(t =>
+          t._id === taskId ? { ...t, ...updatedTask, id: taskId } : t
+        )
+      }))
     );
   };
 
@@ -270,67 +305,67 @@ function BoardPage() {
   };
 
   const handleDragEnd = async ({ active, over }) => {
-  setActiveItem(null);
-  if (!over) return;
+    setActiveItem(null);
+    if (!over) return;
 
-  const activeType = active.data.current?.type;
+    const activeType = active.data.current?.type;
 
-  // ── Column reorder ──────────────────
-  if (activeType === 'column') {
-    if (active.id === over.id) return;
-    const oldIndex = columns.findIndex(c => c._id === active.id);
-    const newIndex = columns.findIndex(c => c._id === over.id);
-    if (oldIndex === -1 || newIndex === -1) return;
-    const newCols = arrayMove(columns, oldIndex, newIndex);
-    setColumns(newCols);
-    try {
-      await reorderColumns(activeBoard._id, newCols.map(c => c._id));
-    } catch (err) {
-      console.error('Column reorder failed:', err);
+    // ── Column reorder ──────────────────
+    if (activeType === 'column') {
+      if (active.id === over.id) return;
+      const oldIndex = columns.findIndex(c => c._id === active.id);
+      const newIndex = columns.findIndex(c => c._id === over.id);
+      if (oldIndex === -1 || newIndex === -1) return;
+      const newCols = arrayMove(columns, oldIndex, newIndex);
+      setColumns(newCols);
+      try {
+        await reorderColumns(activeBoard._id, newCols.map(c => c._id));
+      } catch (err) {
+        console.error('Column reorder failed:', err);
+      }
+      return;
     }
-    return;
-  }
 
-  // ── Task dropped ────────────────────
-  const sourceCol = getColumnByTaskId(active.id);
-  if (!sourceCol) return;
+    // ── Task dropped ────────────────────
+    const sourceCol = getColumnByTaskId(active.id);
+    if (!sourceCol) return;
 
-  let destColId;
-  if (over.data.current?.type === 'column') {
-    destColId = over.id;
-  } else {
-    const overCol = getColumnByTaskId(over.id);
-    destColId = overCol?._id;
-  }
-
-  if (!destColId) return;
-
-  // Same column → reorder
-  if (sourceCol._id === destColId) {
-    const currentCol = columns.find(c => c._id === sourceCol._id);
-    const taskIds = currentCol.tasks.map(t => t._id || t.id);
-    const oldIndex = taskIds.indexOf(active.id);
-    const newIndex = taskIds.indexOf(over.id);
-    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-    const newTasks = arrayMove(currentCol.tasks, oldIndex, newIndex);
-    setColumns(prev => prev.map(col =>
-      col._id === sourceCol._id ? { ...col, tasks: newTasks } : col
-    ));
-    try {
-      await reorderTasks(sourceCol._id, newTasks.map(t => t._id));
-    } catch (err) {
-      console.error('Task reorder failed:', err);
+    let destColId;
+    if (over.data.current?.type === 'column') {
+      destColId = over.id;
+    } else {
+      const overCol = getColumnByTaskId(over.id);
+      destColId = overCol?._id;
     }
-    return;
-  }
 
-  // Different column → already moved visually in onDragOver, just save
-  try {
-    await moveTask(active.id, sourceCol._id, destColId);
-  } catch (err) {
-    console.error('Task move failed:', err);
-  }
-};
+    if (!destColId) return;
+
+    // Same column → reorder
+    if (sourceCol._id === destColId) {
+      const currentCol = columns.find(c => c._id === sourceCol._id);
+      const taskIds = currentCol.tasks.map(t => t._id || t.id);
+      const oldIndex = taskIds.indexOf(active.id);
+      const newIndex = taskIds.indexOf(over.id);
+      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+      const newTasks = arrayMove(currentCol.tasks, oldIndex, newIndex);
+      setColumns(prev => prev.map(col =>
+        col._id === sourceCol._id ? { ...col, tasks: newTasks } : col
+      ));
+      try {
+        await reorderTasks(sourceCol._id, newTasks.map(t => t._id));
+      } catch (err) {
+        console.error('Task reorder failed:', err);
+      }
+      return;
+    }
+
+    // Different column → already moved visually in onDragOver, just save
+    try {
+      await moveTask(active.id, sourceCol._id, destColId);
+    } catch (err) {
+      console.error('Task move failed:', err);
+    }
+  };
 
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -372,15 +407,28 @@ function BoardPage() {
             <p className="text-gray-400 text-sm mt-1">Track your team's progress</p>
           </div>
         </div>
-
         <div className="flex gap-3">
           {activeBoard && (
-            <button
-              onClick={() => setShowInviteModal(true)}
-              className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
-            >
-              👥 Invite Member
-            </button>
+            <>
+              <button
+                onClick={() => setShowManageMembers(true)}
+                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+              >
+                👥 Members
+              </button>
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="bg-gray-700 hover:bg-gray-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+              >
+                + Invite
+              </button>
+              <button
+                onClick={handleDeleteBoard}
+                className="bg-gray-700 hover:bg-red-600 text-gray-400 hover:text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+              >
+                🗑️ Delete Board
+              </button>
+            </>
           )}
           <button
             onClick={() => setShowCreateModal(true)}
@@ -389,6 +437,14 @@ function BoardPage() {
             + New Board
           </button>
         </div>
+        {showManageMembers && activeBoard && (
+          <ManageMembersModal
+            boardId={activeBoard._id}
+            members={members}
+            onClose={() => setShowManageMembers(false)}
+            onMemberRemoved={handleMemberRemoved}
+          />
+        )}
       </div>
 
       {boards.length === 0 && (
@@ -400,6 +456,36 @@ function BoardPage() {
           >
             + Create your first board
           </button>
+        </div>
+      )}
+      {/* Filter bar */}
+      {activeBoard && (
+        <div className="px-6 pb-3 flex items-center gap-3">
+          <input
+            type="text"
+            placeholder="Search tasks..."
+            value={filter.search}
+            onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
+            className="bg-gray-700 text-white placeholder-gray-500 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 w-48"
+          />
+          <select
+            value={filter.priority}
+            onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))}
+            className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          >
+            <option value="">All priorities</option>
+            <option value="high">🔴 High</option>
+            <option value="medium">🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+          {(filter.search || filter.priority) && (
+            <button
+              onClick={() => setFilter({ priority: '', search: '' })}
+              className="text-gray-400 hover:text-white text-sm transition duration-200"
+            >
+              Clear filters ×
+            </button>
+          )}
         </div>
       )}
 
@@ -416,18 +502,29 @@ function BoardPage() {
               <SortableColumnWrapper key={column._id} column={column}>
                 {({ dragHandleProps }) => (
                   <Column
+                    key={column._id}
                     id={column._id}
                     title={column.title}
                     color="bg-gray-400"
                     onTaskCreated={handleTaskCreated}
                     onTaskDeleted={handleTaskDeleted}
+                    onColumnDeleted={handleColumnDeleted}
                     members={members}
                     dragHandleProps={dragHandleProps}
-                    tasks={(column.tasks || []).map(task => ({
-                      ...task,
-                      id: task._id,
-                      priorityColor: priorityColors[task.priority] || 'text-gray-400',
-                    }))}
+                    onTaskUpdated={handleTaskUpdated}
+                    tasks={(column.tasks || [])
+                      .filter(task => {
+                        const matchesPriority = !filter.priority || task.priority === filter.priority;
+                        const matchesSearch = !filter.search ||
+                          task.title.toLowerCase().includes(filter.search.toLowerCase());
+                        return matchesPriority && matchesSearch;
+                      })
+                      .map(task => ({
+                        ...task,
+                        id: task._id,
+                        priorityColor: priorityColors[task.priority] || 'text-gray-400',
+                      }))
+                    }
                   />
                 )}
               </SortableColumnWrapper>
