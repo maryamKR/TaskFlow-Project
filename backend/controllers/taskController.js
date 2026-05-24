@@ -66,6 +66,7 @@ const createTask = asyncHandler(async (req, res) => {
   getIO().to(board._id.toString()).emit("task_created", {
     columnId,
     task,
+    createdBy: req.user._id.toString(),
   });
 
   res.status(201).json({ success: true, data: task });

@@ -74,7 +74,8 @@ function BoardPage() {
   }));
 
   const token = localStorage.getItem('token');
-
+  const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
+  const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
   useEffect(() => {
     if (!token) { window.location.href = '/'; return; }
     fetchBoards();
@@ -133,7 +134,8 @@ function BoardPage() {
     }));
   });
 
-  socket.on("task_created", ({ columnId, task }) => {
+  socket.on("task_created", ({ columnId, task, createdBy }) => {
+    if (createdBy === currentUserId) return;
     setColumns(prev => prev.map(col =>
       col._id === columnId
         ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }

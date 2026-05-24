@@ -3,7 +3,6 @@ import { api } from './auth';
 // ── Boards ──────────────────────────────
 export const getBoards = async () => {
   const response = await api.get('/boards');
-  console.log('Available boards:', response.data);
   return response.data.data;
 };
 
@@ -37,7 +36,6 @@ export const createColumn = async (title, boardId) => {
 // ── Tasks ────────────────────────────────
 export const createTask = async (taskData) => {
   const response = await api.post('/tasks', taskData);
-  console.log('Create task response:', response.data);
   return response.data.data;
 };
 
