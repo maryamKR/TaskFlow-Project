@@ -3,7 +3,6 @@ import { api } from './auth';
 // ── Boards ──────────────────────────────
 export const getBoards = async () => {
   const response = await api.get('/boards');
-  console.log('Available boards:', response.data);
   return response.data.data;
 };
 
@@ -37,7 +36,6 @@ export const createColumn = async (title, boardId) => {
 // ── Tasks ────────────────────────────────
 export const createTask = async (taskData) => {
   const response = await api.post('/tasks', taskData);
-  console.log('Create task response:', response.data);
   return response.data.data;
 };
 
@@ -67,12 +65,12 @@ export const inviteMember = async (boardId, email) => {
 
 // Reorder columns
 export const reorderColumns = async (boardId, orderedIds) => {
-  const response = await api.put(`/boards/${boardId}/reorder`, { orderedIds });
+  const response = await api.put(`/boards/${boardId}/reorder`, { columnIds: orderedIds });
   return response.data;
 };
 
 // Reorder tasks within a column
 export const reorderTasks = async (columnId, orderedIds) => {
-  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { orderedIds });
+  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { taskIds: orderedIds });
   return response.data;
 };

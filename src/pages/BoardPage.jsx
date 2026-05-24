@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import socket from '../socket';
 import {
   DndContext,
   closestCenter,
@@ -73,11 +74,83 @@ function BoardPage() {
   }));
 
   const token = localStorage.getItem('token');
-
+  const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
+  const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
   useEffect(() => {
     if (!token) { window.location.href = '/'; return; }
     fetchBoards();
-  }, [token]);
+  }, []);
+
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (token) {
+      socket.auth = { token };
+      socket.connect();
+    }
+  }, []);
+
+  useEffect(() => {
+  if (!activeBoard) return;
+
+  socket.emit("join_board", activeBoard._id);
+
+  socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
+    setColumns(prev => {
+      const task = prev
+        .find(col => col._id === sourceColumnId)
+        ?.tasks.find(t => t._id === taskId || t.id === taskId);
+      
+      if (!task) return prev; // already moved visually by the user who dragged
+
+      return prev.map(col => {
+        if (col._id === sourceColumnId) {
+          return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
+        }
+        if (col._id === destinationColumnId) {
+          return { ...col, tasks: [...col.tasks, task] };
+        }
+        return col;
+      });
+    });
+  });
+
+  socket.on("columns_reordered", ({ columnIds }) => {
+    setColumns(prev => {
+      const reordered = columnIds
+        .map(id => prev.find(col => col._id === id))
+        .filter(Boolean);
+      return reordered.length === prev.length ? reordered : prev;
+    });
+  });
+
+
+  socket.on("tasks_reordered", ({ columnId, taskIds }) => {
+    setColumns(prev => prev.map(col => {
+      if (col._id !== columnId) return col;
+      const reordered = taskIds
+        .map(id => col.tasks.find(t => t._id === id || t.id === id))
+        .filter(Boolean);
+      return { ...col, tasks: reordered };
+    }));
+  });
+
+  socket.on("task_created", ({ columnId, task, createdBy }) => {
+    if (createdBy === currentUserId) return;
+    setColumns(prev => prev.map(col =>
+      col._id === columnId
+        ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }
+        : col
+    ));
+  });
+
+  return () => {
+    socket.emit("leave_board", activeBoard._id);
+    socket.off("task_moved");
+    socket.off("columns_reordered");
+    socket.off("tasks_reordered");
+    socket.off("task_created");
+  };
+  }, [activeBoard?._id]);
 
   const fetchBoards = async () => {
     try {
@@ -98,6 +171,9 @@ function BoardPage() {
 
   const loadBoard = async (boardId) => {
     setLoading(true);
+
+    
+
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
@@ -194,66 +270,67 @@ function BoardPage() {
   };
 
   const handleDragEnd = async ({ active, over }) => {
-    setActiveItem(null);
-    if (!over) return;
+  setActiveItem(null);
+  if (!over) return;
 
-    const activeType = active.data.current?.type;
+  const activeType = active.data.current?.type;
 
-    // ── Column reorder ──────────────────
-    if (activeType === 'column') {
-      if (active.id === over.id) return;
-      const oldIndex = columns.findIndex(c => c._id === active.id);
-      const newIndex = columns.findIndex(c => c._id === over.id);
-      if (oldIndex === -1 || newIndex === -1) return;
-      const newCols = arrayMove(columns, oldIndex, newIndex);
-      setColumns(newCols);
-      try {
-        await reorderColumns(activeBoard._id, newCols.map(c => c._id));
-      } catch (err) {
-        console.error('Column reorder failed:', err);
-      }
-      return;
-    }
-
-    // ── Task dropped ────────────────────
-    const sourceCol = getColumnByTaskId(active.id);
-    if (!sourceCol) return;
-
-    let destColId;
-    if (over.data.current?.type === 'column') {
-      destColId = over.id;
-    } else {
-      const overCol = getColumnByTaskId(over.id);
-      destColId = overCol?._id;
-    }
-
-    if (!destColId) return;
-
-    // Same column → reorder
-    if (sourceCol._id === destColId) {
-      const currentCol = columns.find(c => c._id === sourceCol._id);
-      const oldIndex = currentCol.tasks.findIndex(t => t.id === active.id);
-      const newIndex = currentCol.tasks.findIndex(t => t.id === over.id);
-      if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
-      const newTasks = arrayMove(currentCol.tasks, oldIndex, newIndex);
-      setColumns(prev => prev.map(col =>
-        col._id === sourceCol._id ? { ...col, tasks: newTasks } : col
-      ));
-      try {
-        await reorderTasks(sourceCol._id, newTasks.map(t => t._id));
-      } catch (err) {
-        console.error('Task reorder failed:', err);
-      }
-      return;
-    }
-
-    // Different column → already moved visually in onDragOver, just save
+  // ── Column reorder ──────────────────
+  if (activeType === 'column') {
+    if (active.id === over.id) return;
+    const oldIndex = columns.findIndex(c => c._id === active.id);
+    const newIndex = columns.findIndex(c => c._id === over.id);
+    if (oldIndex === -1 || newIndex === -1) return;
+    const newCols = arrayMove(columns, oldIndex, newIndex);
+    setColumns(newCols);
     try {
-      await moveTask(active.id, sourceCol._id, destColId);
+      await reorderColumns(activeBoard._id, newCols.map(c => c._id));
     } catch (err) {
-      console.error('Task move failed:', err);
+      console.error('Column reorder failed:', err);
     }
-  };
+    return;
+  }
+
+  // ── Task dropped ────────────────────
+  const sourceCol = getColumnByTaskId(active.id);
+  if (!sourceCol) return;
+
+  let destColId;
+  if (over.data.current?.type === 'column') {
+    destColId = over.id;
+  } else {
+    const overCol = getColumnByTaskId(over.id);
+    destColId = overCol?._id;
+  }
+
+  if (!destColId) return;
+
+  // Same column → reorder
+  if (sourceCol._id === destColId) {
+    const currentCol = columns.find(c => c._id === sourceCol._id);
+    const taskIds = currentCol.tasks.map(t => t._id || t.id);
+    const oldIndex = taskIds.indexOf(active.id);
+    const newIndex = taskIds.indexOf(over.id);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+    const newTasks = arrayMove(currentCol.tasks, oldIndex, newIndex);
+    setColumns(prev => prev.map(col =>
+      col._id === sourceCol._id ? { ...col, tasks: newTasks } : col
+    ));
+    try {
+      await reorderTasks(sourceCol._id, newTasks.map(t => t._id));
+    } catch (err) {
+      console.error('Task reorder failed:', err);
+    }
+    return;
+  }
+
+  // Different column → already moved visually in onDragOver, just save
+  try {
+    await moveTask(active.id, sourceCol._id, destColId);
+  } catch (err) {
+    console.error('Task move failed:', err);
+  }
+};
 
   if (loading) return (
     <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -277,6 +354,7 @@ function BoardPage() {
         <div className="flex items-center gap-4">
           {boards.length > 0 && (
             <select
+              value={activeBoard?._id}
               onChange={(e) => loadBoard(e.target.value)}
               className="bg-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
             >

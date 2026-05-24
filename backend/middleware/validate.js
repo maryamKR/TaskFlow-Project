@@ -8,9 +8,10 @@ const validate = (schema) => async (req, res, next) => {
     });
 
     // 2. Re-assign the sanitized, defaulted data back to Express 
-    req.body = parsed.body;
-    req.query = parsed.query;
-    req.params = parsed.params;
+    
+    if (parsed.body) req.body = { ...req.body, ...parsed.body };
+    if (parsed.query) req.query = { ...req.query, ...parsed.query };
+    if (parsed.params) req.params = { ...req.params, ...parsed.params };
 
     return next();
   } catch (error) {

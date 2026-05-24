@@ -11,7 +11,7 @@ TaskFlow uses a decoupled client-server architecture built on the MERN stack (Mo
 
 ## 2. Directory Structure
 
-The backend follows a strict **Controller-Service-Route** architectural pattern to ensure separation of concerns:
+The backend follows a **Route-Controller-Model (MVC)** architectural pattern to ensure separation of concerns:
 
 ```text
 backend/
@@ -19,9 +19,11 @@ backend/
 ├── controllers/        # Request handlers (processes inputs, executes DB actions)
 │   ├── authController.js
 │   ├── boardController.js
-│   ├── boardMemberController.js # New: Handles coworker invitations/listing
+│   ├── boardMemberController.js # Handles coworker invitations/listing
 │   ├── columnController.js
-│   └── taskController.js
+│   ├── taskController.js
+│   ├── commentController.js     # New: Handles task discussions
+│   └── notificationController.js # New: Handles user alerts
 ├── middleware/         # Request interceptors & security guards
 │   ├── validators/     # Request payload Zod validation blueprints
 │   │   ├── authValidator.js
@@ -29,23 +31,30 @@ backend/
 │   │   ├── columnValidator.js
 │   │   └── taskValidator.js
 │   ├── authMiddleware.js
-│   └── errorHandler.js
+│   ├── errorHandler.js
+│   └── validate.js     # Shared Zod validation executor
 ├── models/             # Database schemas & Mongoose ODM models
 │   ├── User.js
 │   ├── Board.js
 │   ├── Column.js
-│   └── Task.js
+│   ├── Task.js
+│   ├── Comment.js
+│   └── Notification.js
 ├── routes/             # API Endpoints mapping HTTP verbs to controllers
 │   ├── authRoutes.js
 │   ├── boardRoutes.js
 │   ├── columnRoutes.js
-│   └── taskRoutes.js
+│   ├── taskRoutes.js
+│   ├── commentRoutes.js
+│   └── notificationRoutes.js
 ├── utils/              # Shared helper functions
 │   ├── authHelpers.js  # Password hashing & security utils
 │   └── boardAuth.js    # Permission & access logic
 ├── .env                # Local environment secrets (DB strings, JWT secret)
-├── api.md              # New: Detailed API documentation & examples
+├── API.md              # Detailed API documentation & examples
+├── documentation.md    # Developer-focused technical breakdown
 ├── server.js           # Application entry point & middleware registration
+├── socket.js           # Real-time event hub (Socket.io)
 └── package.json        # Node.js project dependencies
 
 ```
@@ -75,6 +84,16 @@ TaskFlow enforces a hierarchical MongoDB relational document pattern with bidire
 The system uses explicit controller logic to maintain atomic operations:
 - **Pointer Synchronization:** During task movement, the system updates both the parent Column arrays and the task's internal column reference, preventing data desynchronization.
 - **Nested Sub-Document Population:** To avoid making multiple round-trips, the system relies on **Deep Population**. Calling a board loads the root element and recursively populates the column and task hierarchies into a single nested tree for the frontend.
+
+### E. Real-time Event Layer (Socket.io)
+TaskFlow provides a collaborative "live" experience using a dedicated Socket.io implementation (`socket.js`):
+- **Room-Based Isolation:** Users are joined to rooms named after the `boardId`. This ensures that real-time updates (like moving a task) are only broadcast to users currently viewing the same board.
+- **Event-Driven UI:** When a destructive or layout-altering action occurs (e.g., `reorderColumns`, `moveTask`), the server emits an event to the specific room. The frontend listens for these events to update its state instantly without a page refresh.
+
+### F. Notification & Commenting Systems
+Beyond core task management, TaskFlow provides auxiliary services to drive engagement:
+- **Asynchronous Notifications:** Actions like assigning a task or updating task details trigger the creation of a `Notification` document. These are served to the specific target user via the `notificationController.js`.
+- **Task Discussions:** Users can add comments to any task. These are stored as separate `Comment` documents and linked to the `Task` model, enabling persistent threaded conversations.
 
 ## 4. Error Handling Flow
 To prevent server runtime crashes and keep error patterns predictable, the backend implements a centralized interception flow:

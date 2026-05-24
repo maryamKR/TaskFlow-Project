@@ -31,8 +31,15 @@ const taskSchema = new mongoose.Schema(
       required: true,
       index: true, // Ensuring every task belongs to a column and is indexed
     },
+    comments: [
+      {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "Comment",
+      },
+    ],
   },
   { timestamps: true }
 );
 
+taskSchema.index({ title: 'text', description: 'text' });
 module.exports = mongoose.model("Task", taskSchema);

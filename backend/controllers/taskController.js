@@ -1,8 +1,11 @@
 const Task = require("../models/Task");
 const Column = require("../models/Column");
 const Board = require("../models/Board");
+const Notification = require("../models/Notification");
 const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
+
+const { getIO } = require("../socket");
 
 // @desc    Create a task
 // @route   POST /api/tasks
@@ -37,12 +40,34 @@ const createTask = asyncHandler(async (req, res) => {
     priority,
     dueDate,
     assignedTo: assignedTo || null,
-    column: columnId, // FIX: Model expects 'column', not 'columnId'
+    column: columnId, //
   });
+
+  await task.populate("assignedTo", "username");
+
+  //Notification Trigger//
+  if (
+    task.assignedTo &&
+    task.assignedTo._id.toString() !== req.user._id.toString()
+  ) {
+    await Notification.create({
+      user: task.assignedTo._id,
+      sender: req.user._id,
+      message: `${req.user.username} created a new task and assigned it to you: ${task.title}`,
+      type: "TASK_ASSIGNED",
+      relatedId: task._id,
+    });
+  }
 
   // 4. Link task to column
   column.tasks.push(task._id);
   await column.save();
+
+  getIO().to(board._id.toString()).emit("task_created", {
+    columnId,
+    task,
+    createdBy: req.user._id.toString(),
+  });
 
   res.status(201).json({ success: true, data: task });
 });
@@ -51,7 +76,9 @@ const createTask = asyncHandler(async (req, res) => {
 // @route   GET /api/tasks/:id
 // @access  Private
 const getTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id);
+  const task = await Task.findById(req.params.id)
+    .populate("assignedTo", "username")
+    .populate("comments");
 
   if (!task) {
     res.status(404);
@@ -74,7 +101,10 @@ const getTask = asyncHandler(async (req, res) => {
 // @route   PUT /api/tasks/:id
 // @access  Private
 const updateTask = asyncHandler(async (req, res) => {
+  console.log("User:", req.user); // Check if this prints 'undefined'
+  console.log("Params:", req.params);
   const task = await Task.findById(req.params.id);
+  const oldAssignee = task.assignedTo;
 
   if (!task) {
     res.status(404);
@@ -98,6 +128,44 @@ const updateTask = asyncHandler(async (req, res) => {
   task.assignedTo = req.body.assignedTo ?? task.assignedTo;
 
   await task.save();
+  await task.populate("assignedTo", "username");
+  const newAssignee = task.assignedTo;
+
+  //--------NOTIFICATION LOGIC -------/
+  /*
+    1. isAssigneeChanged: Triggers when the task is handed off to a new user.
+    2. isDetailsChanged: Triggers when task content (title/desc/priority) is modified.
+    3.Prevents self-notification and ensures one notification per request./*
+    */
+
+  const isAssigneeChanged =
+    newAssignee &&
+    (!oldAssignee || oldAssignee.toString() !== newAssignee._id.toString()) &&
+    newAssignee._id.toString() !== req.user._id.toString();
+
+  const isDetailsChanged =
+    (req.body.title || req.body.description || req.body.priority) &&
+    task.assignedTo &&
+    task.assignedTo.toString() !== req.user._id.toString();
+
+  if (isAssigneeChanged) {
+    await Notification.create({
+      user: newAssignee._id,
+      sender: req.user._id,
+      message: `${req.user.username} assigned you to the task: ${task.title}`,
+      type: "TASK_ASSIGNED",
+      relatedId: task._id,
+    });
+  } else if (isDetailsChanged) {
+    await Notification.create({
+      user: newAssignee._id,
+      sender: req.user._id,
+      message: `${req.user.username} updated details on task: ${task.title}`,
+      type: "TASK_UPDATED",
+      relatedId: task._id,
+    });
+  }
+
   res.status(200).json({ success: true, data: task });
 });
 
@@ -165,7 +233,18 @@ const moveTask = asyncHandler(async (req, res) => {
   });
 
   // C. Update the task itself to point to the new column (Pointer Synchronization)
-  await Task.findByIdAndUpdate(taskId, { column: destinationColumnId }, { runValidators: true });
+  await Task.findByIdAndUpdate(
+    taskId,
+    { column: destinationColumnId },
+    { runValidators: true },
+  );
+
+  // D. Emit real-time event
+  getIO().to(board._id.toString()).emit("task_moved", {
+    taskId,
+    sourceColumnId,
+    destinationColumnId,
+  });
 
   res.status(200).json({ success: true, message: "Task moved successfully" });
 });
@@ -188,12 +267,69 @@ const reorderTask = asyncHandler(async (req, res) => {
 
   // 2. Perform the update
   const updatedColumn = await Column.findByIdAndUpdate(
-    columnId, 
-    { tasks: taskIds }, 
-    { returnDocument: 'after' }
+    columnId,
+    { tasks: taskIds },
+    { returnDocument: "after" },
   );
+
+  // 3. Emit real-time event
+  getIO().to(board._id.toString()).emit("tasks_reordered", {
+    columnId,
+    taskIds,
+  });
 
   res.status(200).json({ success: true, data: updatedColumn.tasks });
 });
 
-module.exports = { createTask, getTask, updateTask, deleteTask, moveTask, reorderTask};
+// @desc    Get all tasks for a board with optional filtering
+// @route   GET /api/tasks?boardId=...&columnId=...&assignedTo=...&priority=...
+// @access  Private
+const getTasks = asyncHandler(async (req, res) => {
+  const { boardId, columnId, assignedTo, priority, search, startDate, endDate} = req.query;
+
+
+  const board = await Board.findById(boardId);
+
+  if (!board) {
+    res.status(404);
+    throw new Error("Board not found");
+  }
+  
+  if (!hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("Not authorized");
+  }
+
+  const columns = await Column.find({ board: boardId }).select("_id");
+  const columnIds = columns.map((c) => c._id);
+
+  let query = { column: { $in: columnIds } };
+
+  if (search) {
+    query.$text = { $search: search };
+  }
+
+  if (columnId) query.column = columnId;
+  if (assignedTo) query.assignedTo = assignedTo;
+  if (priority) query.priority = priority;
+
+  if (startDate || endDate) {
+    query.dueDate = {};
+    if (startDate) query.dueDate.$gte = new Date(startDate);
+    if (endDate) query.dueDate.$lte = new Date(endDate);
+  }
+
+  const tasks = await Task.find(query).populate("assignedTo", "username");
+
+  res.status(200).json({ success: true, count: tasks.length, data: tasks });
+});
+
+module.exports = {
+  createTask,
+  getTask,
+  updateTask,
+  deleteTask,
+  moveTask,
+  reorderTask,
+  getTasks,
+};

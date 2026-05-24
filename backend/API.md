@@ -122,6 +122,23 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     }
     ```
 
+#### Reorder Columns
+*   **URL:** `/boards/:boardId/reorder`
+*   **Method:** `PUT`
+*   **Body:**
+    ```json
+    {
+      "columnIds": ["60d5ef...", "60d5f0...", "60d5f2..."]
+    }
+    ```
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": ["60d5ef...", "60d5f0...", "60d5f2..."]
+    }
+    ```
+
 ---
 
 ### 3. Member Endpoints (Collaborators)
@@ -148,6 +165,17 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     {
       "message": "User invited successfully",
       "coworkers": ["60d5ed...", "60d5f1..."]
+    }
+    ```
+
+#### Remove Member from Board
+*   **URL:** `/boards/:boardId/members/:memberId`
+*   **Method:** `DELETE`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "Member removed successfully"
     }
     ```
 
@@ -236,6 +264,26 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     }
     ```
 
+#### Get Tasks with Filters
+*   **URL:** `/tasks`
+*   **Method:** `GET`
+*   **Query Parameters:**
+    *   `boardId` (required): Filter tasks by board.
+    *   `columnId` (optional): Filter tasks by a specific column.
+    *   `assignedTo` (optional): Filter tasks assigned to a specific user ID.
+    *   `priority` (optional): Filter by `low`, `medium`, or `high`.
+    *   `search` (optional): Text search in title and description.
+    *   `startDate` (optional): ISO date for due date range start.
+    *   `endDate` (optional): ISO date for due date range end.
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "count": 2,
+      "data": [...]
+    }
+    ```
+
 #### Get Task By ID
 *   **URL:** `/tasks/:id`
 *   **Method:** `GET`
@@ -276,6 +324,23 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     { "success": true, "message": "Task moved successfully" }
     ```
 
+#### Reorder Tasks (Within Column)
+*   **URL:** `/tasks/column/:columnId/reorder`
+*   **Method:** `PATCH`
+*   **Body:**
+    ```json
+    {
+      "taskIds": ["60d5f3...", "60d5f4...", "60d5f5..."]
+    }
+    ```
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": ["60d5f3...", "60d5f4...", "60d5f5..."]
+    }
+    ```
+
 #### Delete Task
 *   **URL:** `/tasks/:id`
 *   **Method:** `DELETE`
@@ -286,7 +351,131 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 
 ---
 
-## 6. Common Error Responses
+### 6. Comment Endpoints
+
+#### Add Comment to Task
+*   **URL:** `/tasks/:taskId/comments`
+*   **Method:** `POST`
+*   **Body:**
+    ```json
+    { "content": "I am working on this task." }
+    ```
+*   **Success Response (201):**
+    ```json
+    {
+      "success": true,
+      "data": {
+        "_id": "60d5f6...",
+        "content": "I am working on this task.",
+        "task": "60d5f3...",
+        "author": { "_id": "60d5ec...", "username": "johndoe" },
+        "createdAt": "2023-10-27T10:00:00Z"
+      }
+    }
+    ```
+
+#### Get Comments for Task
+*   **URL:** `/tasks/:taskId/comments`
+*   **Method:** `GET`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": [
+        {
+          "_id": "60d5f6...",
+          "content": "I am working on this task.",
+          "author": { "_id": "60d5ec...", "username": "johndoe" },
+          "createdAt": "2023-10-27T10:00:00Z"
+        }
+      ]
+    }
+    ```
+
+#### Delete Comment
+*   **URL:** `/comments/:commentId`
+*   **Method:** `DELETE`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "Comment deleted successfully"
+    }
+    ```
+
+---
+
+### 7. Notification Endpoints
+
+#### Get own Notifications
+*   **URL:** `/notifications`
+*   **Method:** `GET`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "count": 5,
+      "data": [
+        {
+          "_id": "60d5f7...",
+          "user": "60d5ec...",
+          "sender": { "_id": "60d5ed...", "username": "jane_doe" },
+          "type": "task_assigned",
+          "message": "jane_doe assigned you to 'Fix Auth Bug'",
+          "isRead": false,
+          "createdAt": "2023-10-27T11:00:00Z"
+        }
+      ]
+    }
+    ```
+
+#### Mark All as Read
+*   **URL:** `/notifications/read-all`
+*   **Method:** `PATCH`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "All notifications marked as read"
+    }
+    ```
+
+#### Mark Specific Notification as Read
+*   **URL:** `/notifications/:id/read`
+*   **Method:** `PATCH`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": { "_id": "60d5f7...", "isRead": true, "message": "...", "createdAt": "..." }
+    }
+    ```
+
+#### Delete Read Notifications
+*   **URL:** `/notifications/read`
+*   **Method:** `DELETE`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "Read notifications cleared"
+    }
+    ```
+
+#### Delete Specific Notification
+*   **URL:** `/notifications/:id`
+*   **Method:** `DELETE`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "message": "Notification deleted"
+    }
+    ```
+
+---
+
+## 8. Common Error Responses
 
 ### Standard Error Format
 TaskFlow guarantees a consistent JSON structure for all error responses. Frontend developers can always expect the following object:
