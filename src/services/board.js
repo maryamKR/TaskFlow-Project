@@ -21,9 +21,24 @@ export const deleteBoard = async (boardId) => {
   return response.data;
 };
 
+export const reorderColumns = async (boardId, columnIds) => {
+  const response = await api.put(`/boards/${boardId}/reorder`, { columnIds }); // ← fixed
+  return response.data;
+};
+
 // ── Members ──────────────────────────────
 export const getBoardMembers = async (boardId) => {
   const response = await api.get(`/boards/${boardId}/members`);
+  return response.data;
+};
+
+export const inviteMember = async (boardId, email) => {
+  const response = await api.post(`/boards/${boardId}/invite`, { email });
+  return response.data;
+};
+
+export const removeMember = async (boardId, memberId) => {
+  const response = await api.delete(`/boards/${boardId}/members/${memberId}`);
   return response.data;
 };
 
@@ -31,6 +46,11 @@ export const getBoardMembers = async (boardId) => {
 export const createColumn = async (title, boardId) => {
   const response = await api.post('/columns', { title, boardId });
   return response.data.data;
+};
+
+export const deleteColumn = async (columnId) => {
+  const response = await api.delete(`/columns/${columnId}`);
+  return response.data;
 };
 
 // ── Tasks ────────────────────────────────
@@ -58,19 +78,54 @@ export const moveTask = async (taskId, sourceColumnId, destinationColumnId) => {
   return response.data;
 };
 
-export const inviteMember = async (boardId, email) => {
-  const response = await api.post(`/boards/${boardId}/invite`, { email });
+export const reorderTasks = async (columnId, taskIds) => {
+  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { taskIds }); // ← fixed
   return response.data;
 };
 
-// Reorder columns
-export const reorderColumns = async (boardId, orderedIds) => {
-  const response = await api.put(`/boards/${boardId}/reorder`, { columnIds: orderedIds });
+export const getTasks = async (params) => {
+  const response = await api.get('/tasks', { params });
+  return response.data.data;
+};
+
+// ── Comments ─────────────────────────────
+export const getComments = async (taskId) => {
+  const response = await api.get(`/tasks/${taskId}/comments`);
+  return response.data.data;
+};
+
+export const addComment = async (taskId, content) => {
+  const response = await api.post(`/tasks/${taskId}/comments`, { content });
+  return response.data.data;
+};
+
+export const deleteComment = async (commentId) => {
+  const response = await api.delete(`/comments/${commentId}`);
   return response.data;
 };
 
-// Reorder tasks within a column
-export const reorderTasks = async (columnId, orderedIds) => {
-  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { taskIds: orderedIds });
+// ── Notifications ─────────────────────────
+export const getNotifications = async () => {
+  const response = await api.get('/notifications');
+  return response.data.data;
+};
+
+export const markAllRead = async () => {
+  const response = await api.patch('/notifications/read-all');
+  return response.data;
+};
+
+export const markOneRead = async (notificationId) => {
+  const response = await api.patch(`/notifications/${notificationId}/read`);
+  return response.data;
+};
+
+export const deleteReadNotifications = async () => {
+  const response = await api.delete('/notifications/read');
+  return response.data;
+};
+
+export const deleteNotification = async (notificationId) => {
+  const response = await api.delete(`/notifications/${notificationId}`);
   return response.data;
 };
