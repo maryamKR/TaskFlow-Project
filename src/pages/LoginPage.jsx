@@ -5,42 +5,35 @@ function LoginPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [errors, setErrors] = useState({});
-
-  const validate = () => {
-    const newErrors = {};
-    if (!email) {
-      newErrors.email = 'Email is required';
-    } else if (!email.includes('@')) {
-      newErrors.email = 'Please enter a valid email';
-    }
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-    return newErrors;
-  };
+  const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    const foundErrors = validate();
 
-    if (Object.keys(foundErrors).length > 0) {
-      setErrors(foundErrors);
+    // Only check empty fields
+    const newErrors = {};
+    if (!email) newErrors.email = 'Email is required';
+    if (!password) newErrors.password = 'Password is required';
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors(newErrors);
       return;
     }
 
     setErrors({});
+    setLoading(true);
 
     try {
       await login(email, password);
       window.location.href = '/board';
     } catch (err) {
-  const errorMessage = err.response?.data?.error
-    || err.response?.data?.message
-    || 'Login failed';
-  setErrors({ general: errorMessage });
-}
+      const errorMessage = err.response?.data?.error
+        || err.response?.data?.message
+        || 'Login failed';
+      setErrors({ general: errorMessage });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -52,7 +45,6 @@ function LoginPage() {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
-          {/* Email */}
           <div>
             <label className="text-gray-300 text-sm mb-1 block">Email</label>
             <input
@@ -69,7 +61,6 @@ function LoginPage() {
             )}
           </div>
 
-          {/* Password */}
           <div>
             <label className="text-gray-300 text-sm mb-1 block">Password</label>
             <input
@@ -86,16 +77,16 @@ function LoginPage() {
             )}
           </div>
 
-          {/* General API error */}
           {errors.general && (
             <p className="text-red-400 text-sm text-center">{errors.general}</p>
           )}
 
           <button
             type="submit"
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition duration-200 mt-2"
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition duration-200 mt-2 disabled:opacity-50"
           >
-            Sign In
+            {loading ? 'Signing in...' : 'Sign In'}
           </button>
 
         </form>
