@@ -14,8 +14,10 @@ function Navbar() {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    fetchNotifications();
-  }, []);
+  fetchNotifications();
+  const interval = setInterval(fetchNotifications, 30000);
+  return () => clearInterval(interval);
+}, []);
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -36,6 +38,7 @@ function Navbar() {
       console.error('Failed to fetch notifications:', err);
     }
   };
+  
 
   const handleMarkAllRead = async () => {
     try {
@@ -169,9 +172,8 @@ function Navbar() {
                   notifications.map(notification => (
                     <div
                       key={notification._id}
-                      className={`flex items-start gap-3 px-4 py-3 border-b border-gray-700 last:border-0 ${
-                        !notification.isRead ? 'bg-gray-750' : ''
-                      }`}
+                      className={`flex items-start gap-3 px-4 py-3 border-b border-gray-700 last:border-0 ${!notification.isRead ? 'bg-gray-750' : ''
+                        }`}
                     >
                       {/* Unread dot */}
                       <div className="mt-1.5 flex-shrink-0">
