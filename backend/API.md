@@ -264,6 +264,26 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     }
     ```
 
+#### Get Tasks with Filters
+*   **URL:** `/tasks`
+*   **Method:** `GET`
+*   **Query Parameters:**
+    *   `boardId` (required): Filter tasks by board.
+    *   `columnId` (optional): Filter tasks by a specific column.
+    *   `assignedTo` (optional): Filter tasks assigned to a specific user ID.
+    *   `priority` (optional): Filter by `low`, `medium`, or `high`.
+    *   `search` (optional): Text search in title and description.
+    *   `startDate` (optional): ISO date for due date range start.
+    *   `endDate` (optional): ISO date for due date range end.
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "count": 2,
+      "data": [...]
+    }
+    ```
+
 #### Get Task By ID
 *   **URL:** `/tasks/:id`
 *   **Method:** `GET`
