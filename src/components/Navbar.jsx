@@ -14,9 +14,9 @@ function Navbar() {
 
   // 2. Get username from token
   const getUsername = () => {
-  const username = localStorage.getItem('username') || 'User';
-  return username.charAt(0).toUpperCase() + username.slice(1);
-};
+    const username = localStorage.getItem('username') || 'User';
+    return username.charAt(0).toUpperCase() + username.slice(1);
+  };
   const username = getUsername();
 
   // 3. State
@@ -91,10 +91,10 @@ function Navbar() {
   };
 
   const handleLogout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('username');
-  window.location.href = '/';
-};
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    window.location.href = '/';
+  };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -185,9 +185,8 @@ function Navbar() {
                   notifications.map(notification => (
                     <div
                       key={notification._id}
-                      className={`flex items-start gap-3 px-4 py-3 border-b border-gray-700 last:border-0 ${
-                        !notification.isRead ? 'bg-gray-750' : ''
-                      }`}
+                      className={`flex items-start gap-3 px-4 py-3 border-b border-gray-700 last:border-0 ${!notification.isRead ? 'bg-gray-750' : ''
+                        }`}
                     >
                       {/* Unread dot */}
                       <div className="mt-1.5 flex-shrink-0">
@@ -241,7 +240,9 @@ function Navbar() {
         </div>
 
         {/* Username */}
-        <span className="text-gray-300 text-sm">{username}</span>
+        <Link to="/profile" className="text-gray-300 hover:text-white text-sm transition duration-200">
+          {username}
+        </Link>
 
         {/* Logout */}
         <button
