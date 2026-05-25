@@ -9,17 +9,29 @@ import {
 } from '../services/board';
 
 function Navbar() {
+  // 1. Token first
+  const token = localStorage.getItem('token');
+
+  // 2. Get username from token
+  const getUsername = () => {
+  const username = localStorage.getItem('username') || 'User';
+  return username.charAt(0).toUpperCase() + username.slice(1);
+};
+  const username = getUsername();
+
+  // 3. State
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
 
+  // 4. Fetch notifications + polling
   useEffect(() => {
-  fetchNotifications();
-  const interval = setInterval(fetchNotifications, 30000);
-  return () => clearInterval(interval);
-}, []);
+    fetchNotifications();
+    const interval = setInterval(fetchNotifications, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
-  // Close dropdown when clicking outside
+  // 5. Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -33,12 +45,12 @@ function Navbar() {
   const fetchNotifications = async () => {
     try {
       const data = await getNotifications();
+      console.log('Raw notifications response:', data);
       setNotifications(data || []);
     } catch (err) {
-      console.error('Failed to fetch notifications:', err);
+      console.error('Notifications error:', err);
     }
   };
-  
 
   const handleMarkAllRead = async () => {
     try {
@@ -79,9 +91,10 @@ function Navbar() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('token');
-    window.location.href = '/';
-  };
+  localStorage.removeItem('token');
+  localStorage.removeItem('username');
+  window.location.href = '/';
+};
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
@@ -172,8 +185,9 @@ function Navbar() {
                   notifications.map(notification => (
                     <div
                       key={notification._id}
-                      className={`flex items-start gap-3 px-4 py-3 border-b border-gray-700 last:border-0 ${!notification.isRead ? 'bg-gray-750' : ''
-                        }`}
+                      className={`flex items-start gap-3 px-4 py-3 border-b border-gray-700 last:border-0 ${
+                        !notification.isRead ? 'bg-gray-750' : ''
+                      }`}
                     >
                       {/* Unread dot */}
                       <div className="mt-1.5 flex-shrink-0">
@@ -221,11 +235,13 @@ function Navbar() {
           )}
         </div>
 
-        {/* User info */}
+        {/* User avatar */}
         <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
-          S
+          {username[0].toUpperCase()}
         </div>
-        <span className="text-gray-300 text-sm">Selma</span>
+
+        {/* Username */}
+        <span className="text-gray-300 text-sm">{username}</span>
 
         {/* Logout */}
         <button
