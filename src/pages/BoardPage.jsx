@@ -29,6 +29,13 @@ const priorityColors = {
   low: 'text-green-400',
 };
 
+// ✅ FIX 1 — normalise toutes les tâches pour qu'elles aient un champ `id`
+const normalizeTasks = (cols) =>
+  cols.map(col => ({
+    ...col,
+    tasks: (col.tasks || []).map(t => ({ ...t, id: t._id }))
+  }));
+
 function SortableColumnWrapper({ column, children }) {
   const {
     attributes,
@@ -106,7 +113,7 @@ function BoardPage() {
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
-      setColumns(board.columns || []);
+      setColumns(normalizeTasks(board.columns || [])); // ✅ FIX 2 — normalise dès le chargement
       const membersData = await getBoardMembers(boardId);
       setMembers(Array.isArray(membersData) ? membersData : []);
     } catch (err) {
@@ -134,7 +141,7 @@ function BoardPage() {
   };
 
   const handleColumnAdded = (newColumn) => {
-    setColumns(prev => [...prev, newColumn]);
+    setColumns(prev => [...prev, { ...newColumn, tasks: [] }]);
   };
 
   const handleTaskCreated = (columnId, newTask) => {
@@ -448,23 +455,18 @@ function BoardPage() {
                           onColumnDeleted={handleColumnDeleted}
                           members={members}
                           dragHandleProps={dragHandleProps}
-                          tasks={(column.tasks || [])
-                            .filter(task => {
-                              const matchesPriority = !filter.priority || task.priority === filter.priority;
-                              const matchesSearch = !filter.search ||
-                                task.title.toLowerCase().includes(filter.search.toLowerCase());
-                              const matchesAssignee = !filter.assignee ||
-                                task.assignedTo?._id === filter.assignee ||
-                                task.assignedTo === filter.assignee;
-                              const matchesDueDate = !filter.dueDate ||
-                                (task.dueDate && task.dueDate.split('T')[0] === filter.dueDate);
-                              return matchesPriority && matchesSearch && matchesAssignee && matchesDueDate;
-                            })
-                            .map(task => ({
-                              ...task,
-                              id: task._id,
-                              priorityColor: priorityColors[task.priority] || 'text-gray-400',
-                            }))}
+                          tasks={(column.tasks || []).filter(task => {
+                            // ✅ FIX 3 — plus de .map() ici, id est déjà dans le state
+                            const matchesPriority = !filter.priority || task.priority === filter.priority;
+                            const matchesSearch = !filter.search ||
+                              task.title.toLowerCase().includes(filter.search.toLowerCase());
+                            const matchesAssignee = !filter.assignee ||
+                              task.assignedTo?._id === filter.assignee ||
+                              task.assignedTo === filter.assignee;
+                            const matchesDueDate = !filter.dueDate ||
+                              (task.dueDate && task.dueDate.split('T')[0] === filter.dueDate);
+                            return matchesPriority && matchesSearch && matchesAssignee && matchesDueDate;
+                          })}
                         />
                       )}
                     </SortableColumnWrapper>
