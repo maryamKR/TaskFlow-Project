@@ -129,6 +129,12 @@ const updateTask = asyncHandler(async (req, res) => {
 
   await task.save();
   await task.populate("assignedTo", "username");
+
+  getIO().to(board._id.toString()).emit("task_updated", {
+    taskId: task._id.toString(),
+    updatedTask: task,
+  });
+
   const newAssignee = task.assignedTo;
 
   //--------NOTIFICATION LOGIC -------/
@@ -181,9 +187,10 @@ const deleteTask = asyncHandler(async (req, res) => {
 
   // Find the column containing this task
   const column = await Column.findOne({ tasks: task._id });
+  let board = null;
 
   if (column) {
-    const board = await Board.findById(column.board);
+    board = await Board.findById(column.board);
     if (!board || !hasBoardAccess(board, req.user._id)) {
       res.status(403);
       throw new Error("Not authorized");
@@ -195,6 +202,14 @@ const deleteTask = asyncHandler(async (req, res) => {
   }
 
   await task.deleteOne();
+
+  if (board && column) {
+    getIO().to(board._id.toString()).emit("task_deleted", {
+      taskId: task._id.toString(),
+      columnId: column._id.toString(),
+    });
+  }
+
   res.status(200).json({ success: true, message: "Task deleted successfully" });
 });
 

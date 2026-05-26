@@ -152,12 +152,31 @@ useEffect(() => {
     ));
   });
 
+  socket.on("task_updated", ({ taskId, updatedTask }) => {
+    setColumns(prev => prev.map(col => ({
+      ...col,
+      tasks: col.tasks.map(t =>
+        t._id === taskId ? { ...t, ...updatedTask, id: taskId } : t
+      )
+    })));
+  });
+
+  socket.on("task_deleted", ({ taskId, columnId }) => {
+    setColumns(prev => prev.map(col =>
+      col._id === columnId
+        ? { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) }
+        : col
+    ));
+  });
+
   return () => {
     socket.emit("leave_board", activeBoard._id);
     socket.off("task_moved");
     socket.off("columns_reordered");
     socket.off("tasks_reordered");
     socket.off("task_created");
+    socket.off("task_updated");
+    socket.off("task_deleted");
   };
 }, [activeBoard?._id]);
 
