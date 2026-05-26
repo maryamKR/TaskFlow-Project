@@ -133,6 +133,14 @@ useEffect(() => {
     });
   });
 
+  socket.on("column_added", ({ column }) => {
+    setColumns(prev => [...prev, { ...column, tasks: [] }]);
+  });
+
+  socket.on("column_deleted", ({ columnId }) => {
+    setColumns(prev => prev.filter(col => col._id !== columnId));
+  });
+
   socket.on("tasks_reordered", ({ columnId, taskIds }) => {
     setColumns(prev => prev.map(col => {
       if (col._id !== columnId) return col;
@@ -173,6 +181,8 @@ useEffect(() => {
     socket.emit("leave_board", activeBoard._id);
     socket.off("task_moved");
     socket.off("columns_reordered");
+    socket.off("column_added");
+    socket.off("column_deleted");
     socket.off("tasks_reordered");
     socket.off("task_created");
     socket.off("task_updated");
