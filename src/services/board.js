@@ -22,9 +22,10 @@ export const deleteBoard = async (boardId) => {
 };
 
 export const reorderColumns = async (boardId, columnIds) => {
-  const response = await api.put(`/boards/${boardId}/reorder`, { columnIds }); // ← fixed
+  const response = await api.put(`/boards/${boardId}/reorder`, { columnIds });
   return response.data;
 };
+
 
 // ── Members ──────────────────────────────
 export const getBoardMembers = async (boardId) => {
@@ -79,7 +80,7 @@ export const moveTask = async (taskId, sourceColumnId, destinationColumnId) => {
 };
 
 export const reorderTasks = async (columnId, taskIds) => {
-  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { taskIds }); // ← fixed
+  const response = await api.patch(`/tasks/column/${columnId}/reorder`, { taskIds });
   return response.data;
 };
 

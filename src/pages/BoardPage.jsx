@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import socket from '../socket';
 import {
   DndContext,
   closestCenter,
@@ -78,18 +79,87 @@ function BoardPage() {
     assignee: '',
     dueDate: ''
   });
+  const [dragSourceColId, setDragSourceColId] = useState(null);
 
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: { distance: 8 },
   }));
 
   const token = localStorage.getItem('token');
+  const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
+  const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!token) { window.location.href = '/'; return; }
     fetchBoards();
   }, [token]);
+
+  useEffect(() => {
+  const token = localStorage.getItem('token');
+  if (token) {
+    socket.auth = { token };
+    socket.connect();
+  }
+}, []);
+
+useEffect(() => {
+  if (!activeBoard) return;
+
+  socket.emit("join_board", activeBoard._id);
+
+  socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
+    setColumns(prev => {
+      const task = prev
+        .find(col => col._id === sourceColumnId)
+        ?.tasks.find(t => t._id === taskId || t.id === taskId);
+      if (!task) return prev;
+      return prev.map(col => {
+        if (col._id === sourceColumnId)
+          return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
+        if (col._id === destinationColumnId)
+          return { ...col, tasks: [...col.tasks, task] };
+        return col;
+      });
+    });
+  });
+
+  socket.on("columns_reordered", ({ columnIds }) => {
+    setColumns(prev => {
+      const reordered = columnIds
+        .map(id => prev.find(col => col._id === id))
+        .filter(Boolean);
+      return reordered.length === prev.length ? reordered : prev;
+    });
+  });
+
+  socket.on("tasks_reordered", ({ columnId, taskIds }) => {
+    setColumns(prev => prev.map(col => {
+      if (col._id !== columnId) return col;
+      const reordered = taskIds
+        .map(id => col.tasks.find(t => t._id === id || t.id === id))
+        .filter(Boolean);
+      return { ...col, tasks: reordered };
+    }));
+  });
+
+  socket.on("task_created", ({ columnId, task, createdBy }) => {
+    if (createdBy === currentUserId) return;
+    setColumns(prev => prev.map(col =>
+      col._id === columnId
+        ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }
+        : col
+    ));
+  });
+
+  return () => {
+    socket.emit("leave_board", activeBoard._id);
+    socket.off("task_moved");
+    socket.off("columns_reordered");
+    socket.off("tasks_reordered");
+    socket.off("task_created");
+  };
+}, [activeBoard?._id]);
 
   const fetchBoards = async () => {
     try {
@@ -193,6 +263,11 @@ function BoardPage() {
   const handleDragStart = ({ active }) => {
     const isCol = columns.some(c => c._id === active.id);
     setActiveType(isCol ? 'column' : 'task');
+
+    if (!isCol) {
+      const sourceCol = columns.find(c => c.tasks.some(t => t.id === active.id || t._id === active.id));
+      setDragSourceColId(sourceCol?._id || null);
+    }
   };
 
   const handleDragOver = ({ active, over }) => {
@@ -250,7 +325,7 @@ function BoardPage() {
     }
 
     if (activeType === 'task') {
-      const sourceCol = columns.find(c => c.tasks.some(t => t.id === active.id));
+      const sourceCol = columns.find(c => c._id === dragSourceColId);
       if (!sourceCol) return;
 
       let destColId;
@@ -262,7 +337,6 @@ function BoardPage() {
       }
 
       if (!destColId) return;
-
       if (sourceCol._id === destColId) {
         const currentCol = columns.find(c => c._id === sourceCol._id);
         const oldIndex = currentCol.tasks.findIndex(t => t.id === active.id);
