@@ -6,6 +6,8 @@ const Notification = require("../models/Notification");
 const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
 
+const { getIO } = require("../socket");
+
 // @desc    Add a comment to a task
 // @route   POST /api/tasks/:taskId/comments
 exports.addComment = asyncHandler(async (req, res) => {
@@ -52,6 +54,11 @@ exports.addComment = asyncHandler(async (req, res) => {
   await comment.populate("author", "username");
 
   await comment.populate("author", "username");
+
+  getIO().to(board._id.toString()).emit("comment_added", {
+    taskId,
+    comment,
+  });
 
   res.status(201).json({ success: true, data: comment });
 });
@@ -125,6 +132,11 @@ exports.deleteComment = asyncHandler(async (req, res) => {
 
   // 5. Delete the comment
   await comment.deleteOne();
+
+  getIO().to(board._id.toString()).emit("comment_deleted", {
+    taskId: comment.task.toString(),
+    commentId,
+  });
 
   res
     .status(200)

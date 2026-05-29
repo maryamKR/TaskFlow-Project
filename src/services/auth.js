@@ -1,5 +1,5 @@
 import axios from 'axios';
-
+import socket from "../socket"; // eslint-disable-line no-unused-vars
 const API_URL = 'http://localhost:5000/api';
 
 export const api = axios.create({
@@ -25,7 +25,17 @@ export const login = async (email, password) => {
   const response = await api.post('/auth/login', { email, password });
   const { token, username } = response.data;
   localStorage.setItem('token', token);
+  socket.auth = { token };
+  socket.connect();
   localStorage.setItem('username', username);
   localStorage.setItem('email', email);
   return response.data;
 };
+
+
+export const logout = () => {
+  localStorage.removeItem('token');
+  socket.disconnect();
+};
+
+

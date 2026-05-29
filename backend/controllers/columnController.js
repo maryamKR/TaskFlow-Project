@@ -4,6 +4,8 @@ const Task = require('../models/Task');
 const asyncHandler = require('express-async-handler');
 const { hasBoardAccess } = require('../utils/boardAuth');
 
+const { getIO } = require("../socket");
+
 // @desc    Create a column
 // @route   POST /api/columns
 // @access  Private
@@ -30,6 +32,7 @@ const createColumn = asyncHandler(async (req, res) => {
   board.columns.push(column._id);
   await board.save();
 
+  getIO().to(boardId).emit("column_added", { column });
   res.status(201).json({ success: true, data: column });
 });
 
@@ -100,6 +103,8 @@ const deleteColumn = asyncHandler(async (req, res) => {
   await Task.deleteMany({ _id: { $in: column.tasks } });
   
   await column.deleteOne();
+
+  getIO().to(board._id.toString()).emit("column_deleted", { columnId: column._id.toString() });
   
   res.status(200).json({ success: true, message: "Column and associated tasks removed" });
 });

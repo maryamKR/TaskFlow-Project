@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import socket from '../socket';
 import { updateTask, getComments, addComment, deleteComment } from '../services/board';
 import { useTheme } from '../context/ThemeContext';
 
@@ -17,6 +18,28 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const [error, setError] = useState('');
 
   useEffect(() => { fetchComments(); }, []);
+
+
+useEffect(() => {
+  socket.on("comment_added", ({ taskId, comment }) => {
+    if (taskId !== task._id) return;
+    setComments(prev => {
+      const exists = prev.some(c => c._id === comment._id);
+      if (exists) return prev;
+      return [...prev, comment];
+    });
+  });
+
+  socket.on("comment_deleted", ({ taskId, commentId }) => {
+    if (taskId !== task._id) return;
+    setComments(prev => prev.filter(c => c._id !== commentId));
+  });
+
+  return () => {
+    socket.off("comment_added");
+    socket.off("comment_deleted");
+  };
+}, [task._id]);
 
   const fetchComments = async () => {
     setCommentLoading(true);
@@ -54,8 +77,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
     if (!newComment.trim()) return;
     setLoading(true);
     try {
-      const comment = await addComment(task._id, newComment);
-      setComments(prev => [...prev, comment]);
+      await addComment(task._id, newComment);
       setNewComment('');
     } catch (err) {
       console.error('Failed to add comment:', err);
