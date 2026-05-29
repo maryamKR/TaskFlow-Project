@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { createColumn } from '../services/board';
 
 function AddColumnButton({ boardId, onColumnAdded }) {
@@ -32,7 +32,7 @@ function AddColumnButton({ boardId, onColumnAdded }) {
     if (!isOpen) return (
         <button
             onClick={() => setIsOpen(true)}
-            className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200 flex items-center gap-2"
+            className="bg-pink-700 hover:bg-pink-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200 flex items-center gap-2"
         >
             + Add Column
         </button>
@@ -47,7 +47,7 @@ function AddColumnButton({ boardId, onColumnAdded }) {
                     value={title}
                     onChange={(e) => setTitle(e.target.value)}
                     autoFocus
-                    className={`w-full px-3 py-2 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${error ? 'ring-2 ring-red-500' : 'focus:ring-blue-500'
+                    className={`w-full px-3 py-2 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${error ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
                         }`}
                 />
                 {error && <p className="text-red-400 text-xs">{error}</p>}
@@ -55,7 +55,7 @@ function AddColumnButton({ boardId, onColumnAdded }) {
                     <button
                         type="submit"
                         disabled={loading}
-                        className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2 rounded-lg text-sm font-medium transition duration-200 disabled:opacity-50"
+                        className="flex-1 bg-pink-700 hover:bg-pink-800 text-white py-2 rounded-lg text-sm font-medium transition duration-200 disabled:opacity-50"
                     >
                         {loading ? 'Adding...' : 'Add Column'}
                     </button>

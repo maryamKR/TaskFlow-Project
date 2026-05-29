@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useTheme } from '../context/ThemeContext';
@@ -61,20 +61,20 @@ function ProfilePage() {
         <div className={`rounded-2xl p-6 flex items-center gap-6 border ${
           isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
         }`}>
-          <div className="w-20 h-20 rounded-full bg-blue-600 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
+          <div className="w-20 h-20 rounded-full bg-pink-700 flex items-center justify-center text-white text-2xl font-bold flex-shrink-0">
             {initials}
           </div>
           <div className="flex flex-col gap-1">
             <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{profile.username}</h2>
             <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{profile.email || 'No email saved'}</p>
-            <span className="mt-2 inline-block bg-blue-600/20 text-blue-400 text-xs px-3 py-1 rounded-full w-fit">Member</span>
+            <span className="mt-2 inline-block bg-pink-700/20 text-pink-400 text-xs px-3 py-1 rounded-full w-fit">Member</span>
           </div>
         </div>
 
         {/* Stats */}
         <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
           {[
-            { label: 'Boards', value: stats.totalBoards, color: 'text-blue-400' },
+            { label: 'Boards', value: stats.totalBoards, color: 'text-pink-400' },
             { label: 'Total Tasks', value: stats.totalTasks, color: isDark ? 'text-white' : 'text-gray-900' },
             { label: 'Completed', value: stats.completedTasks, color: 'text-green-400' },
             { label: 'High Priority', value: stats.highPriorityTasks, color: 'text-red-400' },
@@ -97,7 +97,7 @@ function ProfilePage() {
             {boards.length === 0 ? (
               <div className="px-6 py-8 text-center">
                 <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>No boards yet</p>
-                <Link to="/board" className="text-blue-400 text-sm hover:underline mt-1 inline-block">
+                <Link to="/board" className="text-pink-400 text-sm hover:underline mt-1 inline-block">
                   Create your first board →
                 </Link>
               </div>
@@ -115,7 +115,7 @@ function ProfilePage() {
                         {taskCount} tasks · {doneCount} done
                       </p>
                     </div>
-                    <Link to="/board" className="text-blue-400 hover:text-blue-300 text-xs transition duration-200">
+                    <Link to="/board" className="text-pink-400 hover:text-blue-300 text-xs transition duration-200">
                       Open →
                     </Link>
                   </div>

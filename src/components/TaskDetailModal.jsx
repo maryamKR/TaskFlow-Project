@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import socket from '../socket';
 import { updateTask, getComments, addComment, deleteComment } from '../services/board';
 import { useTheme } from '../context/ThemeContext';
@@ -95,7 +95,7 @@ useEffect(() => {
     }
   };
 
-  const inputClass = `w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+  const inputClass = `w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
     isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
   }`;
 
@@ -163,7 +163,7 @@ useEffect(() => {
             <button
               onClick={handleSave}
               disabled={saving}
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2 rounded-lg transition duration-200 disabled:opacity-50 text-sm mt-1"
+              className="w-full bg-pink-700 hover:bg-pink-800 text-white font-semibold py-2 rounded-lg transition duration-200 disabled:opacity-50 text-sm mt-1"
             >
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
@@ -184,7 +184,7 @@ useEffect(() => {
                 comments.map(comment => (
                   <div key={comment._id} className={`rounded-xl p-3 flex items-start justify-between gap-2 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
                     <div className="flex gap-2 flex-1">
-                      <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
+                      <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
                         {comment.author?.username?.[0]?.toUpperCase() || '?'}
                       </div>
                       <div>
@@ -214,14 +214,14 @@ useEffect(() => {
                 placeholder="Write a comment..."
                 value={newComment}
                 onChange={(e) => setNewComment(e.target.value)}
-                className={`flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                className={`flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
                   isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
                 }`}
               />
               <button
                 type="submit"
                 disabled={loading || !newComment.trim()}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-medium transition duration-200 disabled:opacity-50"
+                className="px-3 py-2 bg-pink-700 hover:bg-pink-800 text-white rounded-lg text-sm font-medium transition duration-200 disabled:opacity-50"
               >
                 {loading ? '...' : 'Send'}
               </button>

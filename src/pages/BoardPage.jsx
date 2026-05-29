@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import socket from '../socket';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -52,7 +52,6 @@ function BoardPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeType, setActiveType] = useState(null);
-  const [filter, setFilter] = useState({ priority: '', search: '', assignee: '', dueDate: '' });
   const [filter, setFilter] = useState({
     priority: '',
     search: '',
@@ -65,7 +64,6 @@ function BoardPage() {
     activationConstraint: { distance: 8 },
   }));
 
-  const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 8 } }));
   const token = localStorage.getItem('token');
   const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
   const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
@@ -318,7 +316,7 @@ useEffect(() => {
 
   const columnIds = columns.map(c => c._id);
 
-  const inputClass = `px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+  const inputClass = `px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
     isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200'
   }`;
 
@@ -382,7 +380,7 @@ useEffect(() => {
             {!activeBoard && (
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
+                className="bg-pink-700 hover:bg-pink-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
               >
                 + Create your first board
               </button>
@@ -447,7 +445,7 @@ useEffect(() => {
               <p className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No boards yet!</p>
               <button
                 onClick={() => setShowCreateModal(true)}
-                className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition duration-200"
+                className="bg-pink-700 hover:bg-pink-800 text-white px-6 py-3 rounded-lg font-medium transition duration-200"
               >
                 + Create your first board
               </button>
@@ -464,7 +462,7 @@ useEffect(() => {
               onDragEnd={handleDragEnd}
             >
               <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-                <div className="flex gap-4 p-6 overflow-x-auto flex-1">
+                <div className="flex gap-4 p-6 overflow-x-auto flex-1 touch-pan-x">
                   {columns.map(column => (
                     <SortableColumnWrapper key={column._id} column={column}>
                       {({ dragHandleProps }) => (

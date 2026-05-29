@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { deleteBoard, inviteMember, removeMember } from '../services/board';
 import { useTheme } from '../context/ThemeContext';
 
@@ -86,7 +86,7 @@ function Sidebar({
               key={board._id}
               className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition duration-200 ${
                 activeBoard?._id === board._id
-                  ? 'bg-blue-600 text-white'
+                  ? 'bg-pink-700 text-white'
                   : isDark
                     ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
                     : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
@@ -135,7 +135,7 @@ function Sidebar({
                   members.map(member => (
                     <div key={member._id} className="flex items-center justify-between px-1">
                       <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                        <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold">
                           {member.username[0].toUpperCase()}
                         </div>
                         <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
@@ -174,7 +174,7 @@ function Sidebar({
                   placeholder="Email address"
                   value={inviteEmail}
                   onChange={(e) => setInviteEmail(e.target.value)}
-                  className={`w-full px-3 py-2 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  className={`w-full px-3 py-2 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-pink-500 ${
                     isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-200 text-gray-900 placeholder-gray-400'
                   }`}
                 />
@@ -183,7 +183,7 @@ function Sidebar({
                 <button
                   type="submit"
                   disabled={inviteLoading}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-1.5 rounded-lg text-xs font-medium transition duration-200 disabled:opacity-50"
+                  className="w-full bg-pink-700 hover:bg-pink-800 text-white py-1.5 rounded-lg text-xs font-medium transition duration-200 disabled:opacity-50"
                 >
                   {inviteLoading ? 'Inviting...' : 'Send Invite'}
                 </button>

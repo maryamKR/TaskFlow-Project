@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { removeMember } from '../services/board';
 
 function ManageMembersModal({ boardId, members, onClose, onMemberRemoved }) {
@@ -37,7 +37,7 @@ function ManageMembersModal({ boardId, members, onClose, onMemberRemoved }) {
                 className="flex items-center justify-between bg-gray-700 rounded-xl px-4 py-3"
               >
                 <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-sm font-bold">
+                  <div className="w-8 h-8 rounded-full bg-pink-700 flex items-center justify-center text-white text-sm font-bold">
                     {member.username[0].toUpperCase()}
                   </div>
                   <div>
