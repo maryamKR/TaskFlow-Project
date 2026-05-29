@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
@@ -114,7 +114,7 @@ function DashboardPage() {
       <Navbar />
       <div className="px-8 py-6">
 
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between mb-6 gap-3">
           <div>
             <h1 className={`text-3xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Dashboard</h1>
             <p className={`text-sm mt-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Track your team's productivity</p>
@@ -122,12 +122,11 @@ function DashboardPage() {
           <select
             value={selectedBoardId}
             onChange={(e) => handleBoardChange(e.target.value)}
-            className={`px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-              isDark ? 'bg-gray-700 text-white' : 'bg-white text-gray-900 border border-gray-200'
-            }`}
+            className={`px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-white text-gray-900 border border-gray-200'
+              }`}
           >
             {boards.map(board => (
-              <option key={board._id} value={board._id}>{board.title}</option>
+              <option key={board._id} value={board._id}>{board.title.toUpperCase()}</option>
             ))}
           </select>
         </div>
@@ -141,7 +140,7 @@ function DashboardPage() {
           <>
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
               <StatCard label="Total Tasks" value={totalTasks} color={isDark ? 'text-white' : 'text-gray-900'} isDark={isDark} />
-              <StatCard label="In Progress" value={inProgressTasks} color="text-blue-400" isDark={isDark} />
+              <StatCard label="In Progress" value={inProgressTasks} color="text-pink-400" isDark={isDark} />
               <StatCard label="Completed" value={completedTasks} color="text-green-400" isDark={isDark} />
               <StatCard label="High Priority" value={highPriorityTasks} color="text-red-400" isDark={isDark} />
               <StatCard label="Overdue" value={overdueTasks} color="text-orange-400" isDark={isDark} />
@@ -192,7 +191,8 @@ function DashboardPage() {
 
             <div className={`rounded-2xl p-5 ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}>
               <h2 className={`font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>All Tasks ({totalTasks})</h2>
-              <div className="overflow-x-auto">
+              {/* Desktop: table */}
+              <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">
                   <thead>
                     <tr className={`border-b ${isDark ? 'text-gray-400 border-gray-700' : 'text-gray-500 border-gray-200'}`}>
@@ -206,37 +206,47 @@ function DashboardPage() {
                   <tbody>
                     {columns.flatMap(col =>
                       (col.tasks || []).map(task => (
-                        <tr
-                          key={task._id}
-                          className={`border-b transition duration-150 ${
-                            isDark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'
-                          }`}
-                        >
+                        <tr key={task._id} className={`border-b transition duration-150 ${isDark ? 'border-gray-700 hover:bg-gray-700' : 'border-gray-100 hover:bg-gray-50'}`}>
                           <td className={`py-3 font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{task.title}</td>
                           <td className={`py-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{col.title}</td>
                           <td className="py-3">
-                            <span className={`text-xs font-medium flex items-center gap-1.5 ${
-                              task.priority === 'high' ? 'text-red-400' :
-                              task.priority === 'medium' ? 'text-yellow-400' : 'text-green-400'
-                            }`}>
-                              <span className={`inline-block w-2 h-2 rounded-full ${
-                                task.priority === 'high' ? 'bg-red-400' :
-                                task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
-                              }`} />
+                            <span className={`text-xs font-medium flex items-center gap-1.5 ${task.priority === 'high' ? 'text-red-400' : task.priority === 'medium' ? 'text-yellow-400' : 'text-green-400'}`}>
+                              <span className={`inline-block w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' : task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'}`} />
                               {task.priority}
                             </span>
                           </td>
-                          <td className={`py-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {task.assignedTo?.username || '—'}
-                          </td>
-                          <td className={`py-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}
-                          </td>
+                          <td className={`py-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{task.assignedTo?.username || '—'}</td>
+                          <td className={`py-3 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{task.dueDate ? new Date(task.dueDate).toLocaleDateString() : '—'}</td>
                         </tr>
                       ))
                     )}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Mobile: cards */}
+              <div className="md:hidden flex flex-col gap-3">
+                {columns.flatMap(col =>
+                  (col.tasks || []).map(task => (
+                    <div key={task._id} className={`rounded-xl p-3 border ${isDark ? 'bg-gray-700 border-gray-600' : 'bg-gray-50 border-gray-200'}`}>
+                      <div className="flex items-start justify-between gap-2">
+                        <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{task.title}</p>
+                        <span className={`text-xs font-medium flex items-center gap-1 flex-shrink-0 ${task.priority === 'high' ? 'text-red-400' : task.priority === 'medium' ? 'text-yellow-400' : 'text-green-400'}`}>
+                          <span className={`inline-block w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' : task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'}`} />
+                          {task.priority}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{col.title}</span>
+                        {task.dueDate && (
+                          <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                            {new Date(task.dueDate).toLocaleDateString()}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </>

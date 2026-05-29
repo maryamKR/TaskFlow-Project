@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useDroppable } from '@dnd-kit/core';
 import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
@@ -60,7 +60,7 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members }) {
                 </span>
               )}
               {task.assignedTo && typeof task.assignedTo === 'object' && task.assignedTo.username && (
-                <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold">
+                <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold">
                   {task.assignedTo.username[0].toUpperCase()}
                 </div>
               )}

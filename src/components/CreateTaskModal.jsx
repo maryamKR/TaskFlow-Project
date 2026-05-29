@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { createTask } from '../services/board';
 import { useTheme } from '../context/ThemeContext';
 
@@ -26,7 +26,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
     }
   };
 
-  const inputClass = `w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+  const inputClass = `w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
     isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
   }`;
 
@@ -86,7 +86,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition duration-200 disabled:opacity-50"
+              className="flex-1 py-3 rounded-lg bg-pink-700 hover:bg-pink-800 text-white font-semibold transition duration-200 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'Create Task'}
             </button>

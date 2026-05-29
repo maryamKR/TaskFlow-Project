@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { register } from '../services/auth';
 import { useTheme } from '../context/ThemeContext';
 
@@ -47,7 +47,7 @@ function RegisterPage() {
               value={name}
               onChange={(e) => setName(e.target.value)}
               className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
-                errors.name ? 'ring-2 ring-red-500' : 'focus:ring-blue-500'
+                errors.name ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
               } ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`}
             />
             {errors.name && <p className="text-red-400 text-xs mt-1">{errors.name}</p>}
@@ -61,7 +61,7 @@ function RegisterPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
-                errors.email ? 'ring-2 ring-red-500' : 'focus:ring-blue-500'
+                errors.email ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
               } ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`}
             />
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
@@ -75,7 +75,7 @@ function RegisterPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
-                errors.password ? 'ring-2 ring-red-500' : 'focus:ring-blue-500'
+                errors.password ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
               } ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`}
             />
             {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
@@ -86,7 +86,7 @@ function RegisterPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-lg transition duration-200 mt-2 disabled:opacity-50"
+            className="w-full bg-pink-700 hover:bg-pink-800 text-white font-semibold py-3 rounded-lg transition duration-200 mt-2 disabled:opacity-50"
           >
             {loading ? 'Creating account...' : 'Create Account'}
           </button>
@@ -95,7 +95,7 @@ function RegisterPage() {
 
         <p className={`text-center mt-6 text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
           Already have an account?{' '}
-          <a href="/" className="text-blue-400 hover:underline">Sign in</a>
+          <a href="/" className="text-pink-400 hover:underline">Sign in</a>
         </p>
 
       </div>

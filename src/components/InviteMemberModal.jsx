@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { inviteMember, getBoardMembers } from '../services/board';
 
 function InviteMemberModal({ boardId, onClose, onMembersUpdated }) {
@@ -60,7 +60,7 @@ function InviteMemberModal({ boardId, onClose, onMembersUpdated }) {
               onChange={(e) => setEmail(e.target.value)}
               autoFocus
               className={`w-full px-4 py-3 rounded-lg bg-gray-700 text-white placeholder-gray-500 focus:outline-none focus:ring-2 ${
-                error ? 'ring-2 ring-red-500' : 'focus:ring-blue-500'
+                error ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
               }`}
             />
             {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
@@ -78,7 +78,7 @@ function InviteMemberModal({ boardId, onClose, onMembersUpdated }) {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition duration-200 disabled:opacity-50"
+              className="flex-1 py-3 rounded-lg bg-pink-700 hover:bg-pink-800 text-white font-semibold transition duration-200 disabled:opacity-50"
             >
               {loading ? 'Adding...' : 'Add Member ✓'}
             </button>

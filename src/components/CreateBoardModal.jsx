@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { api } from '../services/auth';
 import { useTheme } from '../context/ThemeContext';
 
@@ -52,7 +52,7 @@ function CreateBoardModal({ onClose, onBoardCreated }) {
               onChange={(e) => setTitle(e.target.value)}
               autoFocus
               className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
-                error ? 'ring-2 ring-red-500' : 'focus:ring-blue-500'
+                error ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
               } ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`}
             />
             {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
@@ -69,7 +69,7 @@ function CreateBoardModal({ onClose, onBoardCreated }) {
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 rounded-lg bg-blue-600 hover:bg-blue-700 text-white font-semibold transition duration-200 disabled:opacity-50"
+              className="flex-1 py-3 rounded-lg bg-pink-700 hover:bg-pink-800 text-white font-semibold transition duration-200 disabled:opacity-50"
             >
               {loading ? 'Creating...' : 'Create Board'}
             </button>
