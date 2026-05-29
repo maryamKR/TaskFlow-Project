@@ -28,6 +28,7 @@ export const login = async (email, password) => {
   socket.auth = { token };
   socket.connect();
   localStorage.setItem('username', username);
+  localStorage.setItem('email', email);
   return response.data;
 };
 

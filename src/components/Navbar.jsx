@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -11,12 +12,13 @@ import {
 function Navbar() {
   // 1. Token first
   const token = localStorage.getItem('token');
+  const { isDark, toggleTheme } = useTheme();
 
   // 2. Get username from token
   const getUsername = () => {
-  const username = localStorage.getItem('username') || 'User';
-  return username.charAt(0).toUpperCase() + username.slice(1);
-};
+    const username = localStorage.getItem('username') || 'User';
+    return username.charAt(0).toUpperCase() + username.slice(1);
+  };
   const username = getUsername();
 
   // 3. State
@@ -91,19 +93,26 @@ function Navbar() {
   };
 
   const handleLogout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('username');
-  window.location.href = '/';
-};
+    localStorage.removeItem('token');
+    localStorage.removeItem('username');
+    window.location.href = '/';
+  };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
 
   return (
-    <nav className="bg-gray-800 border-b border-gray-700 px-6 py-4 flex items-center justify-between">
+    <nav className={`border-b px-6 py-4 flex items-center justify-between ${isDark ? 'bg-gray-800 border-gray-700' : 'bg-white border-gray-200'
+      }`}>
 
       {/* Left — Logo */}
       <div className="flex items-center gap-3">
-        <span className="text-blue-500 text-2xl font-bold">⚡</span>
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <polygon
+            points="13,2 4,14 11,14 11,22 20,10 13,10"
+            fill="#3B82F6"
+            strokeLinejoin="round"
+          />
+        </svg>
         <span className="text-white text-xl font-bold">TaskFlow</span>
       </div>
 
@@ -111,13 +120,15 @@ function Navbar() {
       <div className="flex items-center gap-6">
         <Link
           to="/board"
-          className="text-gray-400 hover:text-white transition duration-200 text-sm font-medium"
+          className={`transition duration-200 text-sm font-medium ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+            }`}
         >
           Board
         </Link>
         <Link
           to="/dashboard"
-          className="text-gray-400 hover:text-white transition duration-200 text-sm font-medium"
+          className={`transition duration-200 text-sm font-medium ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+            }`}
         >
           Dashboard
         </Link>
@@ -125,6 +136,24 @@ function Navbar() {
 
       {/* Right */}
       <div className="flex items-center gap-4">
+
+        {/* Theme toggle */}
+        <button
+          onClick={toggleTheme}
+          className={`p-2 rounded-lg transition duration-200 ${isDark ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100'
+            }`}
+          title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDark ? (
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707M17.657 17.657l-.707-.707M6.343 6.343l-.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />
+            </svg>
+          ) : (
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+            </svg>
+          )}
+        </button>
 
         {/* 🔔 Notification Bell */}
         <div className="relative" ref={dropdownRef}>
@@ -185,9 +214,8 @@ function Navbar() {
                   notifications.map(notification => (
                     <div
                       key={notification._id}
-                      className={`flex items-start gap-3 px-4 py-3 border-b border-gray-700 last:border-0 ${
-                        !notification.isRead ? 'bg-gray-750' : ''
-                      }`}
+                      className={`flex items-start gap-3 px-4 py-3 border-b border-gray-700 last:border-0 ${!notification.isRead ? 'bg-gray-750' : ''
+                        }`}
                     >
                       {/* Unread dot */}
                       <div className="mt-1.5 flex-shrink-0">
@@ -241,12 +269,14 @@ function Navbar() {
         </div>
 
         {/* Username */}
-        <span className="text-gray-300 text-sm">{username}</span>
+        <span className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+          {username.charAt(0).toUpperCase() + username.slice(1)}
+        </span>
 
-        {/* Logout */}
         <button
           onClick={handleLogout}
-          className="text-gray-400 hover:text-red-400 text-sm transition duration-200"
+          className={`text-sm transition duration-200 ${isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-500'
+            }`}
         >
           Logout
         </button>
