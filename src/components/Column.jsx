@@ -52,12 +52,19 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
             <p className={`text-xs mt-1 truncate ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{task.description}</p>
           )}
           <div className="flex items-center justify-between mt-3">
-            <span className={`text-xs font-medium flex items-center gap-1 ${priorityColors[task.priority] || 'text-gray-400'}`}>
-              <span className={`inline-block w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' :
-                  task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
-                }`} />
-              {task.priority}
-            </span>
+            <div className="flex items-center gap-2">
+              <span className={`text-xs font-medium flex items-center gap-1 ${priorityColors[task.priority] || 'text-gray-400'}`}>
+                <span className={`inline-block w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' :
+                    task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
+                  }`} />
+                {task.priority}
+              </span>
+              {task.label && task.label !== 'Other' && (
+                <span className={`text-xs px-2 py-0.5 rounded-full ${isDark ? 'bg-gray-600 text-gray-300' : 'bg-gray-200 text-gray-600'}`}>
+                  {task.label}
+                </span>
+              )}
+            </div>
             <div className="flex items-center gap-2">
               {task.dueDate && (
                 <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
