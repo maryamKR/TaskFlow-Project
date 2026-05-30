@@ -6,6 +6,7 @@ const Notification = require("../models/Notification");
 const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
 
+
 const { getIO } = require("../socket");
 
 // @desc    Add a comment to a task
@@ -15,7 +16,7 @@ exports.addComment = asyncHandler(async (req, res) => {
   const { taskId } = req.params;
 
   // 1. Verify task exists
-  const task = await Task.findById(taskId);
+  const task = await Task.findById(taskId).populate("assignedTo");
   if (!task) {
     res.status(404);
     throw new Error("Task not found");
@@ -41,16 +42,30 @@ exports.addComment = asyncHandler(async (req, res) => {
   await task.save();
 
   //notification integration//
-  if (task.assignedTo && task.assignedTo.toString() !== req.user._id.toString()) {
+  const recipients = new Set();
+
+if (task.assignedTo) {
+  recipients.add(task.assignedTo._id.toString());
+}
+
+recipients.add(board.user.toString());
+
+recipients.delete(req.user._id.toString());
+
+// Send notifications
+for (const userId of recipients) {
+  try {
     await Notification.create({
-      user: task.assignedTo,
+      user: userId,
       sender: req.user._id,
-      message: `${req.user.username} commented on your task: ${task.title}`,
+      message: `${req.user.username} commented on: ${task.title}`,
       type: "COMMENT",
       relatedId: taskId,
     });
+  } catch (err) {
+    console.error("NOTIFICATION ERROR:", err.message);
   }
-
+}
   await comment.populate("author", "username");
 
   getIO().to(board._id.toString()).emit("comment_added", {
