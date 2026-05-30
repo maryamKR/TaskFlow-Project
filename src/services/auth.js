@@ -23,12 +23,13 @@ export const register = async (name, email, password) => {
 
 export const login = async (email, password) => {
   const response = await api.post('/auth/login', { email, password });
-  const { token, username } = response.data;
+  const { token, username, _id } = response.data;
   localStorage.setItem('token', token);
   socket.auth = { token };
   socket.connect();
   localStorage.setItem('username', username);
   localStorage.setItem('email', email);
+  localStorage.setItem('userId', _id);
   return response.data;
 };
 

@@ -4,10 +4,11 @@ import { SortableContext, useSortable, verticalListSortingStrategy } from '@dnd-
 import { CSS } from '@dnd-kit/utilities';
 import CreateTaskModal from './CreateTaskModal';
 import TaskDetailModal from './TaskDetailModal';
+import Toast from './Toast';
 import { deleteTask, deleteColumn } from '../services/board';
 import { useTheme } from '../context/ThemeContext';
 
-function TaskCard({ task, onTaskDeleted, onTaskUpdated, members }) {
+function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
   const { isDark } = useTheme();
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: task.id,
@@ -16,6 +17,7 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members }) {
   const [isHovered, setIsHovered] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showDetail, setShowDetail] = useState(false);
+  const [toast, setToast] = useState(null);
 
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
@@ -23,6 +25,10 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members }) {
 
   const handleDelete = async (e) => {
     e.preventDefault(); e.stopPropagation();
+    if (!isOwner) {
+      setToast({ message: 'Only the board owner can delete tasks.', type: 'error' });
+      return;
+    }
     if (deleting) return;
     setDeleting(true);
     try { await deleteTask(task._id); onTaskDeleted(task._id); }
@@ -80,14 +86,17 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members }) {
           </button>
         )}
       </div>
+
       {showDetail && (
         <TaskDetailModal task={task} members={members} onClose={() => setShowDetail(false)} onTaskUpdated={onTaskUpdated} />
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </>
   );
 }
 
-function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColumnDeleted, onTaskUpdated, members, dragHandleProps }) {
+function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColumnDeleted, onTaskUpdated, members, dragHandleProps, isOwner }) {
   const { isDark } = useTheme();
   const { setNodeRef } = useDroppable({ id, data: { type: 'column' } });
   const [showTaskModal, setShowTaskModal] = useState(false);
@@ -95,6 +104,7 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
   const [deleting, setDeleting] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
   const [columnColor, setColumnColor] = useState(color);
+  const [toast, setToast] = useState(null);
 
   const colors = ['bg-gray-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-red-400', 'bg-purple-400', 'bg-pink-400', 'bg-orange-400'];
   const borderColorMap = {
@@ -108,6 +118,10 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
 
   const handleDeleteColumn = async (e) => {
     e.preventDefault(); e.stopPropagation();
+    if (!isOwner) {
+      setToast({ message: 'Only the board owner can delete columns.', type: 'error' });
+      return;
+    }
     if (deleting) return;
     if (!window.confirm(`Delete column "${title}" and all its tasks?`)) return;
     setDeleting(true);
@@ -177,7 +191,14 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
       <div ref={setNodeRef} className="flex flex-col gap-3 min-h-20">
         <SortableContext items={taskIds} strategy={verticalListSortingStrategy}>
           {tasks.map(task => (
-            <TaskCard key={task.id} task={task} members={members} onTaskDeleted={onTaskDeleted} onTaskUpdated={onTaskUpdated} />
+            <TaskCard
+              key={task.id}
+              task={task}
+              members={members}
+              isOwner={isOwner}
+              onTaskDeleted={onTaskDeleted}
+              onTaskUpdated={onTaskUpdated}
+            />
           ))}
         </SortableContext>
       </div>
@@ -185,6 +206,8 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
       {showTaskModal && (
         <CreateTaskModal columnId={id} members={members} onClose={() => setShowTaskModal(false)} onTaskCreated={onTaskCreated} />
       )}
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
