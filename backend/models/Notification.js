@@ -18,12 +18,13 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["COMMENT", "TASK_ASSIGNED", "TASK_UPDATED"],
+      enum: ["COMMENT", "TASK_ASSIGNED", "TASK_UPDATED", "BOARD_INVITATION"],
       required: true,
     },
     relatedId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Task",
+      required: false
     },
     isRead: {
       type: Boolean,

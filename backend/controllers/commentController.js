@@ -115,7 +115,7 @@ exports.deleteComment = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error("You do not have access to this board");
   }
-
+  
   const isAuthor = comment.author.toString() === req.user._id.toString();
   const isOwner = board.user.toString() === req.user._id.toString();
 

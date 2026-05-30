@@ -1,6 +1,7 @@
 const asyncHandler = require("express-async-handler");
 const Board = require("../models/Board");
 const User = require("../models/User");
+const Notification = require("../models/Notification");
 const { hasBoardAccess } = require("../utils/boardAuth");
 
 // @desc    Get all members of a board
@@ -21,6 +22,7 @@ exports.getBoardMembers = asyncHandler(async (req, res) => {
   const members = [board.user, ...board.coworkers];
   res.status(200).json(members);
 });
+
 
 // @desc    Invite a user to a board by email
 // @route   POST /api/boards/:boardId/invite
@@ -60,9 +62,20 @@ exports.inviteMember = asyncHandler(async (req, res) => {
     throw new Error("User is already a member");
   }
 
+  // Update Board
   board.coworkers.push(userToInvite._id);
   await board.save();
 
+  // Create Notification
+  await Notification.create({
+    user: userToInvite._id,     
+    sender: req.user._id,          
+    message: `You have been invited to the board: ${board.title}`,
+    type: "BOARD_INVITATION",
+    relatedId: board._id 
+  });
+
+  // Respond once
   res.status(200).json({
     message: "User invited successfully",
     coworkers: board.coworkers,

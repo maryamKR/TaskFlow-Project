@@ -161,6 +161,7 @@ const updateTask = asyncHandler(async (req, res) => {
       message: `${req.user.username} assigned you to the task: ${task.title}`,
       type: "TASK_ASSIGNED",
       relatedId: task._id,
+      
     });
   } else if (isDetailsChanged) {
     await Notification.create({
@@ -191,12 +192,13 @@ const deleteTask = asyncHandler(async (req, res) => {
 
   if (column) {
     board = await Board.findById(column.board);
-    if (!board || !hasBoardAccess(board, req.user._id)) {
+
+    if (!board || board.user.toString() !== req.user._id.toString()) {
       res.status(403);
-      throw new Error("Not authorized");
+      throw new Error("Only the board owner can delete tasks");
     }
 
-    // Pull from the array
+
     column.tasks.pull(task._id);
     await column.save();
   }
