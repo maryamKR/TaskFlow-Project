@@ -407,7 +407,7 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 
 ### 7. Notification Endpoints
 
-#### Get own Notifications
+#### Get Own Notifications
 *   **URL:** `/notifications`
 *   **Method:** `GET`
 *   **Success Response (200):**
