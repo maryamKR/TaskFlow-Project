@@ -1,5 +1,6 @@
 ﻿import { useState } from 'react';
 import { createTask } from '../services/board';
+import { api } from '../services/auth';
 import { useTheme } from '../context/ThemeContext';
 
 function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
@@ -9,6 +10,25 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
   const [assignee, setAssignee] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const [suggesting, setSuggesting] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState(null);
+
+  const handleSuggestPriority = async () => {
+    if (!title.trim()) { setError('Enter a title first'); return; }
+    setSuggesting(true);
+    setAiSuggestion(null);
+    try {
+      const response = await api.post('/ai/suggest-priority', { title });
+      const suggested = response.data.priority;
+      setPriority(suggested);
+      setAiSuggestion(suggested);
+    } catch (err) {
+      console.error('AI suggestion failed:', err);
+    } finally {
+      setSuggesting(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -57,12 +77,27 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
           </div>
 
           <div>
-            <label className={`text-sm mb-1 block ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Priority</label>
+            <div className="flex items-center justify-between mb-1">
+              <label className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Priority</label>
+              <button
+                type="button"
+                onClick={handleSuggestPriority}
+                disabled={suggesting}
+                className="text-xs text-pink-400 hover:text-pink-300 transition duration-200 disabled:opacity-50"
+              >
+                {suggesting ? '✨ Thinking...' : '✨ AI Suggest'}
+              </button>
+            </div>
             <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>
               <option value="high">High</option>
               <option value="medium">Medium</option>
               <option value="low">Low</option>
             </select>
+            {aiSuggestion && (
+              <p className="text-xs mt-1 text-pink-400">
+                ✨ AI suggested: <span className="font-semibold capitalize">{aiSuggestion}</span>
+              </p>
+            )}
           </div>
 
           <div>
