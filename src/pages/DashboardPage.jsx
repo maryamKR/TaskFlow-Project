@@ -73,7 +73,7 @@ const today = new Date(); today.setHours(0, 0, 0, 0);
     .filter(col => col.title.toLowerCase() === 'done')
     .flatMap(col => col.tasks || [])
     .filter(t => new Date(t.updatedAt).toDateString() === todayStr).length;
-
+    
   const streak = completedToday > 0 ? 1 : 0;
 
   const priorityData = [
