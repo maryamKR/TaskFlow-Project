@@ -13,6 +13,8 @@ const validate = require("../middleware/validate");
 const {
   createColumnSchema,
   updateColumnSchema,
+  getColumnsSchema,
+  columnIdParamSchema,
 } = require("../middleware/validators/columnValidator");
 
 
@@ -21,8 +23,8 @@ router.post("/", protect, validate(createColumnSchema), createColumn);
 router
   .route("/:id")
   .put(protect, validate(updateColumnSchema), updateColumn)
-  .delete(protect, deleteColumn);
+  .delete(protect, validate(columnIdParamSchema), deleteColumn);
 
-router.route("/board/:boardId").get(protect, getColumnsByBoard);
+router.route("/board/:boardId").get(protect, validate(getColumnsSchema), getColumnsByBoard);
 
 module.exports = router;

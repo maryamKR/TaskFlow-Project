@@ -2,6 +2,7 @@ const Task = require("../models/Task");
 const Column = require("../models/Column");
 const Board = require("../models/Board");
 const Notification = require("../models/Notification");
+const Comment = require("../models/Comment");
 const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
 
@@ -155,7 +156,7 @@ const updateTask = asyncHandler(async (req, res) => {
   const isDetailsChanged =
     (req.body.title || req.body.description || req.body.priority) &&
     task.assignedTo &&
-    task.assignedTo.toString() !== req.user._id.toString();
+    task.assignedTo._id.toString() !== req.user._id.toString();
 
   if (isAssigneeChanged) {
     await Notification.create({
@@ -195,14 +196,21 @@ const deleteTask = asyncHandler(async (req, res) => {
   if (column) {
     board = await Board.findById(column.board);
 
-    if (!board || board.user.toString() !== req.user._id.toString()) {
+    const isOwner = board && board.user.toString() === req.user._id.toString();
+    const isCreator = task.createdBy && task.createdBy.toString() === req.user._id.toString();
+
+    if (!isOwner && !isCreator) {
       res.status(403);
-      throw new Error("Only the board owner can delete tasks");
+      throw new Error("Only the board owner or task creator can delete tasks");
     }
 
     column.tasks.pull(task._id);
     await column.save();
   }
+
+  // Cascade delete Comments and Notifications for this task
+  await Comment.deleteMany({ task: task._id });
+  await Notification.deleteMany({ relatedId: task._id });
 
   await task.deleteOne();
 
@@ -231,14 +239,42 @@ const moveTask = asyncHandler(async (req, res) => {
     return res.status(200).json({ success: true, message: "No move needed" });
   }
 
-  // 1. Validate destination column and board access
+  // 1. Validate source column and source board access
+  const sourceColumn = await Column.findById(sourceColumnId);
+  if (!sourceColumn) {
+    res.status(404);
+    throw new Error("Source column not found");
+  }
+
+  const sourceBoard = await Board.findById(sourceColumn.board);
+  if (!sourceBoard || !hasBoardAccess(sourceBoard, req.user._id)) {
+    res.status(403);
+    throw new Error("Not authorized to access the source board");
+  }
+
+  // 2. Validate destination column and board access
   const destColumn = await Column.findById(destinationColumnId);
-  if (!destColumn) throw new Error("Destination column not found");
+  if (!destColumn) {
+    res.status(404);
+    throw new Error("Destination column not found");
+  }
 
   const board = await Board.findById(destColumn.board);
   if (!board || !hasBoardAccess(board, req.user._id)) {
     res.status(403);
-    throw new Error("Not authorized");
+    throw new Error("Not authorized to access the destination board");
+  }
+
+  // 3. Validate task existence and verify it belongs to the source column
+  const task = await Task.findById(taskId);
+  if (!task) {
+    res.status(404);
+    throw new Error("Task not found");
+  }
+
+  if (task.column.toString() !== sourceColumnId) {
+    res.status(400);
+    throw new Error("Task does not belong to the source column");
   }
 
   // 2. Perform atomic array updates and task reference update

@@ -21,6 +21,7 @@
     "jsonwebtoken": "^9.0.3",
     "mongodb": "^7.2.0",
     "mongoose": "^9.6.2",
+    "socket.io": "^4.8.1",
     "zod": "^4.4.3"
   },
   "devDependencies": {

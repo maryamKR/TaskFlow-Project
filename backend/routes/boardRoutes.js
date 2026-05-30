@@ -8,6 +8,10 @@ const validate = require("../middleware/validate");
 // Validators
 const {
   createBoardSchema,
+  inviteMemberSchema,
+  reorderColumnsSchema,
+  boardIdParamSchema,
+  boardMemberParamSchema,
 } = require("../middleware/validators/boardValidator");
 
 // Controllers
@@ -35,15 +39,18 @@ router
   .post(protect, validate(createBoardSchema), createBoard)
   .get(protect, getBoards);
 
-router.route("/:id").get(protect, getBoardById).delete(protect, deleteBoard);
+router
+  .route("/:id")
+  .get(protect, validate(boardIdParamSchema), getBoardById)
+  .delete(protect, validate(boardIdParamSchema), deleteBoard);
 
-router.route("/:boardId/invite").post(protect, inviteMember);
+router.route("/:boardId/invite").post(protect, validate(inviteMemberSchema), inviteMember);
 
-router.put('/:boardId/reorder', protect, reorderColumns);
+router.put('/:boardId/reorder', protect, validate(reorderColumnsSchema), reorderColumns);
 
-router.route("/:boardId/members").get(protect, getBoardMembers);
+router.route("/:boardId/members").get(protect, validate(boardIdParamSchema), getBoardMembers);
 
-router.delete("/:boardId/members/:memberId", protect, removeMember);
+router.delete("/:boardId/members/:memberId", protect, validate(boardMemberParamSchema), removeMember);
 
 
 

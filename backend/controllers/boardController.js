@@ -2,6 +2,8 @@ const asyncHandler = require("express-async-handler");
 const Board = require("../models/Board");
 const Column = require("../models/Column");
 const Task = require("../models/Task");
+const Comment = require("../models/Comment");
+const Notification = require("../models/Notification");
 const { hasBoardAccess } = require('../utils/boardAuth');
 const { getIO } = require("../socket");
 
@@ -74,7 +76,20 @@ const deleteBoard = asyncHandler(async (req, res) => {
         throw new Error("Only the owner can delete this board");
     }
     
-    await Task.deleteMany({ column: { $in: board.columns } });
+    // Find all task IDs within columns of the deleted board
+    const tasks = await Task.find({ column: { $in: board.columns } }).select("_id");
+    const taskIds = tasks.map((t) => t._id);
+
+    // Cascade delete Comments, Notifications, Tasks, and Columns
+    await Comment.deleteMany({ task: { $in: taskIds } });
+    await Notification.deleteMany({
+      $or: [
+        { relatedId: { $in: taskIds } },
+        { relatedId: board._id }
+      ]
+    });
+
+    await Task.deleteMany({ _id: { $in: taskIds } });
     await Column.deleteMany({ board: board._id });
     await board.deleteOne();
 

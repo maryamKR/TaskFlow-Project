@@ -15,8 +15,25 @@ const updateColumnSchema = z.object({
     position: z.number().optional(),
   }),
   params: z.object({
-    id: z.string().min(1), 
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Column ID format"), 
   }),
 });
 
-module.exports = { createColumnSchema, updateColumnSchema};
+const getColumnsSchema = z.object({
+  params: z.object({
+    boardId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Board ID format"),
+  }),
+});
+
+const columnIdParamSchema = z.object({
+  params: z.object({
+    id: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Column ID format"),
+  }),
+});
+
+module.exports = {
+  createColumnSchema,
+  updateColumnSchema,
+  getColumnsSchema,
+  columnIdParamSchema,
+};

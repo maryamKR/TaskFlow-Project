@@ -57,7 +57,7 @@ exports.inviteMember = asyncHandler(async (req, res) => {
     throw new Error("You cannot invite yourself to your own board");
   }
 
-  if (board.coworkers.includes(userToInvite._id)) {
+  if (board.coworkers.some((id) => id.toString() === userToInvite._id.toString())) {
     res.status(400);
     throw new Error("User is already a member");
   }

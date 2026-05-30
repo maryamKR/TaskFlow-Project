@@ -41,4 +41,27 @@ const getTasksQuerySchema = z.object({
   }),
 });
 
-module.exports = { createTaskSchema, updateTaskSchema,getTasksQuerySchema };
+const moveTaskSchema = z.object({
+  body: z.object({
+    taskId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Task ID format"),
+    sourceColumnId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Source Column ID format"),
+    destinationColumnId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Destination Column ID format"),
+  }),
+});
+
+const reorderTaskSchema = z.object({
+  body: z.object({
+    taskIds: z.array(z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Task ID format")),
+  }),
+  params: z.object({
+    columnId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Column ID format"),
+  }),
+});
+
+module.exports = {
+  createTaskSchema,
+  updateTaskSchema,
+  getTasksQuerySchema,
+  moveTaskSchema,
+  reorderTaskSchema,
+};

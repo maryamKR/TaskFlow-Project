@@ -24,6 +24,11 @@ exports.addComment = asyncHandler(async (req, res) => {
 
   // 2. Fetch Board to check access
   const column = await Column.findById(task.column);
+  if (!column) {
+    res.status(404);
+    throw new Error("Column associated with this task not found");
+  }
+
   const board = await Board.findById(column.board);
 
   if (!board || !hasBoardAccess(board, req.user._id)) {
@@ -44,13 +49,21 @@ exports.addComment = asyncHandler(async (req, res) => {
   //notification integration//
   const recipients = new Set();
 
-if (task.assignedTo) {
-  recipients.add(task.assignedTo._id.toString());
-}
+  // Notify the person the task was assigned to
+  if (task.assignedTo) {
+    recipients.add(task.assignedTo._id.toString());
+  }
 
-recipients.add(board.user.toString());
+  // Notify the person who created the task
+  if (task.createdBy) {
+    recipients.add(task.createdBy.toString());
+  }
 
-recipients.delete(req.user._id.toString());
+  // Notify the board owner (for moderation)
+  recipients.add(board.user.toString());
+
+  // Never notify the person who just commented
+  recipients.delete(req.user._id.toString());
 
 // Send notifications
 for (const userId of recipients) {
@@ -88,6 +101,11 @@ exports.getComments = asyncHandler(async (req, res) => {
   }
 
   const column = await Column.findById(task.column);
+  if (!column) {
+    res.status(404);
+    throw new Error("Column associated with this task not found");
+  }
+
   const board = await Board.findById(column.board);
 
   if (!board || !hasBoardAccess(board, req.user._id)) {
@@ -122,6 +140,11 @@ exports.deleteComment = asyncHandler(async (req, res) => {
 
   // 2. Fetch Board to check access
   const column = await Column.findById(task.column);
+  if (!column) {
+    res.status(404);
+    throw new Error("Column associated with this task not found");
+  }
+
   const board = await Board.findById(column.board);
 
   if (!board || !hasBoardAccess(board, req.user._id)) {

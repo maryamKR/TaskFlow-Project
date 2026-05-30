@@ -1,6 +1,8 @@
 const Column = require('../models/Column');
 const Board = require('../models/Board');
 const Task = require('../models/Task');
+const Comment = require('../models/Comment');
+const Notification = require('../models/Notification');
 const asyncHandler = require('express-async-handler');
 const { hasBoardAccess } = require('../utils/boardAuth');
 
@@ -100,6 +102,10 @@ const deleteColumn = asyncHandler(async (req, res) => {
 
   // Cleanup: Remove reference from board and delete all tasks inside
   await Board.findByIdAndUpdate(column.board, { $pull: { columns: column._id } });
+  
+  // Cascade delete Comments and Notifications for these tasks
+  await Comment.deleteMany({ task: { $in: column.tasks } });
+  await Notification.deleteMany({ relatedId: { $in: column.tasks } });
   await Task.deleteMany({ _id: { $in: column.tasks } });
   
   await column.deleteOne();
