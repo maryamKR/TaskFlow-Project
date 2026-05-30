@@ -74,9 +74,10 @@ const updateColumn = asyncHandler(async (req, res) => {
     throw new Error("Not authorized to update this column");
   }
 
+  const { title } = req.body;
   const updatedColumn = await Column.findByIdAndUpdate(
     req.params.id,
-    req.body,
+    { title },
     { returnDocument: 'after', runValidators: true }
   );
 

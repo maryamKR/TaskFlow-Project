@@ -12,7 +12,7 @@ const { getIO } = require("../socket");
 // @route   POST /api/tasks
 // @access  Private
 const createTask = asyncHandler(async (req, res) => {
-  const { title, columnId, description, priority, dueDate, assignedTo } =
+  const { title, columnId, description, priority, dueDate, assignedTo, label } =
     req.body;
 
   // 1. Ensure the column exists
@@ -39,6 +39,7 @@ const createTask = asyncHandler(async (req, res) => {
     title,
     description,
     priority,
+    label: label || null,
     dueDate,
     assignedTo: assignedTo || null,
     column: columnId,
@@ -89,8 +90,11 @@ const getTask = asyncHandler(async (req, res) => {
     throw new Error("Task not found");
   }
 
-  const column = await Column.findOne({ tasks: req.params.id });
-  if (!column) throw new Error("Task not found in any column");
+  const column = await Column.findById(task.column);
+  if (!column) {
+    res.status(404);
+    throw new Error("Task not found in any column");
+  }
   const board = await Board.findById(column.board);
 
   if (!board || !hasBoardAccess(board, req.user._id)) {
@@ -105,18 +109,20 @@ const getTask = asyncHandler(async (req, res) => {
 // @route   PUT /api/tasks/:id
 // @access  Private
 const updateTask = asyncHandler(async (req, res) => {
-  console.log("User:", req.user); // Check if this prints 'undefined'
-  console.log("Params:", req.params);
   const task = await Task.findById(req.params.id);
-  const oldAssignee = task.assignedTo;
 
   if (!task) {
     res.status(404);
     throw new Error("Task not found");
   }
 
-  const column = await Column.findOne({ tasks: req.params.id });
-  if (!column) throw new Error("Task not found in any column");
+  const oldAssignee = task.assignedTo;
+
+  const column = await Column.findById(task.column);
+  if (!column) {
+    res.status(404);
+    throw new Error("Task not found in any column");
+  }
   const board = await Board.findById(column.board);
 
   if (!board || !hasBoardAccess(board, req.user._id)) {
@@ -311,12 +317,25 @@ const reorderTask = asyncHandler(async (req, res) => {
   const { columnId } = req.params;
 
   const column = await Column.findById(columnId);
-  if (!column) throw new Error("Column not found");
+  if (!column) {
+    res.status(404);
+    throw new Error("Column not found");
+  }
 
   const board = await Board.findById(column.board);
   if (!board || !hasBoardAccess(board, req.user._id)) {
     res.status(403);
     throw new Error("Not authorized to reorder this board");
+  }
+
+  // Validate that all provided task IDs belong to this column
+  const existingTaskIds = new Set(column.tasks.map((id) => id.toString()));
+  const allBelong =
+    taskIds.length === column.tasks.length &&
+    taskIds.every((id) => existingTaskIds.has(id));
+  if (!allBelong) {
+    res.status(400);
+    throw new Error("Invalid reorder: Task IDs do not match this column's tasks");
   }
 
   // 2. Perform the update

@@ -119,6 +119,14 @@ const reorderColumns = asyncHandler(async (req, res) => {
     throw new Error("Invalid reorder: Column count mismatch");
   }
 
+  // Validate every incoming ID actually belongs to this board
+  const boardColumnSet = new Set(board.columns.map((id) => id.toString()));
+  const allBelong = columnIds.every((id) => boardColumnSet.has(id));
+  if (!allBelong) {
+    res.status(400);
+    throw new Error("Invalid reorder: One or more column IDs do not belong to this board");
+  }
+
   board.columns = columnIds;
   await board.save();
 

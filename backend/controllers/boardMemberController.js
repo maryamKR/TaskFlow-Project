@@ -19,6 +19,11 @@ exports.getBoardMembers = asyncHandler(async (req, res) => {
     throw new Error("Board not found");
   }
 
+  if (!hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("You do not have access to this board");
+  }
+
   const members = [board.user, ...board.coworkers];
   res.status(200).json(members);
 });
@@ -93,9 +98,9 @@ exports.removeMember = asyncHandler(async (req, res) => {
     throw new Error("Board not found");
   }
 
-  if (!hasBoardAccess(board, req.user._id)) {
+  if (board.user.toString() !== req.user._id.toString()) {
     res.status(403);
-    throw new Error("You do not have access to this board");
+    throw new Error("Only the board owner can remove members");
   }
 
   // Prevent owner from removing themselves

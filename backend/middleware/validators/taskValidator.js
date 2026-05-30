@@ -6,6 +6,10 @@ const createTaskSchema = z.object({
     columnId: z.string().regex(/^[0-9a-fA-F]{24}$/, "Invalid Column ID format"),
     description: z.string().optional(),
     priority: z.enum(["low", "medium", "high"]).default("medium"),
+    label: z
+      .enum(["Bug", "Frontend", "Backend", "Documentation", "DevOps", "Design", "Testing", "Feature", "Other"])
+      .nullable()
+      .optional(),
     dueDate: z.string().datetime().nullable().optional(),
     assignedTo: z
       .string()
