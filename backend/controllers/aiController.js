@@ -60,4 +60,37 @@ const suggestPriority = asyncHandler(async (req, res) => {
   }
 });
 
-module.exports = { suggestPriority };
+
+const autoLabel = asyncHandler(async (req, res) => {
+  const { title, description } = req.body;
+
+  if (!title) {
+    res.status(400);
+    throw new Error("Task title is required");
+  }
+
+  const text = `${title} ${description || ''}`.toLowerCase();
+
+  const labels = [
+    { label: 'Bug', keywords: ['bug', 'fix', 'crash', 'error', 'broken', 'issue', 'problem', 'fail'] },
+    { label: 'Frontend', keywords: ['ui', 'ux', 'design', 'page', 'component', 'style', 'css', 'layout', 'button', 'modal', 'dashboard'] },
+    { label: 'Backend', keywords: ['api', 'endpoint', 'server', 'database', 'db', 'route', 'controller', 'model', 'query'] },
+    { label: 'Documentation', keywords: ['docs', 'documentation', 'readme', 'guide', 'wiki', 'comment', 'write'] },
+    { label: 'DevOps', keywords: ['deploy', 'deployment', 'ci', 'cd', 'docker', 'production', 'server', 'hosting', 'vercel', 'railway'] },
+    { label: 'Testing', keywords: ['test', 'testing', 'unit', 'e2e', 'jest', 'spec', 'qa'] },
+    { label: 'Feature', keywords: ['add', 'create', 'build', 'implement', 'feature', 'new', 'develop'] },
+    { label: 'Design', keywords: ['figma', 'mockup', 'wireframe', 'prototype', 'graphic', 'logo'] },
+  ];
+
+  let detectedLabel = 'Other';
+  for (const { label, keywords } of labels) {
+    if (keywords.some(k => text.includes(k))) {
+      detectedLabel = label;
+      break;
+    }
+  }
+
+  res.status(200).json({ success: true, label: detectedLabel });
+});
+
+module.exports = { suggestPriority, autoLabel };

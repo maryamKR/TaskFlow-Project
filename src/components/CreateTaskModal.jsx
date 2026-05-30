@@ -13,6 +13,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
 
   const [suggesting, setSuggesting] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState(null);
+  const [label, setLabel] = useState(null);
 
   const handleSuggestPriority = async () => {
     if (!title.trim()) { setError('Enter a title first'); return; }
@@ -30,13 +31,23 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
     }
   };
 
+  const handleAutoLabel = async (taskTitle) => {
+    if (!taskTitle.trim()) return;
+    try {
+      const response = await api.post('/ai/auto-label', { title: taskTitle });
+      setLabel(response.data.label);
+    } catch (err) {
+      console.error('Auto-label failed:', err);
+    }
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!title.trim()) { setError('Task title is required'); return; }
     setLoading(true);
     setError('');
     try {
-      const newTask = await createTask({ title, columnId, priority, assignedTo: assignee || undefined });
+      const newTask = await createTask({ title, columnId, priority, assignedTo: assignee || undefined, label });
       onTaskCreated(columnId, newTask);
       onClose();
     } catch (err) {
@@ -69,11 +80,20 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
               type="text"
               placeholder="e.g. Build login page"
               value={title}
-              onChange={(e) => setTitle(e.target.value)}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                handleAutoLabel(e.target.value);
+              }}
               autoFocus
               className={`${inputClass} ${error ? 'ring-2 ring-red-500' : ''}`}
             />
             {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
+            {label && (
+              <p className="text-xs mt-1 text-blue-400">
+                Auto-label: <span className="font-semibold">{label}</span>
+              </p>
+            )}
+            
           </div>
 
           <div>

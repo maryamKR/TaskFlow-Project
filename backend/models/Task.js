@@ -16,6 +16,11 @@ const taskSchema = new mongoose.Schema(
       enum: ["low", "medium", "high"],
       default: "medium",
     },
+    label: {
+      type: String,
+      enum: ["Bug", "Frontend", "Backend", "Documentation", "DevOps", "Design", "Testing", "Feature", "Other"],
+      default: null,
+    },
     assignedTo: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
