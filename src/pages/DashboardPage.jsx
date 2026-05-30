@@ -66,6 +66,15 @@ function DashboardPage() {
   const completedTasks = columns.filter(col => col.title.toLowerCase() === 'done').flatMap(col => col.tasks || []).length;
   const inProgressTasks = columns.filter(col => col.title.toLowerCase().includes('progress')).flatMap(col => col.tasks || []).length;
   const highPriorityTasks = allTasks.filter(t => t.priority === 'high').length;
+const today = new Date(); today.setHours(0, 0, 0, 0);
+  const xp = completedTasks * 10;
+  const todayStr = today.toDateString();
+  const completedToday = columns
+    .filter(col => col.title.toLowerCase() === 'done')
+    .flatMap(col => col.tasks || [])
+    .filter(t => new Date(t.updatedAt).toDateString() === todayStr).length;
+
+  const streak = completedToday > 0 ? 1 : 0;
 
   const priorityData = [
     { name: 'High', value: allTasks.filter(t => t.priority === 'high').length, color: '#EF4444' },
@@ -79,7 +88,7 @@ function DashboardPage() {
     color: COLUMN_COLORS[i % COLUMN_COLORS.length],
   }));
 
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+  
   const overdueTasks = allTasks.filter(t => t.dueDate && new Date(t.dueDate) < today).length;
   const dueSoonTasks = allTasks.filter(t => {
     if (!t.dueDate) return false;
@@ -127,13 +136,15 @@ function DashboardPage() {
           </div>
         ) : (
           <>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
               <StatCard label="Total Tasks" value={totalTasks} color={isDark ? 'text-white' : 'text-gray-900'} isDark={isDark} />
               <StatCard label="In Progress" value={inProgressTasks} color="text-pink-400" isDark={isDark} />
               <StatCard label="Completed" value={completedTasks} color="text-green-400" isDark={isDark} />
               <StatCard label="High Priority" value={highPriorityTasks} color="text-red-400" isDark={isDark} />
               <StatCard label="Overdue" value={overdueTasks} color="text-orange-400" isDark={isDark} />
               <StatCard label="Due Soon" value={dueSoonTasks} color="text-yellow-400" isDark={isDark} />
+              <StatCard label="XP" value={xp} color="text-purple-400" isDark={isDark} />
+              <StatCard label="Streak" value={`${streak} day${streak !== 1 ? 's' : ''}`} color="text-orange-400" isDark={isDark} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
@@ -243,5 +254,6 @@ function DashboardPage() {
     </div>
   );
 }
+
 
 export default DashboardPage;
