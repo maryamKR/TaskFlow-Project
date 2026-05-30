@@ -407,7 +407,7 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 
 ### 7. Notification Endpoints
 
-#### Get own Notifications
+#### Get Own Notifications
 *   **URL:** `/notifications`
 *   **Method:** `GET`
 *   **Success Response (200):**
@@ -420,7 +420,7 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
           "_id": "60d5f7...",
           "user": "60d5ec...",
           "sender": { "_id": "60d5ed...", "username": "jane_doe" },
-          "type": "task_assigned",
+          "type": "TASK_ASSIGNED",
           "message": "jane_doe assigned you to 'Fix Auth Bug'",
           "isRead": false,
           "createdAt": "2023-10-27T11:00:00Z"

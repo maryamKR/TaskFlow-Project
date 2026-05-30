@@ -40,9 +40,11 @@ const createTask = asyncHandler(async (req, res) => {
     priority,
     dueDate,
     assignedTo: assignedTo || null,
-    column: columnId, //
+    column: columnId,
+    createdBy: req.user._id,
   });
 
+  await task.populate("createdBy", "username");
   await task.populate("assignedTo", "username");
 
   //Notification Trigger//
@@ -78,6 +80,7 @@ const createTask = asyncHandler(async (req, res) => {
 const getTask = asyncHandler(async (req, res) => {
   const task = await Task.findById(req.params.id)
     .populate("assignedTo", "username")
+    .populate("createdBy", "username")
     .populate("comments");
 
   if (!task) {
@@ -141,7 +144,7 @@ const updateTask = asyncHandler(async (req, res) => {
   /*
     1. isAssigneeChanged: Triggers when the task is handed off to a new user.
     2. isDetailsChanged: Triggers when task content (title/desc/priority) is modified.
-    3.Prevents self-notification and ensures one notification per request./*
+    3.Prevents self-notification and ensures one notification per request.
     */
 
   const isAssigneeChanged =
@@ -191,12 +194,12 @@ const deleteTask = asyncHandler(async (req, res) => {
 
   if (column) {
     board = await Board.findById(column.board);
-    if (!board || !hasBoardAccess(board, req.user._id)) {
+
+    if (!board || board.user.toString() !== req.user._id.toString()) {
       res.status(403);
-      throw new Error("Not authorized");
+      throw new Error("Only the board owner can delete tasks");
     }
 
-    // Pull from the array
     column.tasks.pull(task._id);
     await column.save();
   }
@@ -300,8 +303,15 @@ const reorderTask = asyncHandler(async (req, res) => {
 // @route   GET /api/tasks?boardId=...&columnId=...&assignedTo=...&priority=...
 // @access  Private
 const getTasks = asyncHandler(async (req, res) => {
-  const { boardId, columnId, assignedTo, priority, search, startDate, endDate} = req.query;
-
+  const {
+    boardId,
+    columnId,
+    assignedTo,
+    priority,
+    search,
+    startDate,
+    endDate,
+  } = req.query;
 
   const board = await Board.findById(boardId);
 
@@ -309,7 +319,7 @@ const getTasks = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Board not found");
   }
-  
+
   if (!hasBoardAccess(board, req.user._id)) {
     res.status(403);
     throw new Error("Not authorized");
@@ -334,7 +344,9 @@ const getTasks = asyncHandler(async (req, res) => {
     if (endDate) query.dueDate.$lte = new Date(endDate);
   }
 
-  const tasks = await Task.find(query).populate("assignedTo", "username");
+  const tasks = await Task.find(query)
+    .populate("assignedTo", "username")
+    .populate("createdBy", "username");
 
   res.status(200).json({ success: true, count: tasks.length, data: tasks });
 });

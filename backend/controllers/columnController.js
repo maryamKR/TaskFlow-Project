@@ -40,7 +40,7 @@ const createColumn = asyncHandler(async (req, res) => {
 // @route   GET /api/columns/board/:boardId
 // @access  Private
 const getColumnsByBoard = asyncHandler(async (req, res) => {
-  const board = await Board.findById(req.params.boardId).populate('columns');;
+  const board = await Board.findById(req.params.boardId).populate('columns');
   if (!board) {
     res.status(404);
     throw new Error("Board not found");
@@ -93,9 +93,9 @@ const deleteColumn = asyncHandler(async (req, res) => {
   }
 
   const board = await Board.findById(column.board);
-  if (!board || !hasBoardAccess(board, req.user._id)) {
+  if (!board || board.user.toString() !== req.user._id.toString()) {
     res.status(403);
-    throw new Error("Not authorized to delete this column");
+    throw new Error("Only the board owner can delete columns");
   }
 
   // Cleanup: Remove reference from board and delete all tasks inside

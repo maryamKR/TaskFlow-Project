@@ -29,7 +29,7 @@ const taskSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "Column",
       required: true,
-      index: true, // Ensuring every task belongs to a column and is indexed
+      index: true,
     },
     comments: [
       {
@@ -37,6 +37,11 @@ const taskSchema = new mongoose.Schema(
         ref: "Comment",
       },
     ],
+    createdBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "User",
+    required: false
+  },
   },
   { timestamps: true }
 );
