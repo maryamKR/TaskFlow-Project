@@ -1,6 +1,9 @@
+const dotenv = require("dotenv");
+// Load env
+dotenv.config();
+
 const express = require("express");
 const cors = require("cors");
-const dotenv = require("dotenv");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const boardRoutes = require("./routes/boardRoutes");
@@ -9,13 +12,14 @@ const taskRoutes = require("./routes/taskRoutes");
 const commentRoutes = require("./routes/commentRoutes");
 const notificationRoutes = require("./routes/notificationRoutes");
 
+const aiRoutes = require("./routes/aiRoutes");
+
 const http = require("http");
 const { initSocket } = require("./socket");
 
 const errorHandler = require("./middleware/errorHandler");
 
-// Load env
-dotenv.config();
+
 
 const app = express();
 
@@ -45,7 +49,7 @@ app.use("/api/columns", columnRoutes);
 app.use("/api/tasks", taskRoutes);
 app.use("/api", commentRoutes);
 app.use("/api/notifications", notificationRoutes);
-
+app.use("/api/ai", aiRoutes);
 // Centralized Error Handler Middleware
 app.use(errorHandler);
 
