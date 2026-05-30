@@ -40,9 +40,11 @@ const createTask = asyncHandler(async (req, res) => {
     priority,
     dueDate,
     assignedTo: assignedTo || null,
-    column: columnId, //
+    column: columnId,
+    createdBy: req.user._id,
   });
 
+  await task.populate("createdBy", "username");
   await task.populate("assignedTo", "username");
 
   //Notification Trigger//
@@ -78,6 +80,7 @@ const createTask = asyncHandler(async (req, res) => {
 const getTask = asyncHandler(async (req, res) => {
   const task = await Task.findById(req.params.id)
     .populate("assignedTo", "username")
+    .populate("createdBy", "username")
     .populate("comments");
 
   if (!task) {
@@ -161,7 +164,6 @@ const updateTask = asyncHandler(async (req, res) => {
       message: `${req.user.username} assigned you to the task: ${task.title}`,
       type: "TASK_ASSIGNED",
       relatedId: task._id,
-      
     });
   } else if (isDetailsChanged) {
     await Notification.create({
@@ -197,7 +199,6 @@ const deleteTask = asyncHandler(async (req, res) => {
       res.status(403);
       throw new Error("Only the board owner can delete tasks");
     }
-
 
     column.tasks.pull(task._id);
     await column.save();
@@ -302,8 +303,15 @@ const reorderTask = asyncHandler(async (req, res) => {
 // @route   GET /api/tasks?boardId=...&columnId=...&assignedTo=...&priority=...
 // @access  Private
 const getTasks = asyncHandler(async (req, res) => {
-  const { boardId, columnId, assignedTo, priority, search, startDate, endDate} = req.query;
-
+  const {
+    boardId,
+    columnId,
+    assignedTo,
+    priority,
+    search,
+    startDate,
+    endDate,
+  } = req.query;
 
   const board = await Board.findById(boardId);
 
@@ -311,7 +319,7 @@ const getTasks = asyncHandler(async (req, res) => {
     res.status(404);
     throw new Error("Board not found");
   }
-  
+
   if (!hasBoardAccess(board, req.user._id)) {
     res.status(403);
     throw new Error("Not authorized");
@@ -336,7 +344,9 @@ const getTasks = asyncHandler(async (req, res) => {
     if (endDate) query.dueDate.$lte = new Date(endDate);
   }
 
-  const tasks = await Task.find(query).populate("assignedTo", "username");
+  const tasks = await Task.find(query)
+    .populate("assignedTo", "username")
+    .populate("createdBy", "username");
 
   res.status(200).json({ success: true, count: tasks.length, data: tasks });
 });
