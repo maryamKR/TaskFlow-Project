@@ -240,12 +240,14 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 *   **URL:** `/tasks`
 *   **Method:** `POST`
 *   **Body:**
+*   **Accepted Labels:** `Bug`, `Frontend`, `Backend`, `Documentation`, `DevOps`, `Design`, `Testing`, `Feature`, `Other`
     ```json
     {
       "title": "Fix Auth Bug",
       "columnId": "60d5ef...",
       "description": "Token is not being cleared on logout",
       "priority": "high",
+      "label": "Bug",
       "dueDate": "2023-12-31T12:00:00Z",
       "assignedTo": "60d5ed..."
     }
@@ -259,6 +261,7 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
         "title": "Fix Auth Bug", 
         "column": "60d5ef...",
         "priority": "high",
+        "label": "Bug",
         ... 
       } 
     }

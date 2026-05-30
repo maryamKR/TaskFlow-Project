@@ -38,27 +38,27 @@ Manages the lifecycle of project boards.
 ### Board Member Controller (`boardMemberController.js`)
 Handles collaboration and permissions.
 
-*   `getBoardMembers(req, res)`: Retrieves a list of all users (owner + coworkers) associated with a board.
+*   `getBoardMembers(req, res)`: Retrieves a list of all users (owner + coworkers) associated with a board. Enforces authorization checks via `hasBoardAccess`.
 *   `inviteMember(req, res)`: Adds a user to the `coworkers` array by their email. Restricts invitations to board owners only. Triggers a `BOARD_INVITATION` notification.
-*   `removeMember(req, res)`: Removes a user from the `coworkers` array. Prevents removing the board owner.
+*   `removeMember(req, res)`: Removes a user from the `coworkers` array. Restricts removal permissions to the board owner only, preventing coworkers from removing other members. Prevents removing the board owner.
 
 ### Column Controller (`columnController.js`)
 Manages task groupings within boards.
 
 *   `createColumn(req, res)`: Adds a new column to a board and updates the board's column reference list.
 *   `getColumnsByBoard(req, res)`: Retrieves all columns for a specific board.
-*   `updateColumn(req, res)`: Updates the title of an existing column.
+*   `updateColumn(req, res)`: Updates the title of an existing column. Explicitly destructures only `title` from `req.body` to prevent unauthorized field overwrites.
 *   `deleteColumn(req, res)`: Removes a column and deletes all tasks contained within it.
 
 ### Task Controller (`taskController.js`)
 The core logic for task management and real-time updates.
 
-*   `createTask(req, res)`: Creates a task, assigns it to a column, and triggers a `TASK_ASSIGNED` notification if an assignee is specified. Emits `task_created` socket event.
+*   `createTask(req, res)`: Creates a task with optional fields like `label`, assigns it to a column, and triggers a `TASK_ASSIGNED` notification if an assignee is specified. Emits `task_created` socket event.
 *   `getTask(req, res)`: Retrieves detailed information for a single task, including comments.
 *   `updateTask(req, res)`: Modifies task details (title, priority, etc.). Triggers `TASK_UPDATED` or `TASK_ASSIGNED` notifications as needed. Emits `task_updated` socket event.
 *   `deleteTask(req, res)`: Removes a task and cleans up the reference in the parent column. Emits `task_deleted` socket event.
 *   `moveTask(req, res)`: Moves a task between columns. Synchronizes pointers in both columns and the task itself. Emits `task_moved` socket event.
-*   `reorderTask(req, res)`: Reorders tasks within a single column. Emits `tasks_reordered` socket event.
+*   `reorderTask(req, res)`: Reorders tasks within a single column. Enforces ownership validation checking that all task IDs belong to that column before saving. Emits `tasks_reordered` socket event.
 *   `getTasks(req, res)`: A versatile query method supporting search, priority filters, assignee filters, and date range filtering.
 
 ### Comment Controller (`commentController.js`)
@@ -106,10 +106,10 @@ TaskFlow uses Socket.io for live collaboration. Events are broadcast to rooms na
 
 ## 5. Models (Schemas)
 
-*   **User:** Stores credentials and profile info. Uses `bcrypt` for password hashing.
+*   **User:** Stores credentials and profile info. Uses `bcrypt` for password hashing and has timestamps (`createdAt`, `updatedAt`) enabled automatically.
 *   **Board:** Tracks ownership (`user`), collaborators (`coworkers`), and the ordered list of `columns`.
 *   **Column:** Represents a vertical list. Holds a reference to the `board` and an ordered array of `tasks`.
-*   **Task:** The central unit of work. Includes fields for `priority`, `dueDate`, `assignedTo`, and `comments`. Supports text indexing for search.
+*   **Task:** The central unit of work. Includes fields for `priority`, `dueDate`, `assignedTo`, `label`, and `comments`. Supports text indexing for search.
 *   **Comment:** Simple text entries linked to a `task` and an `author`.
 *   **Notification:** Persistent alerts for users. Stores `message`, `type`, and `relatedId` (e.g., a Task ID). Uses uppercase enums: `COMMENT`, `TASK_ASSIGNED`, `TASK_UPDATED`, `BOARD_INVITATION`.
 
@@ -118,7 +118,7 @@ TaskFlow uses Socket.io for live collaboration. Events are broadcast to rooms na
 ## 6. Utilities
 
 ### Board Auth (`boardAuth.js`)
-*   `hasBoardAccess(board, userId)`: Determines if a user has permission to view or modify a board. It handles both owner and coworker checks, accounting for unpopulated Mongoose ID strings.
+*   `hasBoardAccess(board, userId)`: Determines if a user has permission to view or modify a board. It handles both owner and coworker checks, safely unpacking both unpopulated ObjectIDs and populated User document objects.
 
 ### Socket Utility (`socket.js`)
 *   `initSocket(server)`: Initializes the Socket.io instance.

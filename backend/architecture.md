@@ -69,20 +69,21 @@ backend/
 
 ### B. Collaboration & Member Management
 TaskFlow supports multi-user collaboration on boards:
-- **Ownership:** Every board has a primary `user` (owner) who has full administrative rights (e.g., deleting the board, inviting members).
+- **Ownership:** Every board has a primary `user` (owner) who has full administrative rights (e.g., deleting the board, inviting members, removing coworkers). Coworkers cannot remove other members.
 - **Coworkers:** Owners can invite other registered users to their boards via email. Invited users are added to the `coworkers` array in the Board document.
-- **Access Control:** The `boardAuth.js` utility provides a `hasBoardAccess` check that allows both the owner and coworkers to view and modify columns/tasks, while restricting destructive actions like board deletion to the owner only.
+- **Access Control:** The `boardAuth.js` utility provides a `hasBoardAccess` check that allows both the owner and coworkers to view and modify columns/tasks, while restricting destructive actions like board deletion to the owner only. The `getBoardMembers` route requires `hasBoardAccess` authorization to prevent unauthorized access to member lists. The access utility safely handles both raw ObjectIDs and fully populated User document objects.
 
 ### C. Data Layer & Relational Schema Tree
 TaskFlow enforces a hierarchical MongoDB relational document pattern with bidirectional references to ensure data integrity:
-- **User:** Root identity.
+- **User:** Root identity. It utilizes standard Mongoose timestamps (`createdAt`, `updatedAt`) for automated audit tracking.
 - **Board:** Parent container referencing an owning User, an array of Column ObjectIDs, and an array of coworker User ObjectIDs.
 - **Column:** Middle structural tier referencing its parent Board and containing an ordered array of Task ObjectIDs.
-- **Task:** The work node containing metadata. It maintains a **back-reference** to its parent Column (indexed for performance) to ensure every task has a single, verifiable source of truth for its location.
+- **Task:** The work node containing metadata (including a categorizing `label` string). It maintains a **back-reference** to its parent Column (indexed for performance) to ensure every task has a single, verifiable source of truth for its location.
 
 ### D. Automated Data Linkage & Deep Population
 The system uses explicit controller logic to maintain atomic operations:
 - **Pointer Synchronization:** During task movement, the system updates both the parent Column arrays and the task's internal column reference, preventing data desynchronization.
+- **Reordering Integrity:** When columns or tasks are reordered, the request is validated to ensure that all incoming IDs belong to the parent Board/Column, preventing foreign ObjectID injection.
 - **Nested Sub-Document Population:** To avoid making multiple round-trips, the system relies on **Deep Population**. Calling a board loads the root element and recursively populates the column and task hierarchies into a single nested tree for the frontend.
 
 ### E. Real-time Event Layer (Socket.io)
