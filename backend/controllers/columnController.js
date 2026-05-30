@@ -40,7 +40,7 @@ const createColumn = asyncHandler(async (req, res) => {
 // @route   GET /api/columns/board/:boardId
 // @access  Private
 const getColumnsByBoard = asyncHandler(async (req, res) => {
-  const board = await Board.findById(req.params.boardId).populate('columns');;
+  const board = await Board.findById(req.params.boardId).populate('columns');
   if (!board) {
     res.status(404);
     throw new Error("Board not found");

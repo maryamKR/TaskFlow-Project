@@ -144,7 +144,7 @@ const updateTask = asyncHandler(async (req, res) => {
   /*
     1. isAssigneeChanged: Triggers when the task is handed off to a new user.
     2. isDetailsChanged: Triggers when task content (title/desc/priority) is modified.
-    3.Prevents self-notification and ensures one notification per request./*
+    3.Prevents self-notification and ensures one notification per request.
     */
 
   const isAssigneeChanged =

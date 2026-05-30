@@ -41,17 +41,15 @@ exports.addComment = asyncHandler(async (req, res) => {
   await task.save();
 
   //notification integration//
-  if (task.assignee && task.assignee.toString() !== req.user._id.toString()) {
+  if (task.assignedTo && task.assignedTo.toString() !== req.user._id.toString()) {
     await Notification.create({
-      user: task.assignee,
+      user: task.assignedTo,
       sender: req.user._id,
       message: `${req.user.username} commented on your task: ${task.title}`,
       type: "COMMENT",
       relatedId: taskId,
     });
   }
-
-  await comment.populate("author", "username");
 
   await comment.populate("author", "username");
 
