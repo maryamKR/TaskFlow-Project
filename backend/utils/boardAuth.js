@@ -5,7 +5,10 @@ const hasBoardAccess = (board, userId) => {
   const currentUserId = userId.toString();
 
   const isOwner = boardOwnerId === currentUserId;
-  const isCoworker = board.coworkers.some(id => id.toString() === currentUserId);
+  const isCoworker = board.coworkers.some(id => {
+    const coworkerId = id?._id ? id._id.toString() : id.toString();
+    return coworkerId === currentUserId;
+  });
   
   return isOwner || isCoworker;
 };
