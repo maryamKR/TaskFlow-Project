@@ -22,8 +22,8 @@ backend/
 │   ├── boardMemberController.js # Handles coworker invitations/listing
 │   ├── columnController.js
 │   ├── taskController.js
-│   ├── commentController.js     # New: Handles task discussions
-│   └── notificationController.js # New: Handles user alerts
+│   ├── commentController.js     # Handles task discussions
+│   └── notificationController.js # Handles user alerts
 ├── middleware/         # Request interceptors & security guards
 │   ├── validators/     # Request payload Zod validation blueprints
 │   │   ├── authValidator.js
@@ -88,11 +88,11 @@ The system uses explicit controller logic to maintain atomic operations:
 ### E. Real-time Event Layer (Socket.io)
 TaskFlow provides a collaborative "live" experience using a dedicated Socket.io implementation (`socket.js`):
 - **Room-Based Isolation:** Users are joined to rooms named after the `boardId`. This ensures that real-time updates (like moving a task) are only broadcast to users currently viewing the same board.
-- **Event-Driven UI:** When a destructive or layout-altering action occurs (e.g., `reorderColumns`, `moveTask`), the server emits an event to the specific room. The frontend listens for these events to update its state instantly without a page refresh.
+- **Event-Driven UI:** When a state-altering or layout-altering action occurs (e.g., `columns_reordered`, `task_created`, `task_updated`, `task_deleted`, `task_moved`, `tasks_reordered`, `comment_added`, `comment_deleted`), the server emits an event to the specific room. The frontend listens for these events to update its state instantly without a page refresh.
 
 ### F. Notification & Commenting Systems
 Beyond core task management, TaskFlow provides auxiliary services to drive engagement:
-- **Asynchronous Notifications:** Actions like assigning a task or updating task details trigger the creation of a `Notification` document. These are served to the specific target user via the `notificationController.js`.
+- **Asynchronous Notifications:** Actions like assigning a task, updating task details, or inviting a member trigger the creation of a `Notification` document. These are served to the specific target user via the `notificationController.js`.
 - **Task Discussions:** Users can add comments to any task. These are stored as separate `Comment` documents and linked to the `Task` model, enabling persistent threaded conversations.
 
 ## 4. Error Handling Flow
