@@ -19,6 +19,7 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
   const [showDetail, setShowDetail] = useState(false);
   const [toast, setToast] = useState(null);
 
+
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
 
   const priorityColors = { high: 'text-red-400', medium: 'text-yellow-400', low: 'text-green-400' };
@@ -40,9 +41,8 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
       <div
         ref={setNodeRef}
         style={style}
-        className={`rounded-xl p-3 transition duration-200 relative ${
-          isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
-        }`}
+        className={`rounded-xl p-3 transition duration-200 relative ${isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100 border border-gray-200'
+          }`}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
       >
@@ -53,10 +53,9 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
           )}
           <div className="flex items-center justify-between mt-3">
             <span className={`text-xs font-medium flex items-center gap-1 ${priorityColors[task.priority] || 'text-gray-400'}`}>
-              <span className={`inline-block w-2 h-2 rounded-full ${
-                task.priority === 'high' ? 'bg-red-400' :
-                task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
-              }`} />
+              <span className={`inline-block w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' :
+                  task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
+                }`} />
               {task.priority}
             </span>
             <div className="flex items-center gap-2">
@@ -70,6 +69,11 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
                   {task.assignedTo.username[0].toUpperCase()}
                 </div>
               )}
+              {task.createdBy && typeof task.createdBy === 'object' && task.createdBy.username && (
+                <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                  by {task.createdBy.username}
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -78,9 +82,8 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDelete}
             disabled={deleting}
-            className={`absolute top-2 right-2 text-sm font-bold transition duration-200 ${
-              isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'
-            }`}
+            className={`absolute top-2 right-2 text-sm font-bold transition duration-200 ${isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'
+              }`}
           >
             {deleting ? '·' : '×'}
           </button>
@@ -131,9 +134,8 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
 
   return (
     <div
-      className={`rounded-2xl p-4 w-72 flex-shrink-0 border-t-2 ${borderColorMap[columnColor] || 'border-gray-400'} ${
-        isDark ? 'bg-gray-800' : 'bg-white border border-gray-200 border-t-2'
-      }`}
+      className={`rounded-2xl p-4 w-72 flex-shrink-0 border-t-2 ${borderColorMap[columnColor] || 'border-gray-400'} ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200 border-t-2'
+        }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -155,9 +157,8 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
                 title="Change color"
               />
               {showColorPicker && (
-                <div className={`absolute top-5 right-0 rounded-xl p-2 flex gap-1.5 z-10 shadow-xl ${
-                  isDark ? 'bg-gray-700' : 'bg-white border border-gray-200'
-                }`}>
+                <div className={`absolute top-5 right-0 rounded-xl p-2 flex gap-1.5 z-10 shadow-xl ${isDark ? 'bg-gray-700' : 'bg-white border border-gray-200'
+                  }`}>
                   {colors.map(c => (
                     <button
                       key={c}
