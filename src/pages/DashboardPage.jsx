@@ -87,16 +87,6 @@ function DashboardPage() {
     return diff >= 0 && diff <= 3;
   }).length;
 
-  const tooltipStyle = {
-    contentStyle: {
-      backgroundColor: isDark ? '#1F2937' : '#ffffff',
-      border: isDark ? 'none' : '1px solid #E5E7EB',
-      borderRadius: '8px'
-    },
-    labelStyle: { color: isDark ? '#F9FAFB' : '#111827' },
-    itemStyle: { color: isDark ? '#9CA3AF' : '#6B7280' },
-  };
-
   if (loading) return (
     <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <p className={`text-xl animate-pulse ${isDark ? 'text-white' : 'text-gray-700'}`}>Loading dashboard...</p>
@@ -122,8 +112,7 @@ function DashboardPage() {
           <select
             value={selectedBoardId}
             onChange={(e) => handleBoardChange(e.target.value)}
-            className={`px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-white text-gray-900 border border-gray-200'
-              }`}
+            className={`px-4 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-white text-gray-900 border border-gray-200'}`}
           >
             {boards.map(board => (
               <option key={board._id} value={board._id}>{board.title.toUpperCase()}</option>
@@ -155,8 +144,7 @@ function DashboardPage() {
                     <CartesianGrid strokeDasharray="3 3" stroke={isDark ? '#374151' : '#E5E7EB'} />
                     <XAxis dataKey="name" tick={{ fill: isDark ? '#9CA3AF' : '#6B7280', fontSize: 12 }} />
                     <YAxis tick={{ fill: isDark ? '#9CA3AF' : '#6B7280', fontSize: 12 }} allowDecimals={false} />
-                    <Tooltip {...tooltipStyle} />
-                    <Bar dataKey="tasks" radius={[6, 6, 0, 0]}>
+                    <Bar dataKey="tasks" radius={[6, 6, 0, 0]} isAnimationActive={false} activeBar={false}>
                       {columnData.map((entry, index) => (
                         <Cell key={index} fill={entry.color} />
                       ))}
@@ -179,7 +167,6 @@ function DashboardPage() {
                           <Cell key={index} fill={entry.color} />
                         ))}
                       </Pie>
-                      <Tooltip {...tooltipStyle} />
                       <Legend formatter={(value) => (
                         <span style={{ color: isDark ? '#9CA3AF' : '#6B7280', fontSize: '12px' }}>{value}</span>
                       )} />
@@ -191,6 +178,7 @@ function DashboardPage() {
 
             <div className={`rounded-2xl p-5 ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}>
               <h2 className={`font-semibold mb-4 ${isDark ? 'text-white' : 'text-gray-900'}`}>All Tasks ({totalTasks})</h2>
+
               {/* Desktop: table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full text-sm">

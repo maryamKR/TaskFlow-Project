@@ -67,6 +67,7 @@ function BoardPage() {
   const token = localStorage.getItem('token');
   const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
   const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
+  const isOwner = activeBoard?.user === currentUserId || activeBoard?.user?._id === currentUserId;
 
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
@@ -75,99 +76,99 @@ function BoardPage() {
   }, [token]);
 
   useEffect(() => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    socket.auth = { token };
-    socket.connect();
-  }
-}, []);
+    const token = localStorage.getItem('token');
+    if (token) {
+      socket.auth = { token };
+      socket.connect();
+    }
+  }, []);
 
-useEffect(() => {
-  if (!activeBoard) return;
+  useEffect(() => {
+    if (!activeBoard) return;
 
-  socket.emit("join_board", activeBoard._id);
+    socket.emit("join_board", activeBoard._id);
 
-  socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
-    setColumns(prev => {
-      const task = prev
-        .find(col => col._id === sourceColumnId)
-        ?.tasks.find(t => t._id === taskId || t.id === taskId);
-      if (!task) return prev;
-      return prev.map(col => {
-        if (col._id === sourceColumnId)
-          return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
-        if (col._id === destinationColumnId)
-          return { ...col, tasks: [...col.tasks, task] };
-        return col;
+    socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
+      setColumns(prev => {
+        const task = prev
+          .find(col => col._id === sourceColumnId)
+          ?.tasks.find(t => t._id === taskId || t.id === taskId);
+        if (!task) return prev;
+        return prev.map(col => {
+          if (col._id === sourceColumnId)
+            return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
+          if (col._id === destinationColumnId)
+            return { ...col, tasks: [...col.tasks, task] };
+          return col;
+        });
       });
     });
-  });
 
-  socket.on("columns_reordered", ({ columnIds }) => {
-    setColumns(prev => {
-      const reordered = columnIds
-        .map(id => prev.find(col => col._id === id))
-        .filter(Boolean);
-      return reordered.length === prev.length ? reordered : prev;
+    socket.on("columns_reordered", ({ columnIds }) => {
+      setColumns(prev => {
+        const reordered = columnIds
+          .map(id => prev.find(col => col._id === id))
+          .filter(Boolean);
+        return reordered.length === prev.length ? reordered : prev;
+      });
     });
-  });
 
-  socket.on("column_added", ({ column }) => {
-    setColumns(prev => [...prev, { ...column, tasks: [] }]);
-  });
+    socket.on("column_added", ({ column }) => {
+      setColumns(prev => [...prev, { ...column, tasks: [] }]);
+    });
 
-  socket.on("column_deleted", ({ columnId }) => {
-    setColumns(prev => prev.filter(col => col._id !== columnId));
-  });
+    socket.on("column_deleted", ({ columnId }) => {
+      setColumns(prev => prev.filter(col => col._id !== columnId));
+    });
 
-  socket.on("tasks_reordered", ({ columnId, taskIds }) => {
-    setColumns(prev => prev.map(col => {
-      if (col._id !== columnId) return col;
-      const reordered = taskIds
-        .map(id => col.tasks.find(t => t._id === id || t.id === id))
-        .filter(Boolean);
-      return { ...col, tasks: reordered };
-    }));
-  });
+    socket.on("tasks_reordered", ({ columnId, taskIds }) => {
+      setColumns(prev => prev.map(col => {
+        if (col._id !== columnId) return col;
+        const reordered = taskIds
+          .map(id => col.tasks.find(t => t._id === id || t.id === id))
+          .filter(Boolean);
+        return { ...col, tasks: reordered };
+      }));
+    });
 
-  socket.on("task_created", ({ columnId, task, createdBy }) => {
-    if (createdBy === currentUserId) return;
-    setColumns(prev => prev.map(col =>
-      col._id === columnId
-        ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }
-        : col
-    ));
-  });
+    socket.on("task_created", ({ columnId, task, createdBy }) => {
+      if (createdBy === currentUserId) return;
+      setColumns(prev => prev.map(col =>
+        col._id === columnId
+          ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }
+          : col
+      ));
+    });
 
-  socket.on("task_updated", ({ taskId, updatedTask }) => {
-    setColumns(prev => prev.map(col => ({
-      ...col,
-      tasks: col.tasks.map(t =>
-        t._id === taskId ? { ...t, ...updatedTask, id: taskId } : t
-      )
-    })));
-  });
+    socket.on("task_updated", ({ taskId, updatedTask }) => {
+      setColumns(prev => prev.map(col => ({
+        ...col,
+        tasks: col.tasks.map(t =>
+          t._id === taskId ? { ...t, ...updatedTask, id: taskId } : t
+        )
+      })));
+    });
 
-  socket.on("task_deleted", ({ taskId, columnId }) => {
-    setColumns(prev => prev.map(col =>
-      col._id === columnId
-        ? { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) }
-        : col
-    ));
-  });
+    socket.on("task_deleted", ({ taskId, columnId }) => {
+      setColumns(prev => prev.map(col =>
+        col._id === columnId
+          ? { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) }
+          : col
+      ));
+    });
 
-  return () => {
-    socket.emit("leave_board", activeBoard._id);
-    socket.off("task_moved");
-    socket.off("columns_reordered");
-    socket.off("column_added");
-    socket.off("column_deleted");
-    socket.off("tasks_reordered");
-    socket.off("task_created");
-    socket.off("task_updated");
-    socket.off("task_deleted");
-  };
-}, [activeBoard?._id]);
+    return () => {
+      socket.emit("leave_board", activeBoard._id);
+      socket.off("task_moved");
+      socket.off("columns_reordered");
+      socket.off("column_added");
+      socket.off("column_deleted");
+      socket.off("tasks_reordered");
+      socket.off("task_created");
+      socket.off("task_updated");
+      socket.off("task_deleted");
+    };
+  }, [activeBoard?._id]);
 
   const fetchBoards = async () => {
     try {
@@ -191,6 +192,7 @@ useEffect(() => {
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
+      console.log('board.user:', board.user);
       setColumns(normalizeTasks(board.columns || []));
       const membersData = await getBoardMembers(boardId);
       setMembers(Array.isArray(membersData) ? membersData : []);
@@ -208,7 +210,10 @@ useEffect(() => {
     if (remaining.length > 0) loadBoard(remaining[0]._id);
     else { setActiveBoard(null); setColumns([]); setMembers([]); }
   };
-  const handleColumnAdded = (newColumn) => setColumns(prev => [...prev, { ...newColumn, tasks: [] }]);
+  const handleColumnAdded = (newColumn) => setColumns(prev => {
+    if (prev.some(col => col._id === newColumn._id)) return prev;
+    return [...prev, { ...newColumn, tasks: [] }];
+  });
   const handleTaskCreated = (columnId, newTask) => {
     setColumns(prev => prev.map(col =>
       col._id === columnId
@@ -316,9 +321,8 @@ useEffect(() => {
 
   const columnIds = columns.map(c => c._id);
 
-  const inputClass = `px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
-    isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200'
-  }`;
+  const inputClass = `px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200'
+    }`;
 
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
@@ -343,17 +347,15 @@ useEffect(() => {
         <div className="flex-1 flex flex-col overflow-hidden">
 
           {/* Board header */}
-          <div className={`px-6 py-4 flex items-center justify-between border-b ${
-            isDark ? 'border-gray-700' : 'border-gray-200'
-          }`}>
+          <div className={`px-6 py-4 flex items-center justify-between border-b ${isDark ? 'border-gray-700' : 'border-gray-200'
+            }`}>
             <div className="flex items-center gap-4">
               <button
                 onClick={() => setSidebarOpen(prev => !prev)}
-                className={`p-2 rounded-lg transition duration-200 flex flex-col gap-1 ${
-                  sidebarOpen
-                    ? isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'
-                    : isDark ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
-                }`}
+                className={`p-2 rounded-lg transition duration-200 flex flex-col gap-1 ${sidebarOpen
+                  ? isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'
+                  : isDark ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
+                  }`}
                 title={sidebarOpen ? 'Close sidebar' : 'Open sidebar'}
               >
                 <span className="w-5 h-0.5 bg-current rounded"></span>
@@ -373,6 +375,11 @@ useEffect(() => {
                       .reduce((acc, col) => acc + (col.tasks || []).length, 0);
                     return `${done}/${total} tasks done`;
                   })() : "Track your team's progress"}
+                  {(activeBoard?.user?.username || activeBoard?.ownerUsername) && (
+                    <span className={`ml-3 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      Created by {activeBoard?.user?.username || activeBoard?.ownerUsername}
+                    </span>
+                  )}
                 </p>
               </div>
             </div>
@@ -389,9 +396,8 @@ useEffect(() => {
 
           {/* Filter bar */}
           {activeBoard && (
-            <div className={`px-6 py-3 flex items-center gap-3 border-b flex-wrap ${
-              isDark ? 'border-gray-700' : 'border-gray-200'
-            }`}>
+            <div className={`px-6 py-3 flex items-center gap-3 border-b flex-wrap ${isDark ? 'border-gray-700' : 'border-gray-200'
+              }`}>
               <input
                 type="text"
                 placeholder="Search tasks..."
@@ -476,6 +482,7 @@ useEffect(() => {
                           onColumnDeleted={handleColumnDeleted}
                           members={members}
                           dragHandleProps={dragHandleProps}
+                          isOwner={isOwner}
                           tasks={(column.tasks || []).filter(task => {
                             const matchesPriority = !filter.priority || task.priority === filter.priority;
                             const matchesSearch = !filter.search || task.title.toLowerCase().includes(filter.search.toLowerCase());
