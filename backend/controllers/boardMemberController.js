@@ -3,6 +3,7 @@ const Board = require("../models/Board");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { hasBoardAccess } = require("../utils/boardAuth");
+const { sendInviteEmail } = require("../utils/emailService");
 
 // @desc    Get all members of a board
 // @route   GET /api/boards/:boardId/members
@@ -80,7 +81,10 @@ exports.inviteMember = asyncHandler(async (req, res) => {
     relatedId: board._id 
   });
 
-  // Respond once
+  // Send invitation email (non-blocking — failure won't affect the response)
+  // Platform sends from EMAIL_USER; Reply-To is set to the board owner's email
+  await sendInviteEmail(userToInvite.email, board.title, req.user.username, req.user.email);
+
   res.status(200).json({
     message: "User invited successfully",
     coworkers: board.coworkers,

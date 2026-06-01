@@ -21,10 +21,15 @@ const errorHandler = require("./middleware/errorHandler");
 
 
 
+const { initScheduledJobs } = require("./utils/scheduledJobs");
+
 const app = express();
 
 // Connect to MongoDB Atlas
 connectDB();
+
+// Initialize scheduled cron jobs
+initScheduledJobs();
 
 // CORS Middleware Configuration
 app.use(
