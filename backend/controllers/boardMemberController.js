@@ -3,7 +3,7 @@ const Board = require("../models/Board");
 const User = require("../models/User");
 const Notification = require("../models/Notification");
 const { hasBoardAccess } = require("../utils/boardAuth");
-const { sendInviteEmail } = require("../utils/emailService");
+const { sendInviteEmail, sendUnregisteredInviteEmail } = require("../utils/emailService");
 
 // @desc    Get all members of a board
 // @route   GET /api/boards/:boardId/members
@@ -54,8 +54,29 @@ exports.inviteMember = asyncHandler(async (req, res) => {
 
   const userToInvite = await User.findOne({ email });
   if (!userToInvite) {
-    res.status(404);
-    throw new Error("User not found");
+    const cleanEmail = email.trim().toLowerCase();
+    
+    // Check if user is already invited
+    if (board.pendingInvites && board.pendingInvites.includes(cleanEmail)) {
+      res.status(400);
+      throw new Error("User is already invited");
+    }
+
+    // Add to pendingInvites
+    if (!board.pendingInvites) {
+      board.pendingInvites = [];
+    }
+    board.pendingInvites.push(cleanEmail);
+    await board.save();
+
+    // Send invite to register
+    await sendUnregisteredInviteEmail(cleanEmail, board.title, req.user.username, req.user.email);
+
+    return res.status(200).json({
+      message: "Invitation email sent to unregistered user. They will be added when they sign up.",
+      coworkers: board.coworkers,
+      pendingInvites: board.pendingInvites,
+    });
   }
 
   if (userToInvite._id.toString() === req.user._id.toString()) {
@@ -72,13 +93,22 @@ exports.inviteMember = asyncHandler(async (req, res) => {
   board.coworkers.push(userToInvite._id);
   await board.save();
 
-  // Create Notification
+  // Create Notification for the invited user
   await Notification.create({
     user: userToInvite._id,     
     sender: req.user._id,          
     message: `You have been invited to the board: ${board.title}`,
     type: "BOARD_INVITATION",
     relatedId: board._id 
+  });
+
+  // Create Notification for the board owner
+  await Notification.create({
+    user: board.user,
+    sender: userToInvite._id,
+    message: `${userToInvite.username} has joined your board: ${board.title}`,
+    type: "BOARD_INVITATION",
+    relatedId: board._id
   });
 
   // Send invitation email (non-blocking — failure won't affect the response)

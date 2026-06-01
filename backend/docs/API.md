@@ -167,6 +167,7 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
       "coworkers": ["60d5ed...", "60d5f1..."]
     }
     ```
+*   **Note:** This endpoint triggers an automated board invitation email to the invited user's email address. The `Reply-To` header of the email is set to the board owner's email address.
 
 #### Remove Member from Board
 *   **URL:** `/boards/:boardId/members/:memberId`
@@ -347,9 +348,17 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 #### Delete Task
 *   **URL:** `/tasks/:id`
 *   **Method:** `DELETE`
+*   **Access:** Private (Board Owner Only)
 *   **Success Response (200):**
     ```json
     { "success": true, "message": "Task deleted successfully" }
+    ```
+*   **Error Response (403):**
+    ```json
+    {
+      "success": false,
+      "error": "Only the board owner can delete tasks. Contact your board owner to delete this task."
+    }
     ```
 
 ---

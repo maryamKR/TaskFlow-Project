@@ -24,6 +24,13 @@ const boardSchema = new mongoose.Schema(
         type: mongoose.Schema.Types.ObjectId,
         ref: "Column"
       }
+    ],
+    pendingInvites: [
+      {
+        type: String,
+        trim: true,
+        lowercase: true,
+      }
     ]
   },
   { timestamps: true }

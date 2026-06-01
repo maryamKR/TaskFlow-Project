@@ -1,4 +1,6 @@
 const User = require('../models/User');
+const Board = require('../models/Board');
+const Notification = require('../models/Notification');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const asyncHandler = require('express-async-handler');
@@ -26,6 +28,46 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
         email,
         password: hashedPassword
     });
+
+    // Check for any pending board invitations for this email address
+    const cleanEmail = email.trim().toLowerCase();
+    const boardsWithPendingInvites = await Board.find({ pendingInvites: cleanEmail });
+
+    for (const board of boardsWithPendingInvites) {
+        const isAlreadyCoworker = board.coworkers.some(
+            (id) => id.toString() === user._id.toString()
+        );
+        if (!isAlreadyCoworker) {
+            board.coworkers.push(user._id);
+        }
+        board.pendingInvites = board.pendingInvites.filter(e => e.toLowerCase() !== cleanEmail);
+        await board.save();
+
+        console.log(`[Invite Auto-Join] Adding new user ${user.email} as coworker to board ${board.title}`);
+
+        try {
+            // Create a notification for the newly registered user
+            await Notification.create({
+                user: user._id,
+                sender: board.user,
+                message: `You have been added to the board: ${board.title}`,
+                type: "BOARD_INVITATION",
+                relatedId: board._id
+            });
+
+            // Create a notification for the board owner
+            await Notification.create({
+                user: board.user,
+                sender: user._id,
+                message: `${user.username} has joined your board: ${board.title}`,
+                type: "BOARD_INVITATION",
+                relatedId: board._id
+            });
+            console.log(`[Invite Auto-Join] Notifications created successfully for user and owner of board ${board.title}`);
+        } catch (notifErr) {
+            console.error(`[Invite Auto-Join Error] Failed to create notifications:`, notifErr.message);
+        }
+    }
 
     // Generate a JWT Token
     const token = jwt.sign(

@@ -1,5 +1,5 @@
 const nodemailer = require("nodemailer");
-const { inviteTemplate, passwordResetTemplate, overdueTaskTemplate } = require("./emailTemplates");
+const { inviteTemplate, passwordResetTemplate, overdueTaskTemplate, inviteUnregisteredTemplate } = require("./emailTemplates");
 
 /**
  * Creates and returns a configured nodemailer transporter.
@@ -88,4 +88,28 @@ const sendOverdueTaskEmail = async (toEmail, taskTitle, dueDate, boardTitle) => 
   }
 };
 
-module.exports = { sendInviteEmail, sendPasswordResetEmail, sendOverdueTaskEmail };
+/**
+ * Sends a registration invite email to a user who doesn't have an account yet.
+ *
+ * @param {string} toEmail      - Recipient's email address.
+ * @param {string} boardTitle   - The name of the board they are being invited to.
+ * @param {string} inviterName  - The username of the person who sent the invite.
+ * @param {string} inviterEmail - The board owner's email, used as Reply-To.
+ */
+const sendUnregisteredInviteEmail = async (toEmail, boardTitle, inviterName, inviterEmail) => {
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: `"TaskFlow" <${process.env.EMAIL_USER}>`,
+      to: toEmail,
+      replyTo: inviterEmail,
+      subject: `${inviterName} invited you to join TaskFlow and collaborate on "${boardTitle}"`,
+      html: inviteUnregisteredTemplate(boardTitle, inviterName),
+    });
+    console.log(`[Email] Unregistered invite sent to ${toEmail} for board "${boardTitle}"`);
+  } catch (err) {
+    console.error(`[Email] Failed to send unregistered invite to ${toEmail}:`, err.message);
+  }
+};
+
+module.exports = { sendInviteEmail, sendPasswordResetEmail, sendOverdueTaskEmail, sendUnregisteredInviteEmail };

@@ -22,6 +22,7 @@ Handles user identity and session management.
     *   Checks if the email is already in use.
     *   Hashes the password (via Mongoose pre-save hook).
     *   Creates a new User and returns a JWT token.
+    *   Scans for any boards containing the user's email in `pendingInvites`. If found, adds the user to the board's coworkers list, removes them from pending lists, and generates notifications for both the user and the board owner.
 *   `loginUser(req, res)`:
     *   Validates credentials against the database.
     *   Returns a JWT token upon successful authentication.
@@ -39,7 +40,7 @@ Manages the lifecycle of project boards.
 Handles collaboration and permissions.
 
 *   `getBoardMembers(req, res)`: Retrieves a list of all users (owner + coworkers) associated with a board. Enforces authorization checks via `hasBoardAccess`.
-*   `inviteMember(req, res)`: Adds a user to the `coworkers` array by their email. Restricts invitations to board owners only. Triggers a `BOARD_INVITATION` notification.
+*   `inviteMember(req, res)`: Restricts invitations to board owners only. If the invited email exists, the user is added to `coworkers` immediately, and notifications are sent to both the user and the board owner. If the email is unregistered, it is saved to `pendingInvites`, and an email is dispatched inviting them to sign up. All emails utilize SMTP with the board owner's email in the `Reply-To` header.
 *   `removeMember(req, res)`: Removes a user from the `coworkers` array. Restricts removal permissions to the board owner only, preventing coworkers from removing other members. Prevents removing the board owner.
 
 ### Column Controller (`columnController.js`)
@@ -56,7 +57,7 @@ The core logic for task management and real-time updates.
 *   `createTask(req, res)`: Creates a task with optional fields like `label`, assigns it to a column, and triggers a `TASK_ASSIGNED` notification if an assignee is specified. Emits `task_created` socket event.
 *   `getTask(req, res)`: Retrieves detailed information for a single task, including comments.
 *   `updateTask(req, res)`: Modifies task details (title, priority, etc.). Triggers `TASK_UPDATED` or `TASK_ASSIGNED` notifications as needed. Emits `task_updated` socket event.
-*   `deleteTask(req, res)`: Removes a task and cleans up the reference in the parent column. Emits `task_deleted` socket event.
+*   `deleteTask(req, res)`: Removes a task and cleans up the reference in the parent column. Restricts task deletion to the board owner only, returning a 403 Forbidden error to unauthorized users. Emits `task_deleted` socket event.
 *   `moveTask(req, res)`: Moves a task between columns. Synchronizes pointers in both columns and the task itself. Emits `task_moved` socket event.
 *   `reorderTask(req, res)`: Reorders tasks within a single column. Enforces ownership validation checking that all task IDs belong to that column before saving. Emits `tasks_reordered` socket event.
 *   `getTasks(req, res)`: A versatile query method supporting search, priority filters, assignee filters, and date range filtering.
@@ -109,7 +110,7 @@ TaskFlow uses Socket.io for live collaboration. Events are broadcast to rooms na
 *   **User:** Stores credentials and profile info. Uses `bcrypt` for password hashing and has timestamps (`createdAt`, `updatedAt`) enabled automatically.
 *   **Board:** Tracks ownership (`user`), collaborators (`coworkers`), and the ordered list of `columns`.
 *   **Column:** Represents a vertical list. Holds a reference to the `board` and an ordered array of `tasks`.
-*   **Task:** The central unit of work. Includes fields for `priority`, `dueDate`, `assignedTo`, `label`, and `comments`. Supports text indexing for search.
+*   **Task:** The central unit of work. Includes fields for `priority`, `dueDate`, `assignedTo`, `label`, `comments`, and `overdueEmailSent` (tracks daily overdue alert mail dispatch). Supports text indexing for search.
 *   **Comment:** Simple text entries linked to a `task` and an `author`.
 *   **Notification:** Persistent alerts for users. Stores `message`, `type`, and `relatedId` (e.g., a Task ID). Uses uppercase enums: `COMMENT`, `TASK_ASSIGNED`, `TASK_UPDATED`, `BOARD_INVITATION`.
 
@@ -123,3 +124,14 @@ TaskFlow uses Socket.io for live collaboration. Events are broadcast to rooms na
 ### Socket Utility (`socket.js`)
 *   `initSocket(server)`: Initializes the Socket.io instance.
 *   `getIO()`: Provides access to the IO instance from anywhere in the application to emit events.
+
+### Email Service (`emailService.js`)
+*   `sendInviteEmail(toEmail, boardTitle, inviterName, inviterEmail)`: Sends a board invitation email using Nodemailer with a Reply-To pointing back to the board owner.
+*   `sendPasswordResetEmail(toEmail, resetUrl)`: Dispatches password reset token links to the user.
+*   `sendOverdueTaskEmail(toEmail, taskTitle, dueDate, boardTitle)`: Dispatches overdue notification emails to assignees or creators.
+
+### Email Templates (`emailTemplates.js`)
+*   `inviteTemplate`, `passwordResetTemplate`, `overdueTaskTemplate`: Branded, responsive HTML templates matching the project's visual identity.
+
+### Cron Scheduler (`scheduledJobs.js`)
+*   `initScheduledJobs()`: Schedules a daily cron task at midnight (`0 0 * * *`) that searches for incomplete overdue tasks, emails the assignee/creator, and sets `overdueEmailSent = true` to avoid duplicate emails.
