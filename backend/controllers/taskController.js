@@ -9,10 +9,12 @@ const { hasBoardAccess } = require("../utils/boardAuth");
 const { getIO } = require("../socket");
 
 const notifyOwner = async (board, actorId, message, type, relatedId) => {
-  if (!board || board.user.toString() === actorId.toString()) return;
+  if (!board) return;
+  const boardOwnerId = board.user?._id ? board.user._id.toString() : board.user.toString();
+  if (boardOwnerId === actorId.toString()) return;
   try {
     await Notification.create({
-      user: board.user,
+      user: boardOwnerId,
       sender: actorId,
       message,
       type,
@@ -70,6 +72,7 @@ const createTask = asyncHandler(async (req, res) => {
   await task.populate("assignedTo", "username");
 
   //Notification Trigger//
+  let assigneeNotified = false;
   if (
     task.assignedTo &&
     task.assignedTo._id.toString() !== req.user._id.toString()
@@ -81,6 +84,9 @@ const createTask = asyncHandler(async (req, res) => {
       type: "TASK_ASSIGNED",
       relatedId: task._id,
     });
+    if (task.assignedTo._id.toString() === board.user.toString()) {
+      assigneeNotified = true;
+    }
   }
 
   // 4. Link task to column
@@ -88,7 +94,9 @@ const createTask = asyncHandler(async (req, res) => {
   await column.save();
 
   // Notify owner
-  await notifyOwner(board, req.user._id, `${req.user.username} created task "${task.title}" on your board`, "OWNER_ALERT", task._id);
+  if (!assigneeNotified) {
+    await notifyOwner(board, req.user._id, `${req.user.username} created task "${task.title}" on your board`, "OWNER_ALERT", task._id);
+  }
 
   getIO().to(board._id.toString()).emit("task_created", {
     columnId,
@@ -140,8 +148,6 @@ const updateTask = asyncHandler(async (req, res) => {
     throw new Error("Task not found");
   }
 
-  const oldAssignee = task.assignedTo;
-
   const column = await Column.findById(task.column);
   if (!column) {
     res.status(404);
@@ -184,6 +190,11 @@ const updateTask = asyncHandler(async (req, res) => {
     }
   }
 
+  if (changes.length === 0) {
+    await task.populate("assignedTo", "username");
+    return res.status(200).json({ success: true, data: task });
+  }
+
   for (const action of changes) {
     task.activityLog.push({
       action,
@@ -192,32 +203,37 @@ const updateTask = asyncHandler(async (req, res) => {
   }
 
   await task.save();
-  await notifyOwner(board, req.user._id, `${req.user.username} updated task "${task.title}" on your board`, "OWNER_ALERT", task._id);
   await task.populate("assignedTo", "username");
-
-  getIO().to(board._id.toString()).emit("task_updated", {
-    taskId: task._id.toString(),
-    updatedTask: task,
-  });
 
   const newAssignee = task.assignedTo;
 
   //--------NOTIFICATION LOGIC -------/
   /*
-    1. isAssigneeChanged: Triggers when the task is handed off to a new user.
-    2. isDetailsChanged: Triggers when task content (title/desc/priority) is modified.
-    3.Prevents self-notification and ensures one notification per request.
+    1. isAssigneeChanged: True only if the assignee field actually changed AND
+       the new assignee is not the actor themselves (no self-notification).
+    2. isDetailsChanged: True only if a non-assignee field changed (title, description,
+       priority, dueDate) AND the current assignee is not the actor (notify the assignee).
+    3. assigneeNotified: Tracks whether the board owner was already notified via
+       a specific TASK_ASSIGNED or TASK_UPDATED notification, to prevent them
+       receiving a duplicate generic OWNER_ALERT for the same action.
+    4. Owner is never notified if they performed the action (handled by notifyOwner helper).
+    5. If no changes were detected, this block is never reached (early return above).
     */
 
+  const hasAssigneeChanged = changes.includes("Assignee changed");
+  const hasDetailsChanged = changes.some(c => c !== "Assignee changed");
+
   const isAssigneeChanged =
+    hasAssigneeChanged &&
     newAssignee &&
-    (!oldAssignee || oldAssignee.toString() !== newAssignee._id.toString()) &&
     newAssignee._id.toString() !== req.user._id.toString();
 
   const isDetailsChanged =
-    (req.body.title || req.body.description || req.body.priority) &&
+    hasDetailsChanged &&
     task.assignedTo &&
     task.assignedTo._id.toString() !== req.user._id.toString();
+
+  let assigneeNotified = false;
 
   if (isAssigneeChanged) {
     await Notification.create({
@@ -227,15 +243,32 @@ const updateTask = asyncHandler(async (req, res) => {
       type: "TASK_ASSIGNED",
       relatedId: task._id,
     });
+    if (newAssignee._id.toString() === board.user.toString()) {
+      assigneeNotified = true;
+    }
   } else if (isDetailsChanged) {
+    const targetUserId = task.assignedTo._id || task.assignedTo;
     await Notification.create({
-      user: newAssignee._id,
+      user: targetUserId,
       sender: req.user._id,
       message: `${req.user.username} updated details on task: ${task.title}`,
       type: "TASK_UPDATED",
       relatedId: task._id,
     });
+    if (targetUserId.toString() === board.user.toString()) {
+      assigneeNotified = true;
+    }
   }
+
+  // Notify owner only if they weren't already notified as the assignee
+  if (!assigneeNotified) {
+    await notifyOwner(board, req.user._id, `${req.user.username} updated task "${task.title}" on your board`, "OWNER_ALERT", task._id);
+  }
+
+  getIO().to(board._id.toString()).emit("task_updated", {
+    taskId: task._id.toString(),
+    updatedTask: task,
+  });
 
   res.status(200).json({ success: true, data: task });
 });
@@ -257,12 +290,12 @@ const deleteTask = asyncHandler(async (req, res) => {
   if (column) {
     board = await Board.findById(column.board);
 
-    const isOwner = board && board.user.toString() === req.user._id.toString();
-    const isCreator = task.createdBy && task.createdBy.toString() === req.user._id.toString();
+    const boardOwnerId = board?.user?._id ? board.user._id.toString() : board?.user?.toString();
+    const currentUserId = req.user._id.toString();
 
-    if (!isOwner && !isCreator) {
+    if (boardOwnerId !== currentUserId) {
       res.status(403);
-      throw new Error("Only the board owner or task creator can delete tasks");
+      throw new Error("Only the board owner can delete tasks. Contact your board owner to delete this task.");
     }
 
     column.tasks.pull(task._id);
@@ -272,10 +305,6 @@ const deleteTask = asyncHandler(async (req, res) => {
   // Cascade delete Comments and Notifications for this task
   await Comment.deleteMany({ task: task._id });
   await Notification.deleteMany({ relatedId: task._id });
-
-  if (board) {
-    await notifyOwner(board, req.user._id, `${req.user.username} deleted task "${task.title}" on your board`, "OWNER_ALERT", task._id);
-  }
 
   await task.deleteOne();
 
@@ -369,9 +398,7 @@ const moveTask = asyncHandler(async (req, res) => {
     { runValidators: true },
   );
 
-  if (board) {
-    await notifyOwner(board, req.user._id, `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`, "OWNER_ALERT", task._id);
-  }
+  await notifyOwner(board, req.user._id, `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`, "OWNER_ALERT", task._id);
 
   // D. Emit real-time event
   getIO().to(board._id.toString()).emit("task_moved", {
