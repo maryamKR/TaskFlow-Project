@@ -27,6 +27,11 @@ const notificationSchema = new mongoose.Schema(
       ref: "Task",
       required: false
     },
+    boardId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Board",
+      required: false
+    },
     isRead: {
       type: Boolean,
       default: false,

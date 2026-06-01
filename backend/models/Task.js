@@ -47,6 +47,26 @@ const taskSchema = new mongoose.Schema(
     ref: "User",
     required: false
   },
+    isDone: {
+      type: Boolean,
+      default: false,
+    },
+    activityLog: [
+      {
+        action: {
+          type: String,
+          required: true,
+        },
+        performedBy: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "User",
+        },
+        timestamp: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
   },
   { timestamps: true }
 );
