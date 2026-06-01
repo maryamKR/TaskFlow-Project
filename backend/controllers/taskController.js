@@ -8,6 +8,21 @@ const { hasBoardAccess } = require("../utils/boardAuth");
 
 const { getIO } = require("../socket");
 
+const notifyOwner = async (board, actorId, message, type, relatedId) => {
+  if (!board || board.user.toString() === actorId.toString()) return;
+  try {
+    await Notification.create({
+      user: board.user,
+      sender: actorId,
+      message,
+      type,
+      relatedId,
+    });
+  } catch (err) {
+    console.error("OWNER NOTIFICATION ERROR:", err.message);
+  }
+};
+
 // @desc    Create a task
 // @route   POST /api/tasks
 // @access  Private
@@ -22,7 +37,6 @@ const createTask = asyncHandler(async (req, res) => {
     throw new Error("Column not found");
   }
 
-  // 1b. Prevent task creation in the Done column
   if (/^done$/i.test(column.title.trim())) {
     res.status(400);
     throw new Error("Tasks cannot be created directly in the Done column.");
@@ -73,6 +87,9 @@ const createTask = asyncHandler(async (req, res) => {
   column.tasks.push(task._id);
   await column.save();
 
+  // Notify owner
+  await notifyOwner(board, req.user._id, `${req.user.username} created task "${task.title}" on your board`, "OWNER_ALERT", task._id);
+
   getIO().to(board._id.toString()).emit("task_created", {
     columnId,
     task,
@@ -89,7 +106,8 @@ const getTask = asyncHandler(async (req, res) => {
   const task = await Task.findById(req.params.id)
     .populate("assignedTo", "username")
     .populate("createdBy", "username")
-    .populate("comments");
+    .populate("comments")
+    .populate("activityLog.performedBy", "username");
 
   if (!task) {
     res.status(404);
@@ -136,14 +154,45 @@ const updateTask = asyncHandler(async (req, res) => {
     throw new Error("Not authorized to update this task");
   }
 
-  task.title = req.body.title || task.title;
-  //Nullish Coalescing (??) to preserve original data if field is missing:
-  task.description = req.body.description ?? task.description;
-  task.priority = req.body.priority ?? task.priority;
-  task.dueDate = req.body.dueDate ?? task.dueDate;
-  task.assignedTo = req.body.assignedTo ?? task.assignedTo;
+  const changes = [];
+  if (req.body.title !== undefined && req.body.title !== task.title) {
+    changes.push(`Title changed from "${task.title}" to "${req.body.title}"`);
+    task.title = req.body.title;
+  }
+  if (req.body.description !== undefined && req.body.description !== task.description) {
+    changes.push(`Description updated`);
+    task.description = req.body.description;
+  }
+  if (req.body.priority !== undefined && req.body.priority !== task.priority) {
+    changes.push(`Priority changed from "${task.priority}" to "${req.body.priority}"`);
+    task.priority = req.body.priority;
+  }
+  if (req.body.dueDate !== undefined) {
+    const oldTime = task.dueDate ? new Date(task.dueDate).getTime() : null;
+    const newTime = req.body.dueDate ? new Date(req.body.dueDate).getTime() : null;
+    if (oldTime !== newTime) {
+      changes.push(`Due date updated`);
+      task.dueDate = req.body.dueDate;
+    }
+  }
+  if (req.body.assignedTo !== undefined) {
+    const oldAssigneeStr = task.assignedTo ? task.assignedTo.toString() : '';
+    const newAssigneeStr = req.body.assignedTo ? req.body.assignedTo.toString() : '';
+    if (oldAssigneeStr !== newAssigneeStr) {
+      changes.push(`Assignee changed`);
+      task.assignedTo = req.body.assignedTo || null;
+    }
+  }
+
+  for (const action of changes) {
+    task.activityLog.push({
+      action,
+      performedBy: req.user._id,
+    });
+  }
 
   await task.save();
+  await notifyOwner(board, req.user._id, `${req.user.username} updated task "${task.title}" on your board`, "OWNER_ALERT", task._id);
   await task.populate("assignedTo", "username");
 
   getIO().to(board._id.toString()).emit("task_updated", {
@@ -224,6 +273,10 @@ const deleteTask = asyncHandler(async (req, res) => {
   await Comment.deleteMany({ task: task._id });
   await Notification.deleteMany({ relatedId: task._id });
 
+  if (board) {
+    await notifyOwner(board, req.user._id, `${req.user.username} deleted task "${task.title}" on your board`, "OWNER_ALERT", task._id);
+  }
+
   await task.deleteOne();
 
   if (board && column) {
@@ -299,17 +352,33 @@ const moveTask = asyncHandler(async (req, res) => {
   });
 
   // C. Update the task itself to point to the new column (Pointer Synchronization)
+  const isDone = /^done$/i.test(destColumn.title.trim());
+
   await Task.findByIdAndUpdate(
     taskId,
-    { column: destinationColumnId },
+    {
+      column: destinationColumnId,
+      isDone,
+      $push: {
+        activityLog: {
+          action: `Moved to column "${destColumn.title}"`,
+          performedBy: req.user._id,
+        }
+      }
+    },
     { runValidators: true },
   );
+
+  if (board) {
+    await notifyOwner(board, req.user._id, `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`, "OWNER_ALERT", task._id);
+  }
 
   // D. Emit real-time event
   getIO().to(board._id.toString()).emit("task_moved", {
     taskId,
     sourceColumnId,
     destinationColumnId,
+    isDone,
   });
 
   res.status(200).json({ success: true, message: "Task moved successfully" });
