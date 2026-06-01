@@ -19,7 +19,7 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["COMMENT", "TASK_ASSIGNED", "TASK_UPDATED", "BOARD_INVITATION"],
+      enum: ["COMMENT", "TASK_ASSIGNED", "TASK_UPDATED", "BOARD_INVITATION", "TASK_MOVED_DONE", "OWNER_ALERT"],
       required: true,
     },
     relatedId: {

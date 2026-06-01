@@ -100,7 +100,7 @@ exports.removeMember = asyncHandler(async (req, res) => {
 
   if (board.user.toString() !== req.user._id.toString()) {
     res.status(403);
-    throw new Error("Only the board owner can remove members");
+    throw new Error("Only the board owner can remove members. Contact your board owner.");
   }
 
   // Prevent owner from removing themselves

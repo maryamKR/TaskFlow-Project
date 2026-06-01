@@ -47,7 +47,16 @@ const getBoards = asyncHandler(async(req, res) => {
 // @desc    Get board by ID
 const getBoardById = asyncHandler(async (req, res) => {
     const board = await Board.findById(req.params.id)
-        .populate({ path: 'columns', populate: { path: "tasks" }})
+        .populate({
+            path: 'columns',
+            populate: {
+                path: 'tasks',
+                populate: [
+                    { path: 'assignedTo', select: 'username isOnline' },
+                    { path: 'createdBy',  select: 'username' },
+                ],
+            },
+        })
         .populate({ path: 'user', select: '-password' });
 
     if(!board) {
