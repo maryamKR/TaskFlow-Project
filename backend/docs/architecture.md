@@ -72,6 +72,8 @@ backend/
 - **Password Hashing:** Passwords are never stored in plain text. Secure hashing is managed via the `authHelpers.js` utility using `bcryptjs` (10 salts) before user creation or login.
 - **Session Tracking:** Stateless authentication using JSON Web Tokens (JWT). Upon valid login/registration, the server issues a signed token valid for 30 days.
 - **Route Guarding:** The `authMiddleware.js` file intercepts requests to protected routes. It extracts the `Bearer <token>` from the HTTP Authorization header, verifies it, and attaches the user payload to `req.user`.
+- **Rate Limiting:** Critical endpoints like password resets are protected by `express-rate-limit`. This prevents brute-force attacks and SMTP resource exhaustion by limiting requests (e.g., 3 per hour per IP for password resets).
+- **Enumeration Protection:** Public endpoints like `forgot-password` return generic success messages regardless of whether the target email exists in the system. This prevents attackers from verifying the presence of specific users.
 
 ### B. Collaboration & Member Management
 TaskFlow supports multi-user collaboration on boards:

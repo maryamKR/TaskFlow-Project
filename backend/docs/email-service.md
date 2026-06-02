@@ -103,7 +103,7 @@ await sendInviteEmail(
 // Password reset
 await sendPasswordResetEmail(
   user.email,           // to
-  resetUrl              // full URL with token, e.g. http://localhost:5173/reset-password?token=abc123
+  resetUrl              // full URL with token, e.g. http://localhost:5173/reset-password/abc123
 );
 
 // Overdue task alert
@@ -144,3 +144,12 @@ This means:
 - A password reset token is still saved to the DB even if the email fails
 
 Always check server logs (`[Email] Failed to send ...`) if emails are not arriving.
+
+---
+
+## Security & Rate Limiting
+
+- **Generic Responses:** The password reset request endpoint returns a generic message to prevent user enumeration.
+- **Rate Limiting:** Password reset requests are limited to **3 per hour per IP** to prevent SMTP relay abuse and spamming.
+- **Token Hashing:** Reset tokens are stored as SHA-256 hashes in the database.
+- **Expiry:** All reset links are strictly valid for **10 minutes**.

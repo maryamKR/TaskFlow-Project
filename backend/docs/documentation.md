@@ -20,12 +20,20 @@ Handles user identity and session management.
 
 *   `registerUser(req, res)`:
     *   Checks if the email is already in use.
-    *   Hashes the password (via Mongoose pre-save hook).
+    *   Hashes the password.
     *   Creates a new User and returns a JWT token.
     *   Scans for any boards containing the user's email in `pendingInvites`. If found, adds the user to the board's coworkers list, removes them from pending lists, and generates notifications for both the user and the board owner.
 *   `loginUser(req, res)`:
     *   Validates credentials against the database.
     *   Returns a JWT token upon successful authentication.
+*   `forgotPassword(req, res)`:
+    *   Generates a secure, time-limited reset token.
+    *   Saves hashed token and expiry to the User model.
+    *   Dispatches a password reset email via `sendPasswordResetEmail`.
+*   `resetPassword(req, res)`:
+    *   Validates the reset token and its expiry.
+    *   Hashes the new password and updates the user record.
+    *   Clears the reset token fields.
 
 ### Board Controller (`boardController.js`)
 Manages the lifecycle of project boards.

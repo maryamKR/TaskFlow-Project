@@ -29,4 +29,24 @@ const loginSchema = z.object({
   }),
 });
 
-module.exports = { registerSchema, loginSchema };
+const forgotPasswordSchema = z.object({
+  body: z.object({
+    email: z
+      .string({ required_error: "Email is required" })
+      .trim()
+      .email("Please provide a valid email address"),
+  }),
+});
+
+const resetPasswordSchema = z.object({
+  params: z.object({
+    resetToken: z.string({ required_error: "Reset token is required" }),
+  }),
+  body: z.object({
+    password: z
+      .string({ required_error: "Password is required" })
+      .min(6, "Password must be at least 6 characters long"),
+  }),
+});
+
+module.exports = { registerSchema, loginSchema, forgotPasswordSchema, resetPasswordSchema };
