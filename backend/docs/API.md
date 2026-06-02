@@ -54,6 +54,41 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     }
     ```
 
+#### Forgot Password
+*   **URL:** `/auth/forgot-password`
+*   **Method:** `POST`
+*   **Body:**
+    ```json
+    {
+      "email": "john@example.com"
+    }
+    ```
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": "Email sent"
+    }
+    ```
+*   **Note:** This endpoint generates a secure, time-limited token (10 minutes) and sends a reset link to the user's email address.
+
+#### Reset Password
+*   **URL:** `/auth/reset-password/:resetToken`
+*   **Method:** `POST`
+*   **Body:**
+    ```json
+    {
+      "password": "newpassword123"
+    }
+    ```
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": "Password reset successful"
+    }
+    ```
+
 ---
 
 ### 2. Board Endpoints
