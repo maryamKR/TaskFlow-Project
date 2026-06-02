@@ -39,8 +39,14 @@ function DashboardPage() {
     try {
       const data = await getBoards();
       setBoards(data || []);
-      if (data && data.length > 0) { setSelectedBoardId(data[0]._id); loadBoard(data[0]._id); }
-      else setLoading(false);
+      if (data && data.length > 0) {
+        const lastBoardId = localStorage.getItem('lastDashboardBoardId');
+        const boardToLoad = lastBoardId && data.find(b => b._id === lastBoardId)
+          ? lastBoardId
+          : data[0]._id;
+        setSelectedBoardId(boardToLoad);
+        loadBoard(boardToLoad);
+      } else setLoading(false);
     } catch (err) {
       setError('Cannot connect to server.');
       setLoading(false);
@@ -59,7 +65,11 @@ function DashboardPage() {
     }
   };
 
-  const handleBoardChange = (boardId) => { setSelectedBoardId(boardId); loadBoard(boardId); };
+  const handleBoardChange = (boardId) => {
+    setSelectedBoardId(boardId);
+    localStorage.setItem('lastDashboardBoardId', boardId);
+    loadBoard(boardId);
+  };
 
   const allTasks = columns.flatMap(col => col.tasks || []);
   const totalTasks = allTasks.length;
