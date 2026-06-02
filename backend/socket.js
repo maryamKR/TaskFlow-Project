@@ -1,12 +1,13 @@
 const { Server } = require("socket.io");
+const User = require("./models/User");
 
 let io;
 
-const initSocket = (httpServer) => {
-  io = new Server(httpServer, {
+const initIO = (server) => {
+  io = new Server(server, {
     cors: {
       origin: ["http://localhost:5173", "http://localhost:3000"],
-      methods: ["GET", "POST"],
+      methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
       credentials: true,
     },
   });
@@ -14,29 +15,86 @@ const initSocket = (httpServer) => {
   io.on("connection", (socket) => {
     console.log(`Socket connected: ${socket.id}`);
 
-    // Client joins a board room
-    socket.on("join_board", (boardId) => {
-      socket.join(boardId);
-      console.log(`Socket ${socket.id} joined board: ${boardId}`);
+    // Isolated Personal User Rooms
+    socket.on("join_user", (userId) => {
+      if (!userId) return;
+      
+      const userRoom = `user:${userId}`; // Standardized custom prefix
+      socket.join(userRoom);
+      console.log(`User ${userId} registered to room: ${userRoom}`);
     });
 
-    // Client leaves a board room
+    // Object Payload Room Joining & Presence Activation
+    socket.on("join_board", async ({ boardId, userId }) => {
+      if (!boardId || !userId) {
+        console.error("Invalid join_board payload block structure");
+        return;
+      }
+
+      // Store userId inside internal socket state data so it's accessible during disconnect
+      socket.data.userId = userId.toString();
+      
+      // Bind socket connection to rooms
+      socket.join(boardId.toString());
+      socket.join(`user:${userId}`);
+
+      try {
+        // Toggle user state to true inside MongoDB User Schema
+        await User.findByIdAndUpdate(userId, { isOnline: true });
+        console.log(`DB Marker Updated: User ${userId} is ONLINE`);
+
+        // Broadcast presence change to everyone else inside this project room
+        socket.to(boardId.toString()).emit("member_online", { 
+          userId: userId.toString(), 
+          boardId: boardId.toString() 
+        });
+      } catch (err) {
+        console.error("Presence status modification error:", err.message);
+      }
+    });
+
+    // Manual Leave Room Event
     socket.on("leave_board", (boardId) => {
-      socket.leave(boardId);
+      if (!boardId) return;
+      socket.leave(boardId.toString());
+      console.log(`Socket left board room: ${boardId}`);
     });
 
-    socket.on("disconnect", () => {
+
+    // Multi-Tab Buffer Disconnect Logic
+
+    socket.on("disconnect", async () => {
       console.log(`Socket disconnected: ${socket.id}`);
+      
+      const userId = socket.data.userId;
+      if (!userId) return; // Connection was never registered, drop safely
+
+      try {
+        // Query if this specific user room has ANY active socket clients left open
+        const remainingSockets = await io.in(`user:${userId}`).fetchSockets();
+        
+        // Multi-tab check: only declare them offline if they closed their LAST open browser tab!
+        if (remainingSockets.length === 0) {
+          await User.findByIdAndUpdate(userId, { isOnline: false });
+          console.log(`User ${userId} closed all sessions. DB Marker set to OFFLINE.`);
+
+          // Broadcast offline event to the system
+          io.emit("member_offline", { userId: userId.toString() });
+        } else {
+          console.log(`User ${userId} closed a tab, but has ${remainingSockets.length} tab(s) running.`);
+        }
+      } catch (err) {
+        console.error("Error setting network disconnection state flags:", err.message);
+      }
     });
   });
 
   return io;
 };
 
-
 const getIO = () => {
-  if (!io) throw new Error("Socket.io not initialized");
+  if (!io) throw new Error("Socket.io has not been initialized!");
   return io;
 };
 
-module.exports = { initSocket, getIO };
+module.exports = { initIO, getIO };

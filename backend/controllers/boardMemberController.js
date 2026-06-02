@@ -1,19 +1,16 @@
 const asyncHandler = require("express-async-handler");
 const Board = require("../models/Board");
 const User = require("../models/User");
-const Notification = require("../models/Notification");
 const { hasBoardAccess } = require("../utils/boardAuth");
-const { sendInviteEmail, sendUnregisteredInviteEmail } = require("../utils/emailService");
+const notifyAndEmit = require("../utils/notifyAndEmit"); 
+const { sendInviteEmail } = require("../utils/emailService"); 
 
 // @desc    Get all members of a board
 // @route   GET /api/boards/:boardId/members
 exports.getBoardMembers = asyncHandler(async (req, res) => {
-  const board = await Board.findById(req.params.boardId).populate(
-    "coworkers",
-    "username email",
-  ).populate(
-    "user",
-    "username email");
+  const board = await Board.findById(req.params.boardId)
+    .populate("coworkers", "username email isOnline") // Added isOnline to reflect active indicators
+    .populate("user", "username email isOnline");
 
   if (!board) {
     res.status(404);
@@ -28,7 +25,6 @@ exports.getBoardMembers = asyncHandler(async (req, res) => {
   const members = [board.user, ...board.coworkers];
   res.status(200).json(members);
 });
-
 
 // @desc    Invite a user to a board by email
 // @route   POST /api/boards/:boardId/invite
@@ -54,29 +50,8 @@ exports.inviteMember = asyncHandler(async (req, res) => {
 
   const userToInvite = await User.findOne({ email });
   if (!userToInvite) {
-    const cleanEmail = email.trim().toLowerCase();
-    
-    // Check if user is already invited
-    if (board.pendingInvites && board.pendingInvites.includes(cleanEmail)) {
-      res.status(400);
-      throw new Error("User is already invited");
-    }
-
-    // Add to pendingInvites
-    if (!board.pendingInvites) {
-      board.pendingInvites = [];
-    }
-    board.pendingInvites.push(cleanEmail);
-    await board.save();
-
-    // Send invite to register
-    await sendUnregisteredInviteEmail(cleanEmail, board.title, req.user.username, req.user.email);
-
-    return res.status(200).json({
-      message: "Invitation email sent to unregistered user. They will be added when they sign up.",
-      coworkers: board.coworkers,
-      pendingInvites: board.pendingInvites,
-    });
+    res.status(404);
+    throw new Error("User not found");
   }
 
   if (userToInvite._id.toString() === req.user._id.toString()) {
@@ -93,27 +68,23 @@ exports.inviteMember = asyncHandler(async (req, res) => {
   board.coworkers.push(userToInvite._id);
   await board.save();
 
-  // Create Notification for the invited user
-  await Notification.create({
-    user: userToInvite._id,     
-    sender: req.user._id,          
+  // Create real-time notification with populate routing parameters
+  await notifyAndEmit({
+    recipientId: userToInvite._id,
+    senderId: req.user._id,
     message: `You have been invited to the board: ${board.title}`,
     type: "BOARD_INVITATION",
-    relatedId: board._id 
+    relatedId: board._id,
+    boardId: board._id.toString(), // Structured matching
   });
 
-  // Create Notification for the board owner
-  await Notification.create({
-    user: board.user,
-    sender: userToInvite._id,
-    message: `${userToInvite.username} has joined your board: ${board.title}`,
-    type: "BOARD_INVITATION",
-    relatedId: board._id
-  });
-
-  // Send invitation email (non-blocking — failure won't affect the response)
-  // Platform sends from EMAIL_USER; Reply-To is set to the board owner's email
-  await sendInviteEmail(userToInvite.email, board.title, req.user.username, req.user.email);
+  // Call Nodemailer service to deliver the out-of-app email alert
+  try {
+    await sendInviteEmail(userToInvite.email, board.title, req.user.username);
+  } catch (emailErr) {
+    // Log error but don't fail the request if out-of-app notification delivery struggles
+    console.error("Failed to send invitation email:", emailErr.message);
+  }
 
   res.status(200).json({
     message: "User invited successfully",
@@ -143,9 +114,25 @@ exports.removeMember = asyncHandler(async (req, res) => {
     throw new Error("You cannot remove the board owner");
   }
 
+  // Verify the targeted individual is actually on the board before proceeding
+  const isMember = board.coworkers.some((id) => id.toString() === memberId);
+  if (!isMember) {
+    res.status(400);
+    throw new Error("This user is not a member of this board");
+  }
+
   // Remove the member
   board.coworkers = board.coworkers.filter((id) => id.toString() !== memberId);
   await board.save();
+
+  // Trigger real-time removal alert to the user being kicked out
+  await notifyAndEmit({
+    recipientId: memberId,
+    senderId: req.user._id,
+    message: `You have been removed from the board: ${board.title}`,
+    type: "MEMBER_REMOVED", // Extended Enum Type applied
+    boardId: boardId.toString(),
+  });
 
   res.status(200).json({
     success: true,

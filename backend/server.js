@@ -15,7 +15,8 @@ const notificationRoutes = require("./routes/notificationRoutes");
 const aiRoutes = require("./routes/aiRoutes");
 
 const http = require("http");
-const { initSocket } = require("./socket");
+//const { initSocket } = require("./socket");
+const { initIO } = require("./socket");
 
 const errorHandler = require("./middleware/errorHandler");
 
@@ -59,7 +60,10 @@ app.use("/api/ai", aiRoutes);
 app.use(errorHandler);
 
 const server = http.createServer(app);
-initSocket(server);
+//initSocket(server);
+
+
+initIO(server);
 
 const PORT = process.env.PORT || 5000;
 server.listen(PORT, () => {

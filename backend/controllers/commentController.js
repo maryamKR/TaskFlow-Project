@@ -2,10 +2,9 @@ const Comment = require("../models/Comment");
 const Board = require("../models/Board");
 const Column = require("../models/Column");
 const Task = require("../models/Task");
-const Notification = require("../models/Notification");
 const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
-
+const notifyAndEmit = require("../utils/notifyAndEmit");
 
 const { getIO } = require("../socket");
 
@@ -46,7 +45,7 @@ exports.addComment = asyncHandler(async (req, res) => {
   task.comments.push(comment._id);
   await task.save();
 
-  //notification integration//
+  // Notification integration logic
   const recipients = new Set();
 
   // Notify the person the task was assigned to
@@ -65,20 +64,22 @@ exports.addComment = asyncHandler(async (req, res) => {
   // Never notify the person who just commented
   recipients.delete(req.user._id.toString());
 
-// Send notifications
-for (const userId of recipients) {
-  try {
-    await Notification.create({
-      user: userId,
-      sender: req.user._id,
-      message: `${req.user.username} commented on: ${task.title}`,
-      type: "COMMENT",
-      relatedId: taskId,
-    });
-  } catch (err) {
-    console.error("NOTIFICATION ERROR:", err.message);
+  // Loop through filtered recipients and route updates via unified utility
+  for (const userId of recipients) {
+    try {
+      await notifyAndEmit({
+        recipientId: userId,
+        senderId: req.user._id,
+        message: `${req.user.username} commented on: ${task.title}`,
+        type: "COMMENT",
+        relatedId: taskId,
+        boardId: board._id.toString(), // Added to match Schema design criteria
+      });
+    } catch (err) {
+      console.error("NOTIFICATION ERROR:", err.message);
+    }
   }
-}
+
   await comment.populate("author", "username");
 
   getIO().to(board._id.toString()).emit("comment_added", {

@@ -80,13 +80,14 @@ function BoardPage() {
     if (token) {
       socket.auth = { token };
       socket.connect();
+      socket.emit("join_user", currentUserId);
     }
   }, []);
 
   useEffect(() => {
     if (!activeBoard) return;
 
-    socket.emit("join_board", activeBoard._id);
+    socket.emit("join_board", { boardId: activeBoard._id, userId: currentUserId });
 
     socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
       setColumns(prev => {
@@ -157,6 +158,18 @@ function BoardPage() {
       ));
     });
 
+    socket.on("member_online", ({ userId }) => {
+      setMembers(prev => prev.map(m =>
+        m._id === userId ? { ...m, isOnline: true } : m
+      ));
+    });
+
+    socket.on("member_offline", ({ userId }) => {
+      setMembers(prev => prev.map(m =>
+        m._id === userId ? { ...m, isOnline: false } : m
+      ));
+    });
+
     return () => {
       socket.emit("leave_board", activeBoard._id);
       socket.off("task_moved");
@@ -167,6 +180,9 @@ function BoardPage() {
       socket.off("task_created");
       socket.off("task_updated");
       socket.off("task_deleted");
+      socket.off("member_online");
+      socket.off("member_offline");
+      socket.off("new_notification");
     };
   }, [activeBoard?._id]);
 

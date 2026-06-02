@@ -5,6 +5,7 @@ import {
   getNotifications, markAllRead, markOneRead,
   deleteNotification, deleteReadNotifications
 } from '../services/board';
+import socket from '../socket';
 
 function Navbar() {
   const token = localStorage.getItem('token');
@@ -22,9 +23,22 @@ function Navbar() {
   const dropdownRef = useRef(null);
 
   useEffect(() => {
-    fetchNotifications();
-    const interval = setInterval(fetchNotifications, 30000);
-    return () => clearInterval(interval);
+    fetchNotifications(); // initial load
+
+    // Listen for real-time notifications
+    const handleNewNotification = ({ notification }) => {
+      setNotifications(prev => [notification, ...prev]);
+    };
+
+    socket.on("new_notification", handleNewNotification);
+
+    // Keep polling as fallback (every 60s instead of 30s)
+    const interval = setInterval(fetchNotifications, 60000);
+
+    return () => {
+      socket.off("new_notification", handleNewNotification);
+      clearInterval(interval);
+    };
   }, []);
 
   useEffect(() => {
