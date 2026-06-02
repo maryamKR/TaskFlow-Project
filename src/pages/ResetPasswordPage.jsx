@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/auth';
 
 function ResetPasswordPage() {
   const { isDark } = useTheme();
-  const location = useLocation();
+  const { token } = useParams();
   const navigate = useNavigate();
-  const token = new URLSearchParams(location.search).get('token');
+
 
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
