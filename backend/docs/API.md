@@ -67,10 +67,11 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     ```json
     {
       "success": true,
-      "data": "Email sent"
+      "data": "If an account exists with that email, a reset link has been sent"
     }
     ```
-*   **Note:** This endpoint generates a secure, time-limited token (10 minutes) and sends a reset link to the user's email address.
+*   **Note:** This endpoint generates a secure, time-limited token (10 minutes) and sends a reset link to the user's email address. To prevent user enumeration, it returns a generic success message regardless of whether the email is registered.
+*   **Rate Limiting:** Restricted to 3 requests per hour per IP address.
 
 #### Reset Password
 *   **URL:** `/auth/reset-password/:resetToken`
