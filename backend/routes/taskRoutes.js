@@ -13,6 +13,7 @@ const {
   moveTask,
   reorderTask,
   getTasks,
+  getTaskActivity,
 } = require("../controllers/taskController");
 
 const {
@@ -25,6 +26,7 @@ const {
 
 
 
+router.get("/:id/activity", protect, getTaskActivity);
 router.get("/:id", protect, getTask);
 router.get("/",protect,validate(getTasksQuerySchema),getTasks);
 router.post("/", protect, validate(createTaskSchema), createTask);

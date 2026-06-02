@@ -63,11 +63,12 @@ Manages task groupings within boards.
 The core logic for task management and real-time updates.
 
 *   `createTask(req, res)`: Creates a task with optional fields like `label`, assigns it to a column, and triggers a `TASK_ASSIGNED` notification if an assignee is specified. Emits `task_created` socket event.
-*   `getTask(req, res)`: Retrieves detailed information for a single task, including comments.
-*   `updateTask(req, res)`: Modifies task details (title, priority, etc.). Triggers `TASK_UPDATED` or `TASK_ASSIGNED` notifications as needed. Emits `task_updated` socket event.
-*   `deleteTask(req, res)`: Removes a task and cleans up the reference in the parent column. Restricts task deletion to the board owner only, returning a 403 Forbidden error to unauthorized users. Emits `task_deleted` socket event.
-*   `moveTask(req, res)`: Moves a task between columns. Synchronizes pointers in both columns and the task itself. Emits `task_moved` socket event.
-*   `reorderTask(req, res)`: Reorders tasks within a single column. Enforces ownership validation checking that all task IDs belong to that column before saving. Emits `tasks_reordered` socket event.
+*   `getTask(req, res)`: Retrieves detailed information for a single task, including comments and populated activity log.
+*   `getTaskActivity(req, res)`: Retrieves only the activity log for a specific task, populated with the usernames of actors. Enforces board access permissions.
+*   `updateTask(req, res)`: Modifies task details (title, priority, etc.). Triggers `TASK_UPDATED` or `TASK_ASSIGNED` notifications as needed. Emits `task_updated` socket event and logs the change to `activityLog`.
+*   `deleteTask(req, res)`: Removes a task and cleans up the reference in the parent column. Restricts task deletion to the board owner only. Emits `task_deleted` socket event.
+*   `moveTask(req, res)`: Moves a task between columns. Synchronizes pointers and logs the move to `activityLog`. Emits `task_moved` socket event.
+*   `reorderTask(req, res)`: Reorders tasks within a single column. Emits `tasks_reordered` socket event.
 *   `getTasks(req, res)`: A versatile query method supporting search, priority filters, assignee filters, and date range filtering.
 
 ### Comment Controller (`commentController.js`)
