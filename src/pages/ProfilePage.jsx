@@ -1,11 +1,12 @@
 ﻿import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useTheme } from '../context/ThemeContext';
 import { getProfileFromStorage, getMyBoards } from '../services/profile';
 
 function ProfilePage() {
   const { isDark } = useTheme();
+  const navigate = useNavigate();
   const [profile] = useState(getProfileFromStorage());
   const [boards, setBoards] = useState([]);
   const [stats, setStats] = useState({ totalBoards: 0, totalTasks: 0, completedTasks: 0, highPriorityTasks: 0 });
@@ -39,6 +40,14 @@ function ProfilePage() {
     }
   };
 
+  // Dynamic role tag
+  const token = localStorage.getItem('token');
+  const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
+  const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
+  const isOwnerOfAnyBoard = boards.some(
+    board => board.user === currentUserId || board.user?._id === currentUserId
+  );
+
   const initials = profile.username.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   if (loading) return (
@@ -51,6 +60,21 @@ function ProfilePage() {
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
       <Navbar />
       <div className="max-w-3xl mx-auto w-full px-6 py-10 flex flex-col gap-8">
+
+        {/* Back arrow */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate(-1)}
+            className={`flex items-center gap-1 text-sm transition duration-200 ${
+              isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
+            }`}
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Back
+          </button>
+        </div>
 
         <div>
           <h1 className={`text-2xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Profile</h1>
@@ -67,7 +91,14 @@ function ProfilePage() {
           <div className="flex flex-col gap-1">
             <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{profile.username}</h2>
             <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{profile.email || 'No email saved'}</p>
-            <span className="mt-2 inline-block bg-pink-700/20 text-pink-400 text-xs px-3 py-1 rounded-full w-fit">Member</span>
+            {/* Dynamic role tag */}
+            <span className={`mt-2 inline-block text-xs px-3 py-1 rounded-full w-fit ${
+              isOwnerOfAnyBoard
+                ? 'bg-pink-700/20 text-pink-400'
+                : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-200 text-gray-500'
+            }`}>
+              {isOwnerOfAnyBoard ? 'Owner' : 'Coworker'}
+            </span>
           </div>
         </div>
 
@@ -107,15 +138,25 @@ function ProfilePage() {
                 const doneCount = (board.columns || [])
                   .filter(col => col.title?.toLowerCase() === 'done')
                   .reduce((acc, col) => acc + (col.tasks || []).length, 0);
+                const boardIsOwned = board.user === currentUserId || board.user?._id === currentUserId;
                 return (
                   <div key={board._id} className="px-6 py-4 flex items-center justify-between">
                     <div>
-                      <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{board.title}</p>
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{board.title}</p>
+                        <span className={`text-xs px-2 py-0.5 rounded-full ${
+                          boardIsOwned
+                            ? 'bg-pink-700/20 text-pink-400'
+                            : isDark ? 'bg-gray-700 text-gray-500' : 'bg-gray-200 text-gray-500'
+                        }`}>
+                          {boardIsOwned ? 'Owner' : 'Coworker'}
+                        </span>
+                      </div>
                       <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                         {taskCount} tasks · {doneCount} done
                       </p>
                     </div>
-                    <Link to="/board" className="text-pink-400 hover:text-blue-300 text-xs transition duration-200">
+                    <Link to="/board" className="text-pink-400 hover:text-pink-300 text-xs transition duration-200">
                       Open →
                     </Link>
                   </div>

@@ -8,6 +8,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState('low');
   const [assignee, setAssignee] = useState('');
+  const [dueDate, setDueDate] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -47,7 +48,14 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
     setLoading(true);
     setError('');
     try {
-      const newTask = await createTask({ title, columnId, priority, assignedTo: assignee || undefined, label });
+      const newTask = await createTask({
+        title,
+        columnId,
+        priority,
+        assignedTo: assignee || undefined,
+        label,
+        dueDate: dueDate ? new Date(dueDate).toISOString() : null
+      });
       onTaskCreated(columnId, newTask);
       onClose();
     } catch (err) {
@@ -72,6 +80,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
 
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
 
+          {/* Title */}
           <div>
             <label className={`text-sm mb-1 block ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
               Task Title <span className="text-red-400">*</span>
@@ -93,9 +102,9 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
                 Auto-label: <span className="font-semibold">{label}</span>
               </p>
             )}
-            
           </div>
 
+          {/* Priority */}
           <div>
             <div className="flex items-center justify-between mb-1">
               <label className={`text-sm ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Priority</label>
@@ -120,6 +129,18 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
             )}
           </div>
 
+          {/* Due Date */}
+          <div>
+            <label className={`text-sm mb-1 block ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Due Date</label>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className={inputClass}
+            />
+          </div>
+
+          {/* Assignee */}
           <div>
             <label className={`text-sm mb-1 block ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Assignee</label>
             <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className={inputClass}>
@@ -130,6 +151,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
             </select>
           </div>
 
+          {/* Buttons */}
           <div className="flex gap-3 mt-2">
             <button
               type="button"

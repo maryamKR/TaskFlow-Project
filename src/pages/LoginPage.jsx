@@ -44,9 +44,8 @@ function LoginPage() {
               placeholder="you@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
-                errors.email ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
-              } ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`}
+              className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${errors.email ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
+                } ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`}
             />
             {errors.email && <p className="text-red-400 text-xs mt-1">{errors.email}</p>}
           </div>
@@ -58,12 +57,17 @@ function LoginPage() {
               placeholder="••••••••"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${
-                errors.password ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
-              } ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`}
+              className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 ${errors.password ? 'ring-2 ring-red-500' : 'focus:ring-pink-500'
+                } ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`}
             />
             {errors.password && <p className="text-red-400 text-xs mt-1">{errors.password}</p>}
+            <div className="flex justify-end mt-1">
+              <a href="/forgot-password" className="text-xs text-pink-400 hover:underline">
+                Forgot password?
+              </a>
+            </div>
           </div>
+
 
           {errors.general && <p className="text-red-400 text-sm text-center">{errors.general}</p>}
 
