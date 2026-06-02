@@ -69,7 +69,7 @@ const createTask = asyncHandler(async (req, res) => {
   });
 
   await task.populate("createdBy", "username");
-  await task.populate("assignedTo", "username");
+  await task.populate("assignedTo", "username"); await task.populate("createdBy", "username");
 
   //Notification Trigger//
   let assigneeNotified = false;
@@ -191,7 +191,7 @@ const updateTask = asyncHandler(async (req, res) => {
   }
 
   if (changes.length === 0) {
-    await task.populate("assignedTo", "username");
+    await task.populate("assignedTo", "username"); await task.populate("createdBy", "username");
     return res.status(200).json({ success: true, data: task });
   }
 
@@ -203,7 +203,7 @@ const updateTask = asyncHandler(async (req, res) => {
   }
 
   await task.save();
-  await task.populate("assignedTo", "username");
+  await task.populate("assignedTo", "username"); await task.populate("createdBy", "username");
 
   const newAssignee = task.assignedTo;
 
@@ -508,6 +508,35 @@ const getTasks = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, count: tasks.length, data: tasks });
 });
 
+// @desc    Get task activity log
+// @route   GET /api/tasks/:id/activity
+// @access  Private
+const getTaskActivity = asyncHandler(async (req, res) => {
+  const task = await Task.findById(req.params.id).populate(
+    "activityLog.performedBy",
+    "username"
+  );
+
+  if (!task) {
+    res.status(404);
+    throw new Error("Task not found");
+  }
+
+  const column = await Column.findById(task.column);
+  if (!column) {
+    res.status(404);
+    throw new Error("Task not found in any column");
+  }
+  const board = await Board.findById(column.board);
+
+  if (!board || !hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("Not authorized to view this activity");
+  }
+
+  res.status(200).json({ success: true, data: task.activityLog });
+});
+
 module.exports = {
   createTask,
   getTask,
@@ -516,4 +545,5 @@ module.exports = {
   moveTask,
   reorderTask,
   getTasks,
+  getTaskActivity,
 };

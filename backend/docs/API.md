@@ -323,7 +323,6 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
       "data": [...]
     }
     ```
-
 #### Get Task By ID
 *   **URL:** `/tasks/:id`
 *   **Method:** `GET`
@@ -332,7 +331,25 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
     { "success": true, "data": { ... } }
     ```
 
+#### Get Task Activity
+*   **URL:** `/tasks/:id/activity`
+*   **Method:** `GET`
+*   **Success Response (200):**
+    ```json
+    {
+      "success": true,
+      "data": [
+        {
+          "action": "Title changed from 'Old' to 'New'",
+          "performedBy": { "_id": "60d5ec...", "username": "johndoe" },
+          "timestamp": "2023-10-27T10:00:00Z"
+        }
+      ]
+    }
+    ```
+
 #### Update Task
+...
 *   **URL:** `/tasks/:id`
 *   **Method:** `PUT`
 *   **Body:**
