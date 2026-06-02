@@ -20,6 +20,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const [activeTab, setActiveTab] = useState('comments');
   const [activity, setActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(false);
+  const [showAllActivity, setShowAllActivity] = useState(false);
 
   useEffect(() => { fetchComments(); }, []);
 
@@ -60,7 +61,8 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
     setActivityLoading(true);
     try {
       const response = await api.get(`/tasks/${task._id}/activity`);
-      setActivity(response.data.data || []);
+      const data = response.data.data || [];
+      setActivity(data.reverse());
     } catch (err) {
       console.error('Failed to fetch activity:', err);
     } finally {
@@ -125,55 +127,34 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
-  const inputClass = `w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
-    isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
-  }`;
+  const inputClass = `w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
+    }`;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
       <div className={`rounded-2xl w-full max-w-3xl shadow-xl ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-
-        {/* Header */}
         <div className={`flex items-center justify-between px-6 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
           <h2 className={`text-lg font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>Task Details</h2>
           <button onClick={onClose} className={`text-2xl leading-none ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>×</button>
         </div>
 
         <div className="grid grid-cols-2 gap-0 max-h-[75vh]">
-
-          {/* Left — Edit form */}
           <div className={`p-5 flex flex-col gap-3 border-r overflow-y-auto ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className={`text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Edit Task</h3>
-
-            {/* Created by */}
             {task.createdBy?.username && (
               <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                 Created by: <span className="font-medium">{task.createdBy.username}</span>
               </p>
             )}
-
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Title</label>
-              <input
-                type="text"
-                value={title}
-                onChange={(e) => setTitle(e.target.value)}
-                className={`${inputClass} ${error ? 'ring-2 ring-red-500' : ''}`}
-              />
+              <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} className={`${inputClass} ${error ? 'ring-2 ring-red-500' : ''}`} />
               {error && <p className="text-red-400 text-xs mt-1">{error}</p>}
             </div>
-
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Description</label>
-              <textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                placeholder="Add a description..."
-                rows={3}
-                className={`${inputClass} resize-none`}
-              />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add a description..." rows={3} className={`${inputClass} resize-none`} />
             </div>
-
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Priority</label>
               <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>
@@ -182,12 +163,10 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
                 <option value="low">Low</option>
               </select>
             </div>
-
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Due Date</label>
               <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
             </div>
-
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Assignee</label>
               <select value={assignee} onChange={(e) => setAssignee(e.target.value)} className={inputClass}>
@@ -197,128 +176,80 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
                 ))}
               </select>
             </div>
-
-            <button
-              onClick={handleSave}
-              disabled={saving}
-              className="w-full bg-pink-700 hover:bg-pink-800 text-white font-semibold py-2 rounded-lg transition duration-200 disabled:opacity-50 text-sm mt-1"
-            >
+            <button onClick={handleSave} disabled={saving} className="w-full bg-pink-700 hover:bg-pink-800 text-white font-semibold py-2 rounded-lg transition duration-200 disabled:opacity-50 text-sm mt-1">
               {saving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
 
-          {/* Right — Comments / Activity tabs */}
           <div className="p-5 flex flex-col overflow-y-auto">
-
-            {/* Tab navigation */}
             <div className={`flex gap-1 mb-4 p-1 rounded-lg ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
-              <button
-                onClick={() => handleTabChange('comments')}
-                className={`flex-1 py-1.5 rounded-md text-xs font-medium transition duration-200 ${
-                  activeTab === 'comments'
-                    ? 'bg-pink-700 text-white'
-                    : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
+              <button onClick={() => handleTabChange('comments')} className={`flex-1 py-1.5 rounded-md text-xs font-medium transition duration-200 ${activeTab === 'comments' ? 'bg-pink-700 text-white' : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
                 Comments {comments.length > 0 && `(${comments.length})`}
               </button>
-              <button
-                onClick={() => handleTabChange('activity')}
-                className={`flex-1 py-1.5 rounded-md text-xs font-medium transition duration-200 ${
-                  activeTab === 'activity'
-                    ? 'bg-pink-700 text-white'
-                    : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-                }`}
-              >
+              <button onClick={() => handleTabChange('activity')} className={`flex-1 py-1.5 rounded-md text-xs font-medium transition duration-200 ${activeTab === 'activity' ? 'bg-pink-700 text-white' : isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
                 Activity
               </button>
             </div>
 
-            {/* Comments tab */}
             {activeTab === 'comments' && (
               <>
                 <div className="flex flex-col gap-2 flex-1 overflow-y-auto mb-3">
-                  {commentLoading ? (
-                    <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</p>
-                  ) : comments.length === 0 ? (
-                    <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>No comments yet.</p>
-                  ) : (
+                  {commentLoading ? <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</p> : comments.length === 0 ? <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>No comments yet.</p> : (
                     comments.map(comment => (
                       <div key={comment._id} className={`rounded-xl p-3 flex items-start justify-between gap-2 ${isDark ? 'bg-gray-700' : 'bg-gray-100'}`}>
                         <div className="flex gap-2 flex-1">
-                          <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">
-                            {comment.author?.username?.[0]?.toUpperCase() || '?'}
-                          </div>
+                          <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">{comment.author?.username?.[0]?.toUpperCase() || '?'}</div>
                           <div>
                             <div className="flex items-center gap-2 mb-0.5">
-                              <span className={`text-xs font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                                {comment.author?.username || 'Unknown'}
-                              </span>
-                              <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                                {new Date(comment.createdAt).toLocaleDateString()}
-                              </span>
+                              <span className={`text-xs font-medium ${isDark ? 'text-white' : 'text-gray-900'}`}>{comment.author?.username || 'Unknown'}</span>
+                              <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{new Date(comment.createdAt).toLocaleDateString()}</span>
                             </div>
                             <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-600'}`}>{comment.content}</p>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleDeleteComment(comment._id)}
-                          className={`text-sm font-bold flex-shrink-0 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
-                        >×</button>
+                        <button onClick={() => handleDeleteComment(comment._id)} className={`text-sm font-bold flex-shrink-0 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}>×</button>
                       </div>
                     ))
                   )}
                 </div>
-
                 <form onSubmit={handleAddComment} className="flex gap-2 mt-auto">
-                  <input
-                    type="text"
-                    placeholder="Write a comment..."
-                    value={newComment}
-                    onChange={(e) => setNewComment(e.target.value)}
-                    className={`flex-1 px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${
-                      isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
-                    }`}
-                  />
-                  <button
-                    type="submit"
-                    disabled={loading || !newComment.trim()}
-                    className="px-3 py-2 bg-pink-700 hover:bg-pink-800 text-white rounded-lg text-sm font-medium transition duration-200 disabled:opacity-50"
-                  >
+                  <input type="text" placeholder="Write a comment..." value={newComment} onChange={(e) => setNewComment(e.target.value)} className={inputClass} />
+                  <button type="submit" disabled={loading || !newComment.trim()} className="px-3 py-2 bg-pink-700 hover:bg-pink-800 text-white rounded-lg text-sm font-medium transition duration-200 disabled:opacity-50">
                     {loading ? '...' : 'Send'}
                   </button>
                 </form>
               </>
             )}
 
-            {/* Activity tab */}
             {activeTab === 'activity' && (
               <div className="flex flex-col gap-2 flex-1 overflow-y-auto">
-                {activityLoading ? (
-                  <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</p>
-                ) : activity.length === 0 ? (
-                  <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>No activity recorded yet.</p>
-                ) : (
-                  activity.map((log, index) => (
-                    <div key={index} className={`flex items-start gap-3 py-2 border-b last:border-0 ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                      <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
-                        {log.user?.username?.[0]?.toUpperCase() || '?'}
+                {activityLoading ? <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</p> : activity.length === 0 ? <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>No activity recorded yet.</p> : (
+                  <>
+                    {(showAllActivity ? activity : activity.slice(0, 3)).map((log, index) => (
+                      <div key={index} className={`flex items-start gap-3 py-2 border-b last:border-0 ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                        <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">{log.user?.username?.[0]?.toUpperCase() || '?'}</div>
+                        <div className="flex-1 min-w-0">
+                          <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                            <span className="font-medium">{log.user?.username || 'Unknown'}</span> {log.action}
+                          </p>
+                          <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimeAgo(log.createdAt)}</p>
+                        </div>
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                          <span className="font-medium">{log.user?.username || 'Unknown'}</span>
-                          {' '}{log.action}
-                        </p>
-                        <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                          {formatTimeAgo(log.createdAt)}
-                        </p>
-                      </div>
-                    </div>
-                  ))
+                    ))}
+                    {activity.length > 3 && !showAllActivity && (
+                      <button onClick={() => setShowAllActivity(true)} className="text-xs text-pink-400 hover:underline mt-2 text-center w-full">
+                        Show full activity log ({activity.length} entries)
+                      </button>
+                    )}
+                    {showAllActivity && activity.length > 3 && (
+                      <button onClick={() => setShowAllActivity(false)} className="text-xs text-gray-400 hover:underline mt-2 text-center w-full">
+                        Show less
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
             )}
-
           </div>
         </div>
       </div>
