@@ -1,10 +1,9 @@
 const Notification = require("../models/Notification");
-const asyncHandler = require("express-async-handler");
 
 // @desc    Get all notifications for the logged-in user
 // @route   GET /api/notifications
 // @access  Private
-exports.getNotifications = asyncHandler(async (req, res) => {
+exports.getNotifications = async (req, res) => {
   const notifications = await Notification.find({ user: req.user._id })
     .populate("sender", "username")
     .sort({ createdAt: -1 })
@@ -13,12 +12,12 @@ exports.getNotifications = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json({ success: true, count: notifications.length, data: notifications });
-});
+};
 
 // @desc    Mark a single notification as read
 // @route   PATCH /api/notifications/:id/read
 // @access  Private
-exports.markAsRead = asyncHandler(async (req, res) => {
+exports.markAsRead = async (req, res) => {
   const notification = await Notification.findOneAndUpdate(
     { _id: req.params.id, user: req.user._id },
     { isRead: true },
@@ -31,12 +30,12 @@ exports.markAsRead = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json({ success: true, data: notification });
-});
+};
 
 // @desc    Mark ALL notifications as read
 // @route   PATCH /api/notifications/read-all
 // @access  Private
-exports.markAllAsRead = asyncHandler(async (req, res) => {
+exports.markAllAsRead = async (req, res) => {
   await Notification.updateMany(
     { user: req.user._id, isRead: false },
     { $set: { isRead: true } },
@@ -45,12 +44,12 @@ exports.markAllAsRead = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json({ success: true, message: "All notifications marked as read" });
-});
+};
 
 // @desc    Delete a single notification
 // @route   DELETE /api/notifications/:id
 // @access  Private
-exports.deleteNotification = asyncHandler(async (req, res) => {
+exports.deleteNotification = async (req, res) => {
   const notification = await Notification.findById(req.params.id);
 
   if (!notification) {
@@ -67,15 +66,15 @@ exports.deleteNotification = asyncHandler(async (req, res) => {
   await notification.deleteOne();
 
   res.status(200).json({ success: true, message: "Notification deleted" });
-});
+};
 
 // @desc    Delete all read notifications
 // @route   DELETE /api/notifications/read
 // @access  Private
-exports.deleteReadNotifications = asyncHandler(async (req, res) => {
+exports.deleteReadNotifications = async (req, res) => {
   await Notification.deleteMany({ user: req.user._id, isRead: true });
 
   res
     .status(200)
     .json({ success: true, message: "Read notifications cleared" });
-});
+};

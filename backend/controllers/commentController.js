@@ -1,39 +1,20 @@
 const Comment = require("../models/Comment");
-const Board = require("../models/Board");
-const Column = require("../models/Column");
 const Task = require("../models/Task");
-const asyncHandler = require("express-async-handler");
-const { hasBoardAccess } = require("../utils/boardAuth");
+
 const notifyAndEmit = require("../utils/notifyAndEmit");
+const { getTaskWithBoardAccess } = require("../utils/taskHelpers");
+const { notifyOwner } = require("../utils/notifyOwner");
 
 const { getIO } = require("../socket");
 
 // @desc    Add a comment to a task
 // @route   POST /api/tasks/:taskId/comments
-exports.addComment = asyncHandler(async (req, res) => {
+exports.addComment = async (req, res) => {
   const { content } = req.body;
   const { taskId } = req.params;
 
-  // 1. Verify task exists
-  const task = await Task.findById(taskId).populate("assignedTo");
-  if (!task) {
-    res.status(404);
-    throw new Error("Task not found");
-  }
-
-  // 2. Fetch Board to check access
-  const column = await Column.findById(task.column);
-  if (!column) {
-    res.status(404);
-    throw new Error("Column associated with this task not found");
-  }
-
-  const board = await Board.findById(column.board);
-
-  if (!board || !hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("You do not have access to comment on this board");
-  }
+  const { task, board } = await getTaskWithBoardAccess(taskId, req.user._id);
+  await task.populate("assignedTo");
 
   // 3. Create the comment
   const comment = await Comment.create({
@@ -43,6 +24,10 @@ exports.addComment = asyncHandler(async (req, res) => {
   });
 
   task.comments.push(comment._id);
+  task.activityLog.push({
+    action: "Comment added",
+    performedBy: req.user._id,
+  });
   await task.save();
 
   // Notification integration logic
@@ -57,9 +42,6 @@ exports.addComment = asyncHandler(async (req, res) => {
   if (task.createdBy) {
     recipients.add(task.createdBy.toString());
   }
-
-  // Notify the board owner (for moderation)
-  recipients.add(board.user.toString());
 
   // Never notify the person who just commented
   recipients.delete(req.user._id.toString());
@@ -79,6 +61,16 @@ exports.addComment = asyncHandler(async (req, res) => {
     }
   }
 
+  // Notify the board owner (for moderation) via unified helper
+  // This helper handles checking if the actor IS the owner
+  await notifyOwner(
+    board,
+    req.user._id,
+    `${req.user.username} commented on: ${task.title}`,
+    "COMMENT",
+    taskId,
+  );
+
   await comment.populate("author", "username");
 
   getIO().to(board._id.toString()).emit("comment_added", {
@@ -87,31 +79,14 @@ exports.addComment = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({ success: true, data: comment });
-});
+};
 
 // @desc    Get all comments for a task
 // @route   GET /api/tasks/:taskId/comments
-exports.getComments = asyncHandler(async (req, res) => {
+exports.getComments = async (req, res) => {
   const { taskId } = req.params;
 
-  const task = await Task.findById(taskId);
-  if (!task) {
-    res.status(404);
-    throw new Error("Task not found");
-  }
-
-  const column = await Column.findById(task.column);
-  if (!column) {
-    res.status(404);
-    throw new Error("Column associated with this task not found");
-  }
-
-  const board = await Board.findById(column.board);
-
-  if (!board || !hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("Not authorized to view comments on this board");
-  }
+  await getTaskWithBoardAccess(taskId, req.user._id);
 
   // 2. Fetch comments and populate author data
   const comments = await Comment.find({ task: taskId })
@@ -119,11 +94,11 @@ exports.getComments = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 }); // Newest comments first
 
   res.status(200).json({ success: true, data: comments });
-});
+};
 
 // @desc    Delete a comment
 // @route   DELETE /api/comments/:commentId
-exports.deleteComment = asyncHandler(async (req, res) => {
+exports.deleteComment = async (req, res) => {
   const { commentId } = req.params;
 
   const comment = await Comment.findById(commentId);
@@ -132,25 +107,7 @@ exports.deleteComment = asyncHandler(async (req, res) => {
     throw new Error("Comment not found");
   }
 
-  const task = await Task.findById(comment.task);
-  if (!task) {
-    res.status(404);
-    throw new Error("Associated task not found");
-  }
-
-  // 2. Fetch Board to check access
-  const column = await Column.findById(task.column);
-  if (!column) {
-    res.status(404);
-    throw new Error("Column associated with this task not found");
-  }
-
-  const board = await Board.findById(column.board);
-
-  if (!board || !hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("You do not have access to this board");
-  }
+  const { board } = await getTaskWithBoardAccess(comment.task, req.user._id);
 
   const isAuthor = comment.author.toString() === req.user._id.toString();
   const isOwner = board.user.toString() === req.user._id.toString();
@@ -177,4 +134,4 @@ exports.deleteComment = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json({ success: true, message: "Comment deleted successfully" });
-});
+};

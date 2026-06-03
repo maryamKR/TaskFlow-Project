@@ -2,38 +2,17 @@ const Task = require("../models/Task");
 const Column = require("../models/Column");
 const Board = require("../models/Board");
 const Comment = require("../models/Comment");
-const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
 const notifyAndEmit = require("../utils/notifyAndEmit");
 const Notification = require("../models/Notification");
 const { getIO } = require("../socket");
-
-// Helper updated to use the unified notification tool and include boardId
-const notifyOwner = async (board, actorId, message, type, relatedId) => {
-  if (!board) return;
-  const boardOwnerId = board.user?._id
-    ? board.user._id.toString()
-    : board.user.toString();
-  if (boardOwnerId === actorId.toString()) return;
-
-  try {
-    await notifyAndEmit({
-      recipientId: boardOwnerId,
-      senderId: actorId,
-      message,
-      type,
-      relatedId,
-      boardId: board._id.toString(), // Added to match the Notification.js schema updates
-    });
-  } catch (err) {
-    console.error("OWNER NOTIFICATION ERROR:", err.message);
-  }
-};
+const { getTaskWithBoardAccess } = require("../utils/taskHelpers");
+const { notifyOwner } = require("../utils/notifyOwner");
 
 // @desc    Create a task
 // @route   POST /api/tasks
 // @access  Private
-const createTask = asyncHandler(async (req, res) => {
+const createTask = async (req, res) => {
   const { title, columnId, description, priority, dueDate, assignedTo, label } =
     req.body;
 
@@ -62,6 +41,11 @@ const createTask = asyncHandler(async (req, res) => {
     throw new Error("Not authorized to add tasks to this board");
   }
 
+  if (assignedTo && !hasBoardAccess(board, assignedTo)) {
+    res.status(400);
+    throw new Error("Assigned user must be a member of the board");
+  }
+
   // 3. Create the Task
   const task = await Task.create({
     title,
@@ -72,6 +56,12 @@ const createTask = asyncHandler(async (req, res) => {
     assignedTo: assignedTo || null,
     column: columnId,
     createdBy: req.user._id,
+    activityLog: [
+      {
+        action: "Task created",
+        performedBy: req.user._id,
+      },
+    ],
   });
 
   await task.populate("createdBy", "username");
@@ -118,60 +108,29 @@ const createTask = asyncHandler(async (req, res) => {
   });
 
   res.status(201).json({ success: true, data: task });
-});
+};
 
 // @desc    Get a single task
 // @route   GET /api/tasks/:id
 // @access  Private
-const getTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id)
-    .populate("assignedTo", "username")
-    .populate("createdBy", "username")
-    .populate("comments")
-    .populate("activityLog.performedBy", "username");
+const getTask = async (req, res) => {
+  const { task } = await getTaskWithBoardAccess(req.params.id, req.user._id);
 
-  if (!task) {
-    res.status(404);
-    throw new Error("Task not found");
-  }
-
-  const column = await Column.findById(task.column);
-  if (!column) {
-    res.status(404);
-    throw new Error("Task not found in any column");
-  }
-  const board = await Board.findById(column.board);
-
-  if (!board || !hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("Not authorized to view this task");
-  }
+  await task.populate([
+    { path: "assignedTo", select: "username" },
+    { path: "createdBy", select: "username" },
+    { path: "comments" },
+    { path: "activityLog.performedBy", select: "username" }
+  ]);
 
   res.status(200).json({ success: true, data: task });
-});
+};
 
 // @desc    Update a task
 // @route   PUT /api/tasks/:id
 // @access  Private
-const updateTask = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id);
-
-  if (!task) {
-    res.status(404);
-    throw new Error("Task not found");
-  }
-
-  const column = await Column.findById(task.column);
-  if (!column) {
-    res.status(404);
-    throw new Error("Task not found in any column");
-  }
-  const board = await Board.findById(column.board);
-
-  if (!board || !hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("Not authorized to update this task");
-  }
+const updateTask = async (req, res) => {
+  const { task, board } = await getTaskWithBoardAccess(req.params.id, req.user._id);
 
   const changes = [];
   if (req.body.title !== undefined && req.body.title !== task.title) {
@@ -197,17 +156,32 @@ const updateTask = asyncHandler(async (req, res) => {
       ? new Date(req.body.dueDate).getTime()
       : null;
     if (oldTime !== newTime) {
-      changes.push(`Due date updated`);
+      const formattedDate = newTime ? new Date(newTime).toLocaleDateString() : "None";
+      changes.push(`Due date updated to ${formattedDate}`);
       task.dueDate = req.body.dueDate;
+      
+      // Reset overdue email flag if the new date is in the future
+      if (newTime && newTime > Date.now()) {
+        task.overdueEmailSent = false;
+      }
     }
   }
+  if (req.body.label !== undefined && req.body.label !== task.label) {
+    changes.push(`Label changed from "${task.label || "None"}" to "${req.body.label || "None"}"`);
+    task.label = req.body.label || null;
+  }
   if (req.body.assignedTo !== undefined) {
+    if (req.body.assignedTo && !hasBoardAccess(board, req.body.assignedTo)) {
+      res.status(400);
+      throw new Error("Assigned user must be a member of the board");
+    }
+
     const oldAssigneeStr = task.assignedTo ? task.assignedTo.toString() : "";
     const newAssigneeStr = req.body.assignedTo
       ? req.body.assignedTo.toString()
       : "";
     if (oldAssigneeStr !== newAssigneeStr) {
-      changes.push(`Assignee changed`);
+      changes.push(newAssigneeStr ? `Task assigned to new user` : `Task unassigned`);
       task.assignedTo = req.body.assignedTo || null;
     }
   }
@@ -303,12 +277,12 @@ const updateTask = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ success: true, data: task });
-});
+};
 
 // @desc    Delete a task
 // @route   DELETE /api/tasks/:id
 // @access  Private
-const deleteTask = asyncHandler(async (req, res) => {
+const deleteTask = async (req, res) => {
   const task = await Task.findById(req.params.id);
   if (!task) {
     res.status(404);
@@ -352,12 +326,12 @@ const deleteTask = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json({ success: true, message: "Task deleted successfully" });
-});
+};
 
 // @desc    Move a task
 // @route   PATCH /api/tasks/move
 // @access  Private
-const moveTask = asyncHandler(async (req, res) => {
+const moveTask = async (req, res) => {
   const { taskId, sourceColumnId, destinationColumnId } = req.body;
 
   if (!taskId || !sourceColumnId || !destinationColumnId) {
@@ -433,14 +407,32 @@ const moveTask = asyncHandler(async (req, res) => {
     { runValidators: true },
   );
 
+  // Notify assignee if not the actor
+  let assigneeNotified = false;
+  if (task.assignedTo && task.assignedTo.toString() !== req.user._id.toString()) {
+    await notifyAndEmit({
+      recipientId: task.assignedTo,
+      senderId: req.user._id,
+      message: `${req.user.username} moved your task "${task.title}" to "${destColumn.title}"`,
+      type: "TASK_UPDATED",
+      relatedId: task._id,
+      boardId: board._id.toString(),
+    });
+    if (task.assignedTo.toString() === board.user.toString()) {
+      assigneeNotified = true;
+    }
+  }
+
   // Notify owner
-  await notifyOwner(
-    board,
-    req.user._id,
-    `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`,
-    "OWNER_ALERT",
-    task._id,
-  );
+  if (!assigneeNotified) {
+    await notifyOwner(
+      board,
+      req.user._id,
+      `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`,
+      "OWNER_ALERT",
+      task._id,
+    );
+  }
 
   // Emit real-time event
   getIO().to(board._id.toString()).emit("task_moved", {
@@ -451,12 +443,12 @@ const moveTask = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ success: true, message: "Task moved successfully" });
-});
+};
 
 // @desc    Reorder tasks within a column
 // @route   PATCH /api/columns/:columnId/reorder
 // @access  Private
-const reorderTask = asyncHandler(async (req, res) => {
+const reorderTask = async (req, res) => {
   const { taskIds } = req.body;
   const { columnId } = req.params;
 
@@ -498,12 +490,12 @@ const reorderTask = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ success: true, data: updatedColumn.tasks });
-});
+};
 
 // @desc    Get all tasks for a board with optional filtering
 // @route   GET /api/tasks?boardId=...&columnId=...&assignedTo=...&priority=...
 // @access  Private
-const getTasks = asyncHandler(async (req, res) => {
+const getTasks = async (req, res) => {
   const {
     boardId,
     columnId,
@@ -550,34 +542,17 @@ const getTasks = asyncHandler(async (req, res) => {
     .populate("createdBy", "username");
 
   res.status(200).json({ success: true, count: tasks.length, data: tasks });
-});
+};
 
 // @desc    Get task activity log
 // @route   GET /api/tasks/:id/activity
 // @access  Private
-const getTaskActivity = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id).populate(
-    "activityLog.performedBy",
-    "username",
-  );
-  if (!task) {
-    res.status(404);
-    throw new Error("Task not found");
-  }
-
-  const column = await Column.findById(task.column);
-  if (!column) {
-    res.status(404);
-    throw new Error("Task not found in any column");
-  }
-  const board = await Board.findById(column.board);
-  if (!board || !hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("Not authorized to view this activity");
-  }
+const getTaskActivity = async (req, res) => {
+  const { task } = await getTaskWithBoardAccess(req.params.id, req.user._id);
+  await task.populate("activityLog.performedBy", "username");
 
   res.status(200).json({ success: true, data: task.activityLog });
-});
+};
 
 module.exports = {
   createTask,

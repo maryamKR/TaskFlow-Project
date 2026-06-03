@@ -1,10 +1,9 @@
-const asyncHandler = require("express-async-handler");
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 
 // @desc     Suggest priority for a task
 // @route    POST /api/ai/suggest-priority
 // @access   Private
-const suggestPriority = asyncHandler(async (req, res) => {
+const suggestPriority = async (req, res) => {
   const { title, description } = req.body;
 
   // 1. Validation
@@ -58,10 +57,10 @@ const suggestPriority = asyncHandler(async (req, res) => {
       error: `Gemini AI Error: ${geminiError.message}` 
     });
   }
-});
+};
 
 
-const autoLabel = asyncHandler(async (req, res) => {
+const autoLabel = async (req, res) => {
   const { title, description } = req.body;
 
   if (!title) {
@@ -91,6 +90,6 @@ const autoLabel = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json({ success: true, label: detectedLabel });
-});
+};
 
 module.exports = { suggestPriority, autoLabel };

@@ -3,17 +3,16 @@ const Board = require("../models/Board");
 
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-const asyncHandler = require("express-async-handler");
 const crypto = require("crypto");
 
-const { hashPassword } = require("../utils/authHelpers");
 const { sendPasswordResetEmail } = require("../utils/emailService");
 const notifyAndEmit = require("../utils/notifyAndEmit");
+const { notifyOwner } = require("../utils/notifyOwner");
 
 // @desc    Register a new user
 // @route   POST /api/auth/register
 // @access  Public
-exports.registerUser = asyncHandler(async (req, res, next) => {
+exports.registerUser = async (req, res, next) => {
   const { username, email, password } = req.body;
 
   const userExists = await User.findOne({ $or: [{ email }, { username }] });
@@ -22,14 +21,11 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
     throw new Error("User with this email or username already exists");
   }
 
-  // Hash the password before saving
-  const hashedPassword = await hashPassword(password);
-
-  // Create the user in MongoDB
+  // Create the user in MongoDB (hashing happens in pre-save hook)
   const user = await User.create({
     username,
     email,
-    password: hashedPassword,
+    password,
   });
 
   // Check for any pending board invitations for this email address
@@ -65,13 +61,12 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
       });
 
       // Notify the board owner in real-time
-      await notifyAndEmit({
-        recipientId: board.user,
-        senderId: user._id,
-        message: `${user.username} has joined your board: ${board.title}`,
-        type: "BOARD_INVITATION",
-        boardId: board._id.toString(),
-      });
+      await notifyOwner(
+        board,
+        user._id,
+        `${user.username} has joined your board: ${board.title}`,
+        "BOARD_INVITATION"
+      );
 
       console.log(
         `[Invite Auto-Join] Real-time notifications sent for user and owner of board ${board.title}`,
@@ -95,12 +90,12 @@ exports.registerUser = asyncHandler(async (req, res, next) => {
     email: user.email,
     token,
   });
-});
+};
 
 // @desc    Authenticate a user & get token
 // @route   POST /api/auth/login
 // @access  Public
-exports.loginUser = asyncHandler(async (req, res, next) => {
+exports.loginUser = async (req, res, next) => {
   const { email, password } = req.body;
 
   const user = await User.findOne({ email }).select("+password");
@@ -109,7 +104,7 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
     throw new Error("Invalid email or password");
   }
 
-  const isMatch = await bcrypt.compare(password, user.password);
+  const isMatch = await user.matchPassword(password);
   if (!isMatch) {
     res.status(401);
     throw new Error("Invalid email or password");
@@ -125,12 +120,12 @@ exports.loginUser = asyncHandler(async (req, res, next) => {
     email: user.email,
     token,
   });
-});
+};
 
 // @desc    Forgot password
 // @route   POST /api/auth/forgot-password
 // @access  Public
-exports.forgotPassword = asyncHandler(async (req, res, next) => {
+exports.forgotPassword = async (req, res, next) => {
   const { email } = req.body;
   const user = await User.findOne({ email });
 
@@ -170,12 +165,12 @@ exports.forgotPassword = asyncHandler(async (req, res, next) => {
     res.status(500);
     throw new Error("Email could not be sent");
   }
-});
+};
 
 // @desc    Reset password
 // @route   POST /api/auth/reset-password/:resetToken
 // @access  Public
-exports.resetPassword = asyncHandler(async (req, res, next) => {
+exports.resetPassword = async (req, res, next) => {
   // Get hashed token
   const resetPasswordToken = crypto
     .createHash("sha256")
@@ -192,8 +187,8 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
     throw new Error("Invalid token or token expired");
   }
 
-  // Set new password
-  user.password = await hashPassword(req.body.password);
+  // Set new password (hashing happens in pre-save hook)
+  user.password = req.body.password;
   user.resetPasswordToken = undefined;
   user.resetPasswordExpire = undefined;
   await user.save();
@@ -202,4 +197,4 @@ exports.resetPassword = asyncHandler(async (req, res, next) => {
     success: true,
     data: "Password reset successful",
   });
-});
+};

@@ -15,6 +15,7 @@ const taskSchema = new mongoose.Schema(
       type: String,
       enum: ["low", "medium", "high"],
       default: "medium",
+      index: true,
     },
     label: {
       type: String,
@@ -25,6 +26,7 @@ const taskSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
       default: null,
+      index: true,
     },
     dueDate: {
       type: Date,

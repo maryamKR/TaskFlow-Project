@@ -1,9 +1,9 @@
-const asyncHandler = require("express-async-handler");
 const Board = require("../models/Board");
 const User = require("../models/User");
 
 const { hasBoardAccess } = require("../utils/boardAuth");
 const notifyAndEmit = require("../utils/notifyAndEmit");
+const { notifyOwner } = require("../utils/notifyOwner");
 
 const {
   sendInviteEmail,
@@ -12,7 +12,7 @@ const {
 
 // @desc    Get all members of a board
 // @route   GET /api/boards/:boardId/members
-exports.getBoardMembers = asyncHandler(async (req, res) => {
+exports.getBoardMembers = async (req, res) => {
   const board = await Board.findById(req.params.boardId)
     .populate("coworkers", "username email isOnline") // Added isOnline to reflect active indicators
     .populate("user", "username email isOnline");
@@ -29,11 +29,11 @@ exports.getBoardMembers = asyncHandler(async (req, res) => {
 
   const members = [board.user, ...board.coworkers];
   res.status(200).json(members);
-});
+};
 
 // @desc    Invite a user to a board by email
 // @route   POST /api/boards/:boardId/invite
-exports.inviteMember = asyncHandler(async (req, res) => {
+exports.inviteMember = async (req, res) => {
   const { email } = req.body;
   const { boardId } = req.params;
 
@@ -41,11 +41,6 @@ exports.inviteMember = asyncHandler(async (req, res) => {
   if (!board) {
     res.status(404);
     throw new Error("Board not found");
-  }
-
-  if (!hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("You do not have access to this board");
   }
 
   if (board.user.toString() !== req.user._id.toString()) {
@@ -112,13 +107,12 @@ exports.inviteMember = asyncHandler(async (req, res) => {
   });
 
   // Notify the board owner that the user has joined (in-app record)
-  await notifyAndEmit({
-    recipientId: board.user,
-    senderId: userToInvite._id,
-    message: `${userToInvite.username} has joined your board: ${board.title}`,
-    type: "BOARD_INVITATION",
-    boardId: board._id.toString(),
-  });
+  await notifyOwner(
+    board,
+    userToInvite._id,
+    `${userToInvite.username} has joined your board: ${board.title}`,
+    "BOARD_INVITATION",
+  );
 
   // Call Nodemailer service to deliver the out-of-app email alert
   try {
@@ -132,11 +126,11 @@ exports.inviteMember = asyncHandler(async (req, res) => {
     message: "User invited successfully",
     coworkers: board.coworkers,
   });
-});
+};
 
 // @desc    Remove a member from a board
 // @route   DELETE /api/boards/:boardId/members/:memberId
-exports.removeMember = asyncHandler(async (req, res) => {
+exports.removeMember = async (req, res) => {
   const { boardId, memberId } = req.params;
 
   const board = await Board.findById(boardId);
@@ -182,4 +176,4 @@ exports.removeMember = asyncHandler(async (req, res) => {
     success: true,
     message: "Member removed successfully",
   });
-});
+};

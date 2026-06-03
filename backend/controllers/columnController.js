@@ -3,15 +3,15 @@ const Board = require('../models/Board');
 const Task = require('../models/Task');
 const Comment = require('../models/Comment');
 const Notification = require('../models/Notification');
-const asyncHandler = require('express-async-handler');
 const { hasBoardAccess } = require('../utils/boardAuth');
+const { notifyOwner } = require('../utils/notifyOwner');
 
 const { getIO } = require("../socket");
 
 // @desc    Create a column
 // @route   POST /api/columns
 // @access  Private
-const createColumn = asyncHandler(async (req, res) => {
+const createColumn = async (req, res) => {
   const { title, boardId } = req.body;
 
   const board = await Board.findById(boardId);
@@ -34,14 +34,22 @@ const createColumn = asyncHandler(async (req, res) => {
   board.columns.push(column._id);
   await board.save();
 
+  await notifyOwner(
+    board,
+    req.user._id,
+    `${req.user.username} added column "${title}" to your board`,
+    "OWNER_ALERT",
+    column._id
+  );
+
   getIO().to(boardId).emit("column_added", { column });
   res.status(201).json({ success: true, data: column });
-});
+};
 
 // @desc    Get all columns for a board
 // @route   GET /api/columns/board/:boardId
 // @access  Private
-const getColumnsByBoard = asyncHandler(async (req, res) => {
+const getColumnsByBoard = async (req, res) => {
   const board = await Board.findById(req.params.boardId).populate('columns');
   if (!board) {
     res.status(404);
@@ -55,12 +63,12 @@ const getColumnsByBoard = asyncHandler(async (req, res) => {
 
   const columns = await Column.find({ board: req.params.boardId }).sort({ position: 1 });
   res.status(200).json({ success: true, data: columns });
-});
+};
 
 // @desc    Update a column
 // @route   PUT /api/columns/:id
 // @access  Private
-const updateColumn = asyncHandler(async (req, res) => {
+const updateColumn = async (req, res) => {
   const column = await Column.findById(req.params.id);
 
   if (!column) {
@@ -74,20 +82,44 @@ const updateColumn = asyncHandler(async (req, res) => {
     throw new Error("Not authorized to update this column");
   }
 
-  const { title } = req.body;
+  const { title, position } = req.body;
+  const updateData = {};
+  if (title !== undefined) updateData.title = title;
+  if (position !== undefined) updateData.position = position;
+
   const updatedColumn = await Column.findByIdAndUpdate(
     req.params.id,
-    { title },
+    updateData,
     { returnDocument: 'after', runValidators: true }
   );
 
+  if (updateData.title) {
+    await notifyOwner(
+      board,
+      req.user._id,
+      `${req.user.username} renamed a column to "${updatedColumn.title}" on your board`,
+      "OWNER_ALERT",
+      updatedColumn._id
+    );
+  } else if (updateData.position !== undefined) {
+    await notifyOwner(
+      board,
+      req.user._id,
+      `${req.user.username} changed the position of column "${updatedColumn.title}" on your board`,
+      "OWNER_ALERT",
+      updatedColumn._id
+    );
+  }
+
+  getIO().to(board._id.toString()).emit("column_updated", { column: updatedColumn });
+
   res.status(200).json({ success: true, data: updatedColumn });
-});
+};
 
 // @desc    Delete a column
 // @route   DELETE /api/columns/:id
 // @access  Private
-const deleteColumn = asyncHandler(async (req, res) => {
+const deleteColumn = async (req, res) => {
   const column = await Column.findById(req.params.id);
 
   if (!column) {
@@ -114,7 +146,7 @@ const deleteColumn = asyncHandler(async (req, res) => {
   getIO().to(board._id.toString()).emit("column_deleted", { columnId: column._id.toString() });
   
   res.status(200).json({ success: true, message: "Column and associated tasks removed" });
-});
+};
 
 module.exports = { createColumn, getColumnsByBoard, updateColumn, deleteColumn };
 

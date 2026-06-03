@@ -1,14 +1,14 @@
-const asyncHandler = require("express-async-handler");
 const Board = require("../models/Board");
 const Column = require("../models/Column");
 const Task = require("../models/Task");
 const Comment = require("../models/Comment");
 const Notification = require("../models/Notification");
 const { hasBoardAccess } = require("../utils/boardAuth");
+const { notifyOwner } = require("../utils/notifyOwner");
 const { getIO } = require("../socket");
 
 // @desc    Create a new project board
-const createBoard = asyncHandler(async (req, res) => {
+const createBoard = async (req, res) => {
   const { title, coworkers } = req.body;
 
   const board = await Board.create({
@@ -31,10 +31,10 @@ const createBoard = asyncHandler(async (req, res) => {
 
   const populatedBoard = await Board.findById(board._id).populate("columns");
   res.status(201).json({ success: true, data: populatedBoard });
-});
+};
 
 // @desc    Get all boards
-const getBoards = asyncHandler(async(req, res) => {
+const getBoards = async(req, res) => {
     const boards = await Board.find({
         $or: [{ user: req.user._id }, { coworkers: req.user._id }]
     })
@@ -42,10 +42,10 @@ const getBoards = asyncHandler(async(req, res) => {
     .select("title user coworkers createdAt"); 
 
     res.status(200).json({ success: true, count: boards.length, data: boards });
-});
+};
 
 // @desc    Get board by ID
-const getBoardById = asyncHandler(async (req, res) => {
+const getBoardById = async (req, res) => {
   const board = await Board.findById(req.params.id)
     .populate({
       path: "columns",
@@ -70,10 +70,10 @@ const getBoardById = asyncHandler(async (req, res) => {
   }
 
   res.status(200).json({ success: true, data: board });
-});
+};
 
 // @desc    Delete board
-const deleteBoard = asyncHandler(async (req, res) => {
+const deleteBoard = async (req, res) => {
   const board = await Board.findById(req.params.id);
   if (!board) {
     res.status(404);
@@ -104,12 +104,12 @@ const deleteBoard = asyncHandler(async (req, res) => {
   res
     .status(200)
     .json({ success: true, message: "Board and all associated data removed" });
-});
+};
 
 // @desc    Reorder columns in a board
 // @route   PUT /api/boards/:boardId/reorder
 // @access  Private
-const reorderColumns = asyncHandler(async (req, res) => {
+const reorderColumns = async (req, res) => {
   const { boardId } = req.params;
   const { columnIds } = req.body;
 
@@ -142,10 +142,18 @@ const reorderColumns = asyncHandler(async (req, res) => {
   board.columns = columnIds;
   await board.save();
 
+  await notifyOwner(
+    board,
+    req.user._id,
+    `${req.user.username} reordered the columns on your board`,
+    "OWNER_ALERT",
+    board._id
+  );
+
   getIO().to(boardId).emit("columns_reordered", { columnIds });
 
   res.status(200).json({ success: true, data: board.columns });
-});
+};
 
 module.exports = {
   createBoard,
