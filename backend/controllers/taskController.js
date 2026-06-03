@@ -175,7 +175,7 @@ const updateTask = asyncHandler(async (req, res) => {
 
   const changes = [];
   if (req.body.title !== undefined && req.body.title !== task.title) {
-    changes.push(`Title changed from "${task.title}" to "${req.body.title}"`);
+    changes.push(` : changed title from "${task.title}" to "${req.body.title}"`);
     task.title = req.body.title;
   }
   if (
@@ -187,7 +187,7 @@ const updateTask = asyncHandler(async (req, res) => {
   }
   if (req.body.priority !== undefined && req.body.priority !== task.priority) {
     changes.push(
-      `Priority changed from "${task.priority}" to "${req.body.priority}"`,
+      ` : changed Priority from "${task.priority}" to "${req.body.priority}"`,
     );
     task.priority = req.body.priority;
   }
@@ -197,7 +197,7 @@ const updateTask = asyncHandler(async (req, res) => {
       ? new Date(req.body.dueDate).getTime()
       : null;
     if (oldTime !== newTime) {
-      changes.push(`Due date updated`);
+      changes.push(` : updated the Due date`);
       task.dueDate = req.body.dueDate;
     }
   }
@@ -207,7 +207,7 @@ const updateTask = asyncHandler(async (req, res) => {
       ? req.body.assignedTo.toString()
       : "";
     if (oldAssigneeStr !== newAssigneeStr) {
-      changes.push(`Assignee changed`);
+      changes.push(` : changed  Assignee`);
       task.assignedTo = req.body.assignedTo || null;
     }
   }
