@@ -1,12 +1,17 @@
 const { Server } = require("socket.io");
 const User = require("./models/User");
 
+// Parse allowed origins from env (comma-separated) with dev defaults
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : ["http://localhost:5173", "http://localhost:3000"];
+
 let io;
 
 const initIO = (server) => {
   io = new Server(server, {
     cors: {
-      origin: ["http://localhost:5173", "http://localhost:3000"],
+      origin: allowedOrigins,
       methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
       credentials: true,
     },

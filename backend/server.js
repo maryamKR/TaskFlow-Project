@@ -4,6 +4,7 @@ dotenv.config();
 
 const express = require("express");
 const cors = require("cors");
+const helmet = require("helmet");
 const connectDB = require("./config/db");
 const authRoutes = require("./routes/authRoutes");
 const boardRoutes = require("./routes/boardRoutes");
@@ -21,10 +22,14 @@ const { initIO } = require("./socket");
 const errorHandler = require("./middleware/errorHandler");
 
 
-
 const { initScheduledJobs } = require("./utils/scheduledJobs");
 
 const app = express();
+
+// Parse allowed origins from env (comma-separated) with dev defaults
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  : ["http://localhost:5173", "http://localhost:3000"];
 
 // Connect to MongoDB Atlas
 connectDB();
@@ -32,10 +37,22 @@ connectDB();
 // Initialize scheduled cron jobs
 initScheduledJobs();
 
+// Secure backend HTTP headers with Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+        "connect-src": ["'self'", ...allowedOrigins],
+      },
+    },
+  }),
+);
+
 // CORS Middleware Configuration
 app.use(
   cors({
-    origin: ["http://localhost:5173", "http://localhost:3000"],
+    origin: allowedOrigins,
     credentials: true,
   }),
 );
