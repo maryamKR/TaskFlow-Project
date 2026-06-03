@@ -90,19 +90,24 @@ function BoardPage() {
     socket.emit("join_board", { boardId: activeBoard._id, userId: currentUserId });
 
     socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
-      setColumns(prev => {
-        const task = prev
-          .find(col => col._id === sourceColumnId)
-          ?.tasks.find(t => t._id === taskId || t.id === taskId);
-        if (!task) return prev;
-        return prev.map(col => {
-          if (col._id === sourceColumnId)
-            return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
-          if (col._id === destinationColumnId)
-            return { ...col, tasks: [...col.tasks, task] };
-          return col;
+        setColumns(prev => {
+            const task = prev
+                .find(col => col._id === sourceColumnId)
+                ?.tasks.find(t => t._id === taskId || t.id === taskId);
+            if (!task) return prev;
+
+            // Check if destination is Done column
+            const destCol = prev.find(col => col._id === destinationColumnId);
+            const isDone = destCol?.title?.toLowerCase() === 'done';
+
+            return prev.map(col => {
+                if (col._id === sourceColumnId)
+                    return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
+                if (col._id === destinationColumnId)
+                    return { ...col, tasks: [...col.tasks, { ...task, isDone }] };
+                return col;
+            });
         });
-      });
     });
 
     socket.on("columns_reordered", ({ columnIds }) => {
@@ -318,8 +323,26 @@ function BoardPage() {
         catch (err) { console.error('Task reorder failed:', err); }
         return;
       }
-      try { await moveTask(active.id, sourceCol._id, destColId); }
-      catch (err) { console.error('Task move failed:', err); }
+
+      try {
+          await moveTask(active.id, sourceCol._id, destColId);
+          
+          // Check if destination is the "Done" column
+          const destCol = columns.find(c => c._id === destColId);
+          const isDone = destCol?.title?.toLowerCase() === 'done';
+
+          // Update isDone visually without waiting for refresh
+          setColumns(prev => prev.map(col => ({
+              ...col,
+              tasks: col.tasks.map(t =>
+                  t._id === active.id || t.id === active.id
+                      ? { ...t, isDone }
+                      : t
+              )
+          })));
+      } catch (err) {
+          console.error('Task move failed:', err);
+      }
     }
   };
 
