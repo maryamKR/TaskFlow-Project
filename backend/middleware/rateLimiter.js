@@ -24,7 +24,7 @@ const loginLimiter = rateLimit({
     max: 10,
     message: {
         success: false,
-        error: 'Too many login attempts from this IP, please try again after 15 minutes'
+        error: 'Too many login attempts, please try again later'
     },
     standardHeaders: true,
     legacyHeaders: false,
@@ -39,7 +39,7 @@ const registerLimiter = rateLimit({
     max: 5,
     message: {
         success: false,
-        error: 'Too many account registrations from this IP, please try again after an hour'
+        error: 'Too many account registrations, please try again later'
     },
     standardHeaders: true,
     legacyHeaders: false,

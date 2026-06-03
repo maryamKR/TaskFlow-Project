@@ -187,6 +187,3 @@ See [`backend/docs/API.md`](./backend/docs/API.md) for the complete endpoint ref
 
 ---
 
-## License
-
-ISC
