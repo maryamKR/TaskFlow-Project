@@ -87,7 +87,8 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         assignedTo: assignee || null,
       });
-      onTaskUpdated(task._id, updated);
+      console.log('updated task:', updated);
+      onTaskUpdated(task._id, { ...updated, createdBy: task.createdBy });
       onClose();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update task');
@@ -168,7 +169,13 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
             </div>
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Due Date</label>
-              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
+              <input
+                type="date"
+                value={dueDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setDueDate(e.target.value)}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Assignee</label>
@@ -230,12 +237,12 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
                   <>
                     {(showAllActivity ? activity : activity.slice(0, 3)).map((log, index) => (
                       <div key={index} className={`flex items-start gap-3 py-2 border-b last:border-0 ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                        <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">{log.user?.username?.[0]?.toUpperCase() || '?'}</div>
+                        <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">{log.performedBy?.username?.[0]?.toUpperCase() || '?'}</div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <span className="font-medium">{log.user?.username || 'Unknown'}</span> {log.action}
+                            <span className="font-medium">{log.performedBy?.username || 'Unknown'}</span> {log.action}
                           </p>
-                          <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimeAgo(log.createdAt)}</p>
+                          <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimeAgo(log.timestamp)}</p>
                         </div>
                       </div>
                     ))}

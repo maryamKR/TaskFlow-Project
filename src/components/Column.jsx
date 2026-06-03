@@ -64,9 +64,13 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
           {/* Title row with done icon */}
           <div className="flex items-center gap-2 pr-6">
             {task.isDone ? (
-              <span className="text-green-500 text-base flex-shrink-0">✅</span>
+              <span className="flex-shrink-0 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
+                <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                </svg>
+              </span>
             ) : (
-              <span className={`text-base flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-300'}`}>○</span>
+              <span className={`flex-shrink-0 w-4 h-4 rounded-full border-2 ${isDark ? 'border-gray-500' : 'border-gray-300'}`} />
             )}
             <p className={`text-sm font-medium ${isDark ? 'text-white' : 'text-gray-900'} ${task.isDone ? 'line-through opacity-60' : ''}`}>
               {task.title}
@@ -80,10 +84,9 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
           {/* Priority + Label */}
           <div className="flex items-center gap-2 mt-2 ml-6">
             <span className={`text-xs font-medium flex items-center gap-1 ${priorityColors[task.priority] || 'text-gray-400'}`}>
-              <span className={`inline-block w-2 h-2 rounded-full ${
-                task.priority === 'high' ? 'bg-red-400' :
+              <span className={`inline-block w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' :
                 task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
-              }`} />
+                }`} />
               {task.priority}
             </span>
             {task.label && task.label !== 'Other' && (
@@ -104,10 +107,9 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
                   Overdue · {new Date(task.dueDate).toLocaleDateString()}
                 </span>
               ) : (
-                <span className={`text-xs ${
-                  dueDateStatus === 'soon' ? 'text-orange-400 font-medium' :
+                <span className={`text-xs ${dueDateStatus === 'soon' ? 'text-orange-400 font-medium' :
                   isDark ? 'text-gray-500' : 'text-gray-400'
-                }`}>
+                  }`}>
                   {new Date(task.dueDate).toLocaleDateString()}
                 </span>
               )}
@@ -148,9 +150,8 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDelete}
             disabled={deleting}
-            className={`absolute top-2 right-2 text-sm font-bold transition duration-200 ${
-              isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-400 hover:text-red-500'
-            }`}
+            className={`absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-sm font-bold transition duration-200 ${isDark ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
+              }`}
           >
             {deleting ? '·' : '×'}
           </button>
@@ -203,9 +204,8 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
 
   return (
     <div
-      className={`rounded-2xl p-4 w-72 flex-shrink-0 border-t-2 ${borderColorMap[columnColor] || 'border-gray-400'} ${
-        isDark ? 'bg-gray-800' : 'bg-white border border-gray-200 border-t-2'
-      }`}
+      className={`rounded-2xl p-4 w-72 flex-shrink-0 border-t-2 ${borderColorMap[columnColor] || 'border-gray-400'} ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200 border-t-2'
+        }`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -227,9 +227,8 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
                 title="Change color"
               />
               {showColorPicker && (
-                <div className={`absolute top-5 right-0 rounded-xl p-2 flex gap-1.5 z-10 shadow-xl ${
-                  isDark ? 'bg-gray-700' : 'bg-white border border-gray-200'
-                }`}>
+                <div className={`absolute top-5 right-0 rounded-xl p-2 flex gap-1.5 z-10 shadow-xl ${isDark ? 'bg-gray-700' : 'bg-white border border-gray-200'
+                  }`}>
                   {colors.map(c => (
                     <button
                       key={c}
@@ -247,7 +246,7 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
               onPointerDown={(e) => e.stopPropagation()}
               onClick={handleDeleteColumn}
               disabled={deleting}
-              className={`text-sm font-bold transition duration-200 ${isDark ? 'text-gray-500 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
+              className={`w-5 h-5 flex items-center justify-center rounded-full text-sm font-bold transition duration-200 ${isDark ? 'text-gray-500 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
             >
               {deleting ? '·' : '×'}
             </button>
