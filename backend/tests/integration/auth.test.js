@@ -118,4 +118,33 @@ describe("Auth Integration Tests", () => {
       expect(response.body.success).toBe(false);
     });
   });
+
+  // ─── Rate Limiting ───
+  describe("Rate Limiting", () => {
+    const { loginLimiter, registerLimiter } = require("../../middleware/rateLimiter");
+
+    afterEach(() => {
+      // Reset limiters to avoid pollution in subsequent tests
+      loginLimiter.resetKey("::ffff:127.0.0.1");
+      loginLimiter.resetKey("127.0.0.1");
+      registerLimiter.resetKey("::ffff:127.0.0.1");
+      registerLimiter.resetKey("127.0.0.1");
+    });
+
+    it("should block requests with 429 after exceeding login rate limit", async () => {
+      // loginLimiter is set to max 10 requests per 15 minutes
+      for (let i = 0; i < 10; i++) {
+        await request(app)
+          .post("/api/auth/login")
+          .send({ email: "rate@limit.com", password: "password" });
+      }
+
+      const response = await request(app)
+        .post("/api/auth/login")
+        .send({ email: "rate@limit.com", password: "password" })
+        .expect(429);
+
+      expect(response.body.error).toMatch(/too many login attempts/i);
+    });
+  });
 });
