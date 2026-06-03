@@ -90,11 +90,19 @@ backend/utils/
 ### `emailService.js` — Public API
 
 ```js
-const { sendInviteEmail, sendPasswordResetEmail, sendOverdueTaskEmail } = require('../utils/emailService');
+const { sendInviteEmail, sendPasswordResetEmail, sendOverdueTaskEmail, sendUnregisteredInviteEmail } = require('../utils/emailService');
 
-// Board invite
+// Board invite (registered user)
 await sendInviteEmail(
   userToInvite.email,   // to
+  board.title,          // board name shown in email
+  req.user.username,    // inviter's name shown in email
+  req.user.email        // inviter's email set as Reply-To
+);
+
+// Board invite (unregistered user)
+await sendUnregisteredInviteEmail(
+  cleanEmail,           // to
   board.title,          // board name shown in email
   req.user.username,    // inviter's name shown in email
   req.user.email        // inviter's email set as Reply-To
@@ -120,6 +128,7 @@ await sendOverdueTaskEmail(
 - `inviteTemplate(boardTitle, inviterName)` — Returns the board invite HTML
 - `passwordResetTemplate(resetUrl)` — Returns the password reset HTML
 - `overdueTaskTemplate(taskTitle, dueDate, boardTitle)` — Returns the overdue task HTML
+- `inviteUnregisteredTemplate(boardTitle, inviterName)` — Returns the unregistered board invite HTML
 
 Templates are fully styled, responsive HTML emails matching TaskFlow's color branding.
 

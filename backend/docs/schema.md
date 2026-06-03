@@ -82,7 +82,7 @@ erDiagram
         ObjectId  user      FK "recipient → User"
         ObjectId  sender    FK "→ User"
         string    message   "required"
-        string    type      "enum: COMMENT|TASK_ASSIGNED|TASK_UPDATED|BOARD_INVITATION|TASK_MOVED_DONE|OWNER_ALERT"
+        string    type      "enum: COMMENT|TASK_ASSIGNED|TASK_UPDATED|BOARD_INVITATION|TASK_MOVED_DONE|OWNER_ALERT|MEMBER_REMOVED"
         ObjectId  relatedId FK "→ Task (nullable)"
         ObjectId  boardId   FK "→ Board (nullable)"
         boolean   isRead    "default: false · indexed"
@@ -130,6 +130,8 @@ erDiagram
 | `columns` | `board` | Single | Fast lookup of columns by board |
 | `tasks` | `column` | Single | Fast lookup of tasks by column |
 | `tasks` | `title`, `description` | Text (compound) | Full-text search across tasks |
+| `tasks` | `assignedTo` | Single | Fast filtering of tasks assigned to a user |
+| `tasks` | `priority` | Single | Fast filtering of tasks by priority |
 | `comments` | `task` | Single | Fast lookup of comments by task |
 | `notifications` | `user` | Single | Fast lookup of notifications by recipient |
 | `notifications` | `isRead` | Single | Fast filtering of unread notifications |
@@ -146,6 +148,7 @@ erDiagram
 | `BOARD_INVITATION` | A user is invited to a board |
 | `TASK_MOVED_DONE` | A task is moved to a "done" column |
 | `OWNER_ALERT` | Board owner receives an alert (e.g. overdue) |
+| `MEMBER_REMOVED` | A coworker is removed from a board |
 
 ---
 

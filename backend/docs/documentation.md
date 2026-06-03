@@ -56,7 +56,7 @@ Manages task groupings within boards.
 
 *   `createColumn(req, res)`: Adds a new column to a board and updates the board's column reference list.
 *   `getColumnsByBoard(req, res)`: Retrieves all columns for a specific board.
-*   `updateColumn(req, res)`: Updates the title of an existing column. Explicitly destructures only `title` from `req.body` to prevent unauthorized field overwrites.
+*   `updateColumn(req, res)`: Updates the title or position of an existing column. Explicitly destructures only `title` and `position` from `req.body` to prevent unauthorized field overwrites.
 *   `deleteColumn(req, res)`: Removes a column and deletes all tasks contained within it.
 
 ### Task Controller (`taskController.js`)
@@ -87,6 +87,9 @@ TaskFlow uses Socket.io for live collaboration. Events are broadcast to rooms na
 | Event Name | Data Payload | Triggered By |
 | :--- | :--- | :--- |
 | `columns_reordered` | `{ columnIds }` | `reorderColumns` |
+| `column_added` | `{ column }` | `createColumn` |
+| `column_updated` | `{ column }` | `updateColumn` |
+| `column_deleted` | `{ columnId }` | `deleteColumn` |
 | `task_created` | `{ columnId, task, createdBy }` | `createTask` |
 | `task_updated` | `{ taskId, updatedTask }` | `updateTask` |
 | `task_deleted` | `{ taskId, columnId }` | `deleteTask` |
@@ -121,7 +124,7 @@ TaskFlow uses Socket.io for live collaboration. Events are broadcast to rooms na
 *   **Column:** Represents a vertical list. Holds a reference to the `board` and an ordered array of `tasks`.
 *   **Task:** The central unit of work. Includes fields for `priority`, `dueDate`, `assignedTo`, `label`, `comments`, and `overdueEmailSent` (tracks daily overdue alert mail dispatch). Supports text indexing for search.
 *   **Comment:** Simple text entries linked to a `task` and an `author`.
-*   **Notification:** Persistent alerts for users. Stores `message`, `type`, and `relatedId` (e.g., a Task ID). Uses uppercase enums: `COMMENT`, `TASK_ASSIGNED`, `TASK_UPDATED`, `BOARD_INVITATION`.
+*   **Notification:** Persistent alerts for users. Stores `message`, `type`, and `relatedId` (e.g., a Task ID). Uses uppercase enums: `COMMENT`, `TASK_ASSIGNED`, `TASK_UPDATED`, `BOARD_INVITATION`, `TASK_MOVED_DONE`, `OWNER_ALERT`, `MEMBER_REMOVED`.
 
 ---
 

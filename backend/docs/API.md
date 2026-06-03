@@ -254,7 +254,10 @@ All routes except `/auth/register` and `/auth/login` require a Bearer Token in t
 *   **Method:** `PUT`
 *   **Body:**
     ```json
-    { "title": "Updated Title" }
+    { 
+      "title": "Updated Title",
+      "position": 1
+    }
     ```
 *   **Success Response (200):**
     ```json

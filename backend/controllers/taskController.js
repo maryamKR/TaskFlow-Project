@@ -2,6 +2,7 @@ const Task = require("../models/Task");
 const Column = require("../models/Column");
 const Board = require("../models/Board");
 const Comment = require("../models/Comment");
+const User = require("../models/User");
 const { hasBoardAccess } = require("../utils/boardAuth");
 const notifyAndEmit = require("../utils/notifyAndEmit");
 const Notification = require("../models/Notification");
@@ -166,10 +167,7 @@ const updateTask = async (req, res) => {
       }
     }
   }
-  if (req.body.label !== undefined && req.body.label !== task.label) {
-    changes.push(`Label changed from "${task.label || "None"}" to "${req.body.label || "None"}"`);
-    task.label = req.body.label || null;
-  }
+
   if (req.body.assignedTo !== undefined) {
     if (req.body.assignedTo && !hasBoardAccess(board, req.body.assignedTo)) {
       res.status(400);
@@ -181,7 +179,23 @@ const updateTask = async (req, res) => {
       ? req.body.assignedTo.toString()
       : "";
     if (oldAssigneeStr !== newAssigneeStr) {
-      changes.push(` : changed Assignee from "${task.assignedTo || "None"}" to "${req.body.assignedTo || "None"}"`);
+      let oldUsername = "None";
+      if (task.assignedTo) {
+        if (task.assignedTo.username) {
+          oldUsername = task.assignedTo.username;
+        } else {
+          const oldUser = await User.findById(task.assignedTo).select("username");
+          if (oldUser) oldUsername = oldUser.username;
+        }
+      }
+
+      let newUsername = "None";
+      if (req.body.assignedTo) {
+        const newUser = await User.findById(req.body.assignedTo).select("username");
+        if (newUser) newUsername = newUser.username;
+      }
+
+      changes.push(` : changed Assignee from "${oldUsername}" to "${newUsername}"`);
       task.assignedTo = req.body.assignedTo || null;
     }
   }

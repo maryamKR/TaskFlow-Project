@@ -123,10 +123,8 @@ To prevent server runtime crashes and keep error patterns predictable, the backe
                             ▼                                  [errorHandler.js] ──> [Clean JSON Response]
                  [Controller Operations]                                ▲
                             │                                           │
-                         (Rejects)                                      │
-                            ▼                                           │
-                 [express-async-handler] ───────────────────────────────┘
+                   (Async Reject/Error) ────────────────────────────────┘
 ```
 
-- Controllers are wrapped in `express-async-handler` to forward asynchronous execution failures automatically.
+- Express 5 natively forwards rejected promises and asynchronous execution failures automatically to the global error handler.
 - `errorHandler.js` catches all execution bugs globally, overrides default HTML stack traces, parses Zod structural validation errors, handles MongoDB duplicate key indexes (11000), and formats everything into user-friendly JSON.

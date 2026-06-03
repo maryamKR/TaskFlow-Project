@@ -3,14 +3,10 @@ const Column = require("../models/Column");
 const Board = require("../models/Board");
 const { hasBoardAccess } = require("./boardAuth");
 
-/**
- * Helper to fetch a task, its column, and board, and verify the user's access rights.
- * Reduces boilerplate validation code across multiple task and comment controllers.
- *
- * @param {string} taskId - The ID of the task to fetch
- * @param {string} userId - The ID of the current user attempting to access the task
- * @returns {Promise<{task: Document, column: Document, board: Document}>}
- */
+
+// Helper to fetch a task, its column, and board, and verify the user's access rights.
+// Reduces boilerplate validation code across multiple task and comment controllers.
+
 const getTaskWithBoardAccess = async (taskId, userId) => {
   const task = await Task.findById(taskId);
   if (!task) {
