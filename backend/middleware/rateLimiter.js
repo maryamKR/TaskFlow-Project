@@ -15,4 +15,34 @@ const passwordResetLimiter = rateLimit({
     legacyHeaders: false, // Disable the `X-RateLimit-*` headers
 });
 
-module.exports = { passwordResetLimiter };
+/**
+ * Rate limiter for login requests to mitigate brute-force password attacks.
+ * Limits each IP to 10 requests per 15 minutes.
+ */
+const loginLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000, // 15 minutes
+    max: 10,
+    message: {
+        success: false,
+        error: 'Too many login attempts from this IP, please try again after 15 minutes'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+/**
+ * Rate limiter for registration requests to prevent user registration spam.
+ * Limits each IP to 5 requests per hour.
+ */
+const registerLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000, // 1 hour
+    max: 5,
+    message: {
+        success: false,
+        error: 'Too many account registrations from this IP, please try again after an hour'
+    },
+    standardHeaders: true,
+    legacyHeaders: false,
+});
+
+module.exports = { passwordResetLimiter, loginLimiter, registerLimiter };

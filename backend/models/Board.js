@@ -36,5 +36,6 @@ const boardSchema = new mongoose.Schema(
   { timestamps: true }
 );
 
+boardSchema.index({ coworkers: 1 });
 
 module.exports = mongoose.model("Board", boardSchema);
