@@ -87,7 +87,8 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         assignedTo: assignee || null,
       });
-      onTaskUpdated(task._id, updated);
+      console.log('updated task:', updated);
+      onTaskUpdated(task._id, { ...updated, createdBy: task.createdBy });
       onClose();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to update task');
@@ -168,7 +169,13 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
             </div>
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Due Date</label>
-              <input type="date" value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={inputClass} />
+              <input
+                type="date"
+                value={dueDate}
+                min={new Date().toISOString().split('T')[0]}
+                onChange={(e) => setDueDate(e.target.value)}
+                className={inputClass}
+              />
             </div>
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Assignee</label>
