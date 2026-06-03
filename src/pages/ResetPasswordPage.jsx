@@ -23,7 +23,7 @@ function ResetPasswordPage() {
     setLoading(true);
     setError('');
     try {
-      await api.post('/auth/reset-password', { token, newPassword: password });
+      await api.post(`/auth/reset-password/${token}`, { password });
       setSuccess(true);
       setTimeout(() => navigate('/'), 2000);
     } catch (err) {
