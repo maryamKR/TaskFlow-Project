@@ -1,8 +1,5 @@
 const cron = require("node-cron");
 const Task = require("../models/Task");
-const User = require("../models/User");
-const Column = require("../models/Column");
-const Board = require("../models/Board");
 const { sendOverdueTaskEmail } = require("./emailService");
 
 /**
@@ -11,8 +8,6 @@ const { sendOverdueTaskEmail } = require("./emailService");
 const initScheduledJobs = () => {
   console.log("[Scheduler] Initializing daily cron job for overdue tasks...");
 
-  // Runs once every day at midnight (00:00)
-  // Pattern: minute hour day-of-month month day-of-week
   cron.schedule("0 0 * * *", async () => {
     console.log("[Scheduler] Running daily check for overdue tasks...");
     try {
@@ -20,7 +15,7 @@ const initScheduledJobs = () => {
 
       // Find tasks that are:
       // 1. Past due date
-      // 2. Not marked as Done (isDone: false)
+      // 2. Not marked as Done
       // 3. Email alert has not been sent yet
       const overdueTasks = await Task.find({
         dueDate: { $lt: now, $ne: null },
@@ -37,15 +32,19 @@ const initScheduledJobs = () => {
         },
       });
 
-      console.log(`[Scheduler] Found ${overdueTasks.length} new overdue tasks to notify.`);
+      if (overdueTasks.length === 0) {
+        console.log("[Scheduler] No new overdue tasks found.");
+        return;
+      }
+
+      console.log(`[Scheduler] Processing ${overdueTasks.length} overdue tasks...`);
+
+      const bulkUpdates = [];
+      const emailPromises = [];
 
       for (const task of overdueTasks) {
-        // Determine recipient: prioritize assignee, fallback to task creator
         const recipient = task.assignedTo || task.createdBy;
-        if (!recipient || !recipient.email) {
-          console.warn(`[Scheduler] Skipping task "${task.title}" (ID: ${task._id}) - no assignee or creator email found.`);
-          continue;
-        }
+        if (!recipient || !recipient.email) continue;
 
         const boardTitle = task.column?.board?.title || "Unknown Board";
         const formattedDueDate = new Date(task.dueDate).toLocaleDateString(undefined, {
@@ -55,19 +54,29 @@ const initScheduledJobs = () => {
           day: 'numeric',
         });
 
-        console.log(`[Scheduler] Sending overdue email to ${recipient.email} for task "${task.title}"`);
-        
-        // Send email
-        await sendOverdueTaskEmail(
-          recipient.email,
-          task.title,
-          formattedDueDate,
-          boardTitle
+        // Queue email sending (Parallel processing)
+        emailPromises.push(
+          sendOverdueTaskEmail(
+            recipient.email,
+            task.title,
+            formattedDueDate,
+            boardTitle
+          )
         );
 
-        // Mark task as notified to prevent duplicate alerts in future runs
-        task.overdueEmailSent = true;
-        await task.save();
+        // Queue bulk update operation
+        bulkUpdates.push({
+          updateOne: {
+            filter: { _id: task._id },
+            update: { $set: { overdueEmailSent: true } },
+          },
+        });
+      }
+
+      // Execute all emails in parallel and bulk update the database in one go
+      await Promise.allSettled(emailPromises);
+      if (bulkUpdates.length > 0) {
+        await Task.bulkWrite(bulkUpdates);
       }
 
       console.log("[Scheduler] Overdue tasks daily run finished successfully.");

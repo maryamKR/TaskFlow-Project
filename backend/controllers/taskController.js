@@ -4,16 +4,18 @@ const Board = require("../models/Board");
 const Comment = require("../models/Comment");
 const asyncHandler = require("express-async-handler");
 const { hasBoardAccess } = require("../utils/boardAuth");
-const notifyAndEmit = require("../utils/notifyAndEmit"); 
+const notifyAndEmit = require("../utils/notifyAndEmit");
 const Notification = require("../models/Notification");
 const { getIO } = require("../socket");
 
 // Helper updated to use the unified notification tool and include boardId
 const notifyOwner = async (board, actorId, message, type, relatedId) => {
   if (!board) return;
-  const boardOwnerId = board.user?._id ? board.user._id.toString() : board.user.toString();
+  const boardOwnerId = board.user?._id
+    ? board.user._id.toString()
+    : board.user.toString();
   if (boardOwnerId === actorId.toString()) return;
-  
+
   try {
     await notifyAndEmit({
       recipientId: boardOwnerId,
@@ -75,7 +77,7 @@ const createTask = asyncHandler(async (req, res) => {
   await task.populate("createdBy", "username");
   await task.populate("assignedTo", "username");
 
-  // Notification Trigger via notifyAndEmit
+  // Notification Trigger
   let assigneeNotified = false;
   if (
     task.assignedTo &&
@@ -87,7 +89,7 @@ const createTask = asyncHandler(async (req, res) => {
       message: `${req.user.username} created a new task and assigned it to you: ${task.title}`,
       type: "TASK_ASSIGNED",
       relatedId: task._id,
-      boardId: board._id.toString(), // Populated
+      boardId: board._id.toString(),
     });
     if (task.assignedTo._id.toString() === board.user.toString()) {
       assigneeNotified = true;
@@ -100,7 +102,13 @@ const createTask = asyncHandler(async (req, res) => {
 
   // Notify owner
   if (!assigneeNotified) {
-    await notifyOwner(board, req.user._id, `${req.user.username} created task "${task.title}" on your board`, "OWNER_ALERT", task._id);
+    await notifyOwner(
+      board,
+      req.user._id,
+      `${req.user.username} created task "${task.title}" on your board`,
+      "OWNER_ALERT",
+      task._id,
+    );
   }
 
   getIO().to(board._id.toString()).emit("task_created", {
@@ -120,7 +128,7 @@ const getTask = asyncHandler(async (req, res) => {
     .populate("assignedTo", "username")
     .populate("createdBy", "username")
     .populate("comments")
-    .populate("activityLog.performedBy", "username"); // Populated for Activity history tracking view
+    .populate("activityLog.performedBy", "username");
 
   if (!task) {
     res.status(404);
@@ -170,25 +178,34 @@ const updateTask = asyncHandler(async (req, res) => {
     changes.push(`Title changed from "${task.title}" to "${req.body.title}"`);
     task.title = req.body.title;
   }
-  if (req.body.description !== undefined && req.body.description !== task.description) {
+  if (
+    req.body.description !== undefined &&
+    req.body.description !== task.description
+  ) {
     changes.push(`Description updated`);
     task.description = req.body.description;
   }
   if (req.body.priority !== undefined && req.body.priority !== task.priority) {
-    changes.push(`Priority changed from "${task.priority}" to "${req.body.priority}"`);
+    changes.push(
+      `Priority changed from "${task.priority}" to "${req.body.priority}"`,
+    );
     task.priority = req.body.priority;
   }
   if (req.body.dueDate !== undefined) {
     const oldTime = task.dueDate ? new Date(task.dueDate).getTime() : null;
-    const newTime = req.body.dueDate ? new Date(req.body.dueDate).getTime() : null;
+    const newTime = req.body.dueDate
+      ? new Date(req.body.dueDate).getTime()
+      : null;
     if (oldTime !== newTime) {
       changes.push(`Due date updated`);
       task.dueDate = req.body.dueDate;
     }
   }
   if (req.body.assignedTo !== undefined) {
-    const oldAssigneeStr = task.assignedTo ? task.assignedTo.toString() : '';
-    const newAssigneeStr = req.body.assignedTo ? req.body.assignedTo.toString() : '';
+    const oldAssigneeStr = task.assignedTo ? task.assignedTo.toString() : "";
+    const newAssigneeStr = req.body.assignedTo
+      ? req.body.assignedTo.toString()
+      : "";
     if (oldAssigneeStr !== newAssigneeStr) {
       changes.push(`Assignee changed`);
       task.assignedTo = req.body.assignedTo || null;
@@ -214,8 +231,20 @@ const updateTask = asyncHandler(async (req, res) => {
   const newAssignee = task.assignedTo;
 
   //--------NOTIFICATION LOGIC -------/
+  /*
+    1. isAssigneeChanged: True only if the assignee field actually changed AND
+       the new assignee is not the actor themselves (no self-notification).
+    2. isDetailsChanged: True only if a non-assignee field changed (title, description,
+       priority, dueDate) AND the current assignee is not the actor (notify the assignee).
+    3. assigneeNotified: Tracks whether the board owner was already notified via
+       a specific TASK_ASSIGNED or TASK_UPDATED notification, to prevent them
+       receiving a duplicate generic OWNER_ALERT for the same action.
+    4. Owner is never notified if they performed the action (handled by notifyOwner helper).
+    5. If no changes were detected, this block is never reached (early return above).
+    */
+
   const hasAssigneeChanged = changes.includes("Assignee changed");
-  const hasDetailsChanged = changes.some(c => c !== "Assignee changed");
+  const hasDetailsChanged = changes.some((c) => c !== "Assignee changed");
 
   const isAssigneeChanged =
     hasAssigneeChanged &&
@@ -259,7 +288,13 @@ const updateTask = asyncHandler(async (req, res) => {
 
   // Notify owner only if they weren't already notified as the assignee
   if (!assigneeNotified) {
-    await notifyOwner(board, req.user._id, `${req.user.username} updated task "${task.title}" on your board`, "OWNER_ALERT", task._id);
+    await notifyOwner(
+      board,
+      req.user._id,
+      `${req.user.username} updated task "${task.title}" on your board`,
+      "OWNER_ALERT",
+      task._id,
+    );
   }
 
   getIO().to(board._id.toString()).emit("task_updated", {
@@ -287,12 +322,16 @@ const deleteTask = asyncHandler(async (req, res) => {
   if (column) {
     board = await Board.findById(column.board);
 
-    const boardOwnerId = board?.user?._id ? board.user._id.toString() : board?.user?.toString();
+    const boardOwnerId = board?.user?._id
+      ? board.user._id.toString()
+      : board?.user?.toString();
     const currentUserId = req.user._id.toString();
 
     if (boardOwnerId !== currentUserId) {
       res.status(403);
-      throw new Error("Only the board owner can delete tasks. Contact your board owner to delete this task.");
+      throw new Error(
+        "Only the board owner can delete tasks. Contact your board owner to delete this task.",
+      );
     }
 
     column.tasks.pull(task._id);
@@ -304,11 +343,6 @@ const deleteTask = asyncHandler(async (req, res) => {
   await Notification.deleteMany({ relatedId: task._id });
 
   await task.deleteOne();
-
-  // Notify owner
-  if (board) {
-    await notifyOwner(board, req.user._id, `${req.user.username} deleted task "${task.title}" from your board`, "OWNER_ALERT");
-  }
 
   if (board && column) {
     getIO().to(board._id.toString()).emit("task_deleted", {
@@ -369,13 +403,17 @@ const moveTask = asyncHandler(async (req, res) => {
   }
 
   if (task.column.toString() !== sourceColumnId) {
-    res.status(400); // FIXED: Changed query to res
+    res.status(400);
     throw new Error("Task does not belong to the source column");
   }
 
   // Remove from source and push to destination
   await Column.findByIdAndUpdate(sourceColumnId, { $pull: { tasks: taskId } });
-  await Column.findByIdAndUpdate(destinationColumnId, { $push: { tasks: taskId } });
+
+  // Add to destination
+  await Column.findByIdAndUpdate(destinationColumnId, {
+    $push: { tasks: taskId },
+  });
 
   // Update target column pointer state, isDone evaluation, and state logs
   const isDone = /^done$/i.test(destColumn.title.trim());
@@ -384,19 +422,25 @@ const moveTask = asyncHandler(async (req, res) => {
     taskId,
     {
       column: destinationColumnId,
-      isDone, // Automatically toggled based on matches with "/^done$/i"
+      isDone,
       $push: {
         activityLog: {
-          action: `Moved to column "${destColumn.title}"`, // Appended to audit tracking logs
+          action: `Moved to column "${destColumn.title}"`,
           performedBy: req.user._id,
-        }
-      }
+        },
+      },
     },
     { runValidators: true },
   );
 
   // Notify owner
-  await notifyOwner(board, req.user._id, `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`, "OWNER_ALERT", task._id);
+  await notifyOwner(
+    board,
+    req.user._id,
+    `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`,
+    "OWNER_ALERT",
+    task._id,
+  );
 
   // Emit real-time event
   getIO().to(board._id.toString()).emit("task_moved", {
@@ -428,21 +472,26 @@ const reorderTask = asyncHandler(async (req, res) => {
     throw new Error("Not authorized to reorder this board");
   }
 
+  // Validate that all provided task IDs belong to this column
   const existingTaskIds = new Set(column.tasks.map((id) => id.toString()));
   const allBelong =
     taskIds.length === column.tasks.length &&
     taskIds.every((id) => existingTaskIds.has(id));
   if (!allBelong) {
     res.status(400);
-    throw new Error("Invalid reorder: Task IDs do not match this column's tasks");
+    throw new Error(
+      "Invalid reorder: Task IDs do not match this column's tasks",
+    );
   }
 
+  // 2. Perform the update
   const updatedColumn = await Column.findByIdAndUpdate(
     columnId,
     { tasks: taskIds },
     { returnDocument: "after" },
   );
 
+  // 3. Emit real-time event
   getIO().to(board._id.toString()).emit("tasks_reordered", {
     columnId,
     taskIds,
@@ -503,35 +552,31 @@ const getTasks = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, count: tasks.length, data: tasks });
 });
 
-// @desc    Get task activity history log (New lightweight endpoint)
+// @desc    Get task activity log
 // @route   GET /api/tasks/:id/activity
 // @access  Private
 const getTaskActivity = asyncHandler(async (req, res) => {
-  const task = await Task.findById(req.params.id)
-    .select("activityLog column")
-    .populate("activityLog.performedBy", "username"); // Provides "Changed by Alice" frontend visualization maps
-
+  const task = await Task.findById(req.params.id).populate(
+    "activityLog.performedBy",
+    "username",
+  );
   if (!task) {
     res.status(404);
     throw new Error("Task not found");
   }
 
-  // Validate viewing user authorization rights before serving log traces
   const column = await Column.findById(task.column);
   if (!column) {
     res.status(404);
-    throw new Error("Task does not belong to a valid board hierarchy");
+    throw new Error("Task not found in any column");
   }
   const board = await Board.findById(column.board);
   if (!board || !hasBoardAccess(board, req.user._id)) {
     res.status(403);
-    throw new Error("Not authorized to view this activity log");
+    throw new Error("Not authorized to view this activity");
   }
 
-  // Sort local sub-documents arrays by newest-first configuration
-  const sortedLog = task.activityLog.sort((a, b) => b.timestamp - a.timestamp);
-
-  res.status(200).json({ success: true, data: sortedLog });
+  res.status(200).json({ success: true, data: task.activityLog });
 });
 
 module.exports = {
@@ -542,5 +587,5 @@ module.exports = {
   moveTask,
   reorderTask,
   getTasks,
-  getTaskActivity, 
+  getTaskActivity,
 };

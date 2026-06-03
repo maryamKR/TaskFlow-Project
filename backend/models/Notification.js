@@ -19,18 +19,26 @@ const notificationSchema = new mongoose.Schema(
     },
     type: {
       type: String,
-      enum: ["COMMENT", "TASK_ASSIGNED", "TASK_UPDATED", "BOARD_INVITATION", "TASK_MOVED_DONE", "OWNER_ALERT"],
+      enum: [
+        "COMMENT",
+        "TASK_ASSIGNED",
+        "TASK_UPDATED",
+        "BOARD_INVITATION",
+        "TASK_MOVED_DONE",
+        "OWNER_ALERT",
+        "MEMBER_REMOVED",
+      ],
       required: true,
     },
     relatedId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Task",
-      required: false
+      required: false,
     },
     boardId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Board",
-      required: false
+      required: false,
     },
     isRead: {
       type: Boolean,

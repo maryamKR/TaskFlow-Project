@@ -64,7 +64,6 @@ exports.addComment = asyncHandler(async (req, res) => {
   // Never notify the person who just commented
   recipients.delete(req.user._id.toString());
 
-  // Loop through filtered recipients and route updates via unified utility
   for (const userId of recipients) {
     try {
       await notifyAndEmit({
@@ -73,7 +72,7 @@ exports.addComment = asyncHandler(async (req, res) => {
         message: `${req.user.username} commented on: ${task.title}`,
         type: "COMMENT",
         relatedId: taskId,
-        boardId: board._id.toString(), // Added to match Schema design criteria
+        boardId: board._id.toString(),
       });
     } catch (err) {
       console.error("NOTIFICATION ERROR:", err.message);
@@ -152,7 +151,7 @@ exports.deleteComment = asyncHandler(async (req, res) => {
     res.status(403);
     throw new Error("You do not have access to this board");
   }
-  
+
   const isAuthor = comment.author.toString() === req.user._id.toString();
   const isOwner = board.user.toString() === req.user._id.toString();
 

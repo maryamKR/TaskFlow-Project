@@ -1,9 +1,14 @@
 const asyncHandler = require("express-async-handler");
 const Board = require("../models/Board");
 const User = require("../models/User");
+
 const { hasBoardAccess } = require("../utils/boardAuth");
-const notifyAndEmit = require("../utils/notifyAndEmit"); 
-const { sendInviteEmail } = require("../utils/emailService"); 
+const notifyAndEmit = require("../utils/notifyAndEmit");
+
+const {
+  sendInviteEmail,
+  sendUnregisteredInviteEmail,
+} = require("../utils/emailService");
 
 // @desc    Get all members of a board
 // @route   GET /api/boards/:boardId/members
@@ -50,8 +55,35 @@ exports.inviteMember = asyncHandler(async (req, res) => {
 
   const userToInvite = await User.findOne({ email });
   if (!userToInvite) {
-    res.status(404);
-    throw new Error("User not found");
+    const cleanEmail = email.trim().toLowerCase();
+
+    // Check if user is already invited
+    if (board.pendingInvites && board.pendingInvites.includes(cleanEmail)) {
+      res.status(400);
+      throw new Error("User is already invited");
+    }
+
+    // Add to pendingInvites
+    if (!board.pendingInvites) {
+      board.pendingInvites = [];
+    }
+    board.pendingInvites.push(cleanEmail);
+    await board.save();
+
+    // Send invite to register
+    await sendUnregisteredInviteEmail(
+      cleanEmail,
+      board.title,
+      req.user.username,
+      req.user.email,
+    );
+
+    return res.status(200).json({
+      message:
+        "Invitation email sent to unregistered user. They will be added when they sign up.",
+      coworkers: board.coworkers,
+      pendingInvites: board.pendingInvites,
+    });
   }
 
   if (userToInvite._id.toString() === req.user._id.toString()) {
@@ -59,7 +91,9 @@ exports.inviteMember = asyncHandler(async (req, res) => {
     throw new Error("You cannot invite yourself to your own board");
   }
 
-  if (board.coworkers.some((id) => id.toString() === userToInvite._id.toString())) {
+  if (
+    board.coworkers.some((id) => id.toString() === userToInvite._id.toString())
+  ) {
     res.status(400);
     throw new Error("User is already a member");
   }
@@ -68,14 +102,22 @@ exports.inviteMember = asyncHandler(async (req, res) => {
   board.coworkers.push(userToInvite._id);
   await board.save();
 
-  // Create real-time notification with populate routing parameters
+  // Create real-time notification for the invited user
   await notifyAndEmit({
     recipientId: userToInvite._id,
     senderId: req.user._id,
     message: `You have been invited to the board: ${board.title}`,
     type: "BOARD_INVITATION",
-    relatedId: board._id,
-    boardId: board._id.toString(), // Structured matching
+    boardId: board._id.toString(),
+  });
+
+  // Notify the board owner that the user has joined (in-app record)
+  await notifyAndEmit({
+    recipientId: board.user,
+    senderId: userToInvite._id,
+    message: `${userToInvite.username} has joined your board: ${board.title}`,
+    type: "BOARD_INVITATION",
+    boardId: board._id.toString(),
   });
 
   // Call Nodemailer service to deliver the out-of-app email alert
@@ -105,7 +147,9 @@ exports.removeMember = asyncHandler(async (req, res) => {
 
   if (board.user.toString() !== req.user._id.toString()) {
     res.status(403);
-    throw new Error("Only the board owner can remove members. Contact your board owner.");
+    throw new Error(
+      "Only the board owner can remove members. Contact your board owner.",
+    );
   }
 
   // Prevent owner from removing themselves
@@ -125,12 +169,12 @@ exports.removeMember = asyncHandler(async (req, res) => {
   board.coworkers = board.coworkers.filter((id) => id.toString() !== memberId);
   await board.save();
 
-  // Trigger real-time removal alert to the user being kicked out
+  // Trigger real-time removal alert to the user being removed
   await notifyAndEmit({
     recipientId: memberId,
     senderId: req.user._id,
     message: `You have been removed from the board: ${board.title}`,
-    type: "MEMBER_REMOVED", // Extended Enum Type applied
+    type: "MEMBER_REMOVED",
     boardId: boardId.toString(),
   });
 

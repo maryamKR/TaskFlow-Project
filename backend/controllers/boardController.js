@@ -4,17 +4,17 @@ const Column = require("../models/Column");
 const Task = require("../models/Task");
 const Comment = require("../models/Comment");
 const Notification = require("../models/Notification");
-const { hasBoardAccess } = require('../utils/boardAuth');
+const { hasBoardAccess } = require("../utils/boardAuth");
 const { getIO } = require("../socket");
 
 // @desc    Create a new project board
 const createBoard = asyncHandler(async (req, res) => {
   const { title, coworkers } = req.body;
 
-  const board = await Board.create({ 
-      title, 
-      user: req.user._id, 
-      coworkers: coworkers || [] 
+  const board = await Board.create({
+    title,
+    user: req.user._id,
+    coworkers: coworkers || [],
   });
 
   const DEFAULT_COLUMNS = ["To Do", "In Progress", "Review", "Done"];
@@ -26,7 +26,7 @@ const createBoard = asyncHandler(async (req, res) => {
 
   const createdColumns = await Column.insertMany(columnData);
 
-  board.columns = createdColumns.map(col => col._id);
+  board.columns = createdColumns.map((col) => col._id);
   await board.save();
 
   const populatedBoard = await Board.findById(board._id).populate("columns");
@@ -39,70 +39,71 @@ const getBoards = asyncHandler(async(req, res) => {
         $or: [{ user: req.user._id }, { coworkers: req.user._id }]
     })
     .sort({ createdAt: -1 })
-    .populate({ path: 'columns', populate: { path: 'tasks' }});
+    .select("title user coworkers createdAt"); 
 
     res.status(200).json({ success: true, count: boards.length, data: boards });
 });
 
 // @desc    Get board by ID
 const getBoardById = asyncHandler(async (req, res) => {
-    const board = await Board.findById(req.params.id)
-        .populate({
-            path: 'columns',
-            populate: {
-                path: 'tasks',
-                populate: [
-                    { path: 'assignedTo', select: 'username isOnline' },
-                    { path: 'createdBy',  select: 'username' },
-                ],
-            },
-        })
-        .populate({ path: 'user', select: '-password' });
+  const board = await Board.findById(req.params.id)
+    .populate({
+      path: "columns",
+      populate: {
+        path: "tasks",
+        populate: [
+          { path: "assignedTo", select: "username isOnline" },
+          { path: "createdBy", select: "username" },
+        ],
+      },
+    })
+    .populate({ path: "user", select: "-password" });
 
-    if(!board) {
-        res.status(404);
-        throw new Error("Board not found");
-    }
+  if (!board) {
+    res.status(404);
+    throw new Error("Board not found");
+  }
 
-    if (!hasBoardAccess(board, req.user._id)) {
-        res.status(403);
-        throw new Error("You do not have permission to view this board");
-    }
+  if (!hasBoardAccess(board, req.user._id)) {
+    res.status(403);
+    throw new Error("You do not have permission to view this board");
+  }
 
-    res.status(200).json({ success: true, data: board });
+  res.status(200).json({ success: true, data: board });
 });
 
 // @desc    Delete board
 const deleteBoard = asyncHandler(async (req, res) => {
-    const board = await Board.findById(req.params.id);
-    if(!board) {
-        res.status(404);
-        throw new Error("Board not found");
-    }
+  const board = await Board.findById(req.params.id);
+  if (!board) {
+    res.status(404);
+    throw new Error("Board not found");
+  }
 
-    if(board.user.toString() !== req.user._id.toString()){
-        res.status(403);
-        throw new Error("Only the owner can delete this board");
-    }
-    
-    // Find all task IDs within columns of the deleted board
-    const tasks = await Task.find({ column: { $in: board.columns } }).select("_id");
-    const taskIds = tasks.map((t) => t._id);
+  if (board.user.toString() !== req.user._id.toString()) {
+    res.status(403);
+    throw new Error("Only the owner can delete this board");
+  }
 
-    // Cascade delete Comments, Notifications, Tasks, and Columns
-    await Comment.deleteMany({ task: { $in: taskIds } });
-    await Notification.deleteMany({
-      $or: [
-        { relatedId: { $in: taskIds } },
-        { relatedId: board._id }
-      ]
-    });
+  // Find all task IDs within columns of the deleted board
+  const tasks = await Task.find({ column: { $in: board.columns } }).select(
+    "_id",
+  );
+  const taskIds = tasks.map((t) => t._id);
 
-    await Task.deleteMany({ _id: { $in: taskIds } });
-    await Column.deleteMany({ board: board._id });
-    await board.deleteOne();
+  // Cascade delete Comments, Notifications, Tasks, and Columns
+  await Comment.deleteMany({ task: { $in: taskIds } });
+  await Notification.deleteMany({
+    $or: [{ relatedId: { $in: taskIds } }, { boardId: board._id }],
+  });
 
-    res.status(200).json({ success: true, message: "Board and all associated data removed" });
+  await Task.deleteMany({ _id: { $in: taskIds } });
+  await Column.deleteMany({ board: board._id });
+  await board.deleteOne();
+
+  res
+    .status(200)
+    .json({ success: true, message: "Board and all associated data removed" });
 });
 
 // @desc    Reorder columns in a board
@@ -133,7 +134,9 @@ const reorderColumns = asyncHandler(async (req, res) => {
   const allBelong = columnIds.every((id) => boardColumnSet.has(id));
   if (!allBelong) {
     res.status(400);
-    throw new Error("Invalid reorder: One or more column IDs do not belong to this board");
+    throw new Error(
+      "Invalid reorder: One or more column IDs do not belong to this board",
+    );
   }
 
   board.columns = columnIds;
@@ -144,4 +147,10 @@ const reorderColumns = asyncHandler(async (req, res) => {
   res.status(200).json({ success: true, data: board.columns });
 });
 
-module.exports = { createBoard, getBoards, getBoardById, deleteBoard, reorderColumns };
+module.exports = {
+  createBoard,
+  getBoards,
+  getBoardById,
+  deleteBoard,
+  reorderColumns,
+};
