@@ -59,7 +59,7 @@ const createTask = async (req, res) => {
     createdBy: req.user._id,
     activityLog: [
       {
-        action: "Task created",
+        action: ` :  created Task ${title}`,
         performedBy: req.user._id,
       },
     ],
@@ -208,7 +208,7 @@ const updateTask = async (req, res) => {
   // Push audit records for fields modified inside changes
   for (const action of changes) {
     task.activityLog.push({
-      action,
+      action: `${task.title}${action}`,
       performedBy: req.user._id,
     });
   }
@@ -217,19 +217,6 @@ const updateTask = async (req, res) => {
   await task.populate("assignedTo", "username");
 
   const newAssignee = task.assignedTo;
-
-  //--------NOTIFICATION LOGIC -------/
-  /*
-    1. isAssigneeChanged: True only if the assignee field actually changed AND
-       the new assignee is not the actor themselves (no self-notification).
-    2. isDetailsChanged: True only if a non-assignee field changed (title, description,
-       priority, dueDate) AND the current assignee is not the actor (notify the assignee).
-    3. assigneeNotified: Tracks whether the board owner was already notified via
-       a specific TASK_ASSIGNED or TASK_UPDATED notification, to prevent them
-       receiving a duplicate generic OWNER_ALERT for the same action.
-    4. Owner is never notified if they performed the action (handled by notifyOwner helper).
-    5. If no changes were detected, this block is never reached (early return above).
-    */
 
   const hasAssigneeChanged = changes.includes("Assignee changed");
   const hasDetailsChanged = changes.some((c) => c !== "Assignee changed");
@@ -413,7 +400,7 @@ const moveTask = async (req, res) => {
       isDone,
       $push: {
         activityLog: {
-          action: `Moved to column "${destColumn.title}"`,
+          action: ` : Moved ${task.title}  to column "${destColumn.title}"`,
           performedBy: req.user._id,
         },
       },
