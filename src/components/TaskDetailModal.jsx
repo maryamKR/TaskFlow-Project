@@ -230,12 +230,12 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
                   <>
                     {(showAllActivity ? activity : activity.slice(0, 3)).map((log, index) => (
                       <div key={index} className={`flex items-start gap-3 py-2 border-b last:border-0 ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
-                        <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">{log.user?.username?.[0]?.toUpperCase() || '?'}</div>
+                        <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">{log.performedBy?.username?.[0]?.toUpperCase() || '?'}</div>
                         <div className="flex-1 min-w-0">
                           <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            <span className="font-medium">{log.user?.username || 'Unknown'}</span> {log.action}
+                            <span className="font-medium">{log.performedBy?.username || 'Unknown'}</span> {log.action}
                           </p>
-                          <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimeAgo(log.createdAt)}</p>
+                          <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimeAgo(log.timestamp)}</p>
                         </div>
                       </div>
                     ))}
