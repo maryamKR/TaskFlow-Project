@@ -1,97 +1,149 @@
-# TaskFlow Collaboration & Pending Invitation Flow
+# TaskFlow — Board Invitation & Pending Invite Flow
 
-This document details how TaskFlow handles board invitations for both registered members and users who do not yet have a TaskFlow account.
-
----
-
-## 🌟 Overview & Problem Solved
-
-Previously, if a board owner wanted to invite a coworker to collaborate, they had to ensure the coworker already registered a TaskFlow account. Inviting any email address not in the database resulted in a `404 User Not Found` error.
-
-With the new **Pending Invitations Flow**:
-- Board owners can invite **any email address** instantly.
-- If the email belongs to a **registered user**, they are added to the board immediately.
-- If the email is **unregistered**, TaskFlow sends them a branded sign-up email and holds their invitation as **pending**.
-- Once the unregistered user signs up using that email address, the system **auto-joins** them to all boards they were invited to, and notifies the respective board owners.
+This document details how TaskFlow handles board invitations for both registered users and those who don't yet have an account.
 
 ---
 
-## 🔄 How the Flow Works (Simple Step-by-Step)
+## Overview & Problem Solved
 
-### Scenario A: Coworker ALREADY has a TaskFlow Account
-1. The Board Owner goes to their board and inputs the coworker's email.
-2. The coworker is immediately added to the board as a coworker.
-3. The coworker receives:
-   - An in-app notification: *"You have been invited to the board: [Board Title]"*
-   - An invitation email with a `Reply-To` pointing to the owner's email address.
-4. The Board Owner receives:
-   - An in-app notification: *"[Coworker Username] has joined your board: [Board Title]"*
+Previously, inviting a collaborator required them to already have a TaskFlow account. Inviting any unregistered email resulted in a `404 User Not Found` error.
+
+With the **Pending Invitations Flow**, board owners can invite **any email address**:
+- If the email belongs to a **registered user** → they are added to the board immediately
+- If the email is **unregistered** → their email is held as a pending invite and they receive a sign-up invitation email
+- Once they register with that email address → the system **auto-joins** them to all pending boards and notifies the board owners
 
 ---
 
-### Scenario B: Coworker DOES NOT have a TaskFlow Account
-1. The Board Owner inputs the coworker's email (`newuser@example.com`).
-2. TaskFlow detects the user is unregistered, so it:
-   - Adds the email to the board's `pendingInvites` list.
-   - Sends a registration invite email to the coworker: *"Join TaskFlow to collaborate on [Board Title]"*.
-   - Returns a successful response: *"Invitation email sent to unregistered user. They will be added when they sign up."*
-3. The coworker clicks the link in the email and registers a TaskFlow account using `newuser@example.com`.
-4. Upon successful registration, the backend:
-   - Finds all boards where `newuser@example.com` is in `pendingInvites`.
-   - Moves the new user's ID into the board's active `coworkers` list.
-   - Clears `newuser@example.com` from `pendingInvites`.
-   - Generates an in-app notification for the **new user**: *"You have been added to the board: [Board Title]"*.
-   - Generates an in-app notification for the **board owner**: *"[New User Username] has joined your board: [Board Title]"*.
+## Scenario A: Invited User is Already Registered
+
+**Steps:**
+
+1. Board owner enters the coworker's email in the invite form
+2. Backend finds the user in the database
+3. User is immediately added to `board.coworkers`
+4. Invite email is sent (with `Reply-To` set to the owner's email)
+5. `BOARD_INVITATION` notification is sent to the invited user (real-time via Socket.IO)
+6. `OWNER_ALERT` notification is sent to the board owner
+
+**API Response:**
+```json
+{
+  "message": "User invited successfully",
+  "coworkers": ["<userId1>", "<userId2>"]
+}
+```
 
 ---
 
-## 🛠️ Technical Flow & Database Model
+## Scenario B: Invited User is NOT Yet Registered
 
-### 1. Model Changes (`Board.js`)
-We introduced a `pendingInvites` array of strings to track emails that are invited but not yet registered:
+**Steps:**
+
+1. Board owner enters an email not found in the database
+2. Backend adds the email to `board.pendingInvites[]`
+3. A branded sign-up invitation email is sent to that address (with `Reply-To` = owner's email)
+4. The invited person clicks the link, visits TaskFlow, and registers with that exact email
+
+**Upon registration** (`POST /api/auth/register`), the backend:
+1. Queries all boards where `pendingInvites` contains the new user's email
+2. For each matched board:
+   - Adds `user._id` to `board.coworkers[]`
+   - Removes the email from `board.pendingInvites[]`
+   - Saves the board
+   - Creates a `BOARD_INVITATION` notification → new user (real-time via Socket.IO)
+   - Creates an `OWNER_ALERT` notification → board owner (real-time via Socket.IO)
+
+---
+
+## Technical Flow
+
+### Invitation Endpoint (`POST /api/boards/:boardId/invite`)
+
+```mermaid
+graph TD
+    A[POST /api/boards/:boardId/invite] --> B{Is requester board owner?}
+    B -- No --> C[403 Forbidden]
+    B -- Yes --> D{User with email found in DB?}
+    D -- Yes --> E{Already a coworker?}
+    E -- Yes --> F[400: Already a member]
+    E -- No --> G[Add to board.coworkers]
+    G --> H[sendInviteEmail\nReply-To = owner email]
+    G --> I[notifyAndEmit: BOARD_INVITATION → user]
+    G --> J[notifyOwner: OWNER_ALERT → board owner]
+    G --> K[200: User invited successfully]
+    D -- No --> L{Already in pendingInvites?}
+    L -- Yes --> M[400: User already invited]
+    L -- No --> N[Add to board.pendingInvites]
+    N --> O[sendUnregisteredInviteEmail\nReply-To = owner email]
+    O --> P[200: Invitation email sent]
+```
+
+### Registration Auto-Join (`POST /api/auth/register`)
+
+```mermaid
+graph TD
+    A[User registers with email] --> B[Create User in MongoDB]
+    B --> C[Query boards where pendingInvites contains email]
+    C --> D{Any boards found?}
+    D -- No --> E[Skip → proceed to JWT]
+    D -- Yes --> F[For each matched board]
+    F --> G[Add user._id to board.coworkers]
+    G --> H[Remove email from board.pendingInvites]
+    H --> I[Save board]
+    I --> J[notifyAndEmit: BOARD_INVITATION → new user]
+    I --> K[notifyOwner: OWNER_ALERT → board owner]
+    K --> L[Repeat for next board]
+```
+
+---
+
+## Board Schema — `pendingInvites` Field
+
 ```javascript
+// models/Board.js
 pendingInvites: [
   {
     type: String,
     trim: true,
-    lowercase: true
+    lowercase: true  // stored in lowercase to prevent case-sensitivity issues
   }
 ]
 ```
 
-### 2. Invitation Endpoint (`POST /api/boards/:boardId/invite`)
-- **Controller:** `boardMemberController.js` → `inviteMember`
-- **Logic:**
-  ```mermaid
-  graph TD
-      A[Post Request with Email] --> B{Does User Exist?}
-      B -- Yes --> C[Add to board.coworkers]
-      C --> D[Send Standard Invite Email]
-      C --> E[Notify Invited User]
-      C --> F[Notify Board Owner]
-      B -- No --> G{Already in pendingInvites?}
-      G -- Yes --> H[Return 400 'User already invited']
-      G -- No --> I[Add to board.pendingInvites]
-      I --> J[Send Sign-up Invite Email]
-      I --> K[Return success status]
-  ```
-
-### 3. Registration Endpoint (`POST /api/auth/register`)
-- **Controller:** `authController.js` → `registerUser`
-- **Logic:**
-  1. Creates the user in the database.
-  2. Searches the `Board` collection for any board containing `pendingInvites: cleanEmail`.
-  3. For each matched board:
-     - Appends the new user's `_id` to `board.coworkers`.
-     - Removes the email from `board.pendingInvites`.
-     - Saves the board.
-     - Creates the welcome notification for the new user.
-     - Creates the join notification for the board owner.
+**Important:** When comparing emails during registration, both sides are lowercased:
+```javascript
+const cleanEmail = email.trim().toLowerCase();
+const boardsWithPendingInvites = await Board.find({ pendingInvites: cleanEmail });
+```
 
 ---
 
-## 📬 Email Deliverability & SMTP Config
+## Email Behaviour
 
-- **Delivery Account:** Authentic email address specified in `.env` (`EMAIL_USER` / `EMAIL_PASS`).
-- **Reply-To Field:** Automatically populated with the Board Owner's email address. If the recipient replies to the registration email, their reply goes directly to the owner.
-- **Spaces in Password Warning:** Ensure that the 16-character SMTP password has all spaces removed when pasted into `EMAIL_PASS` (e.g. `rsdnfgrzlohbnbmq` and not `rsdn fgrz lohb nbmq`).
+| Email Type | Sent When | Template | Reply-To |
+|---|---|---|---|
+| `sendInviteEmail` | Registered user invited | `inviteTemplate` | Board owner's email |
+| `sendUnregisteredInviteEmail` | Unregistered email invited | `inviteUnregisteredTemplate` | Board owner's email |
+
+Both emails are sent from the platform SMTP account (`EMAIL_USER`) but the `Reply-To` header is set to the board owner's email address, so any reply from the recipient goes directly to the owner.
+
+---
+
+## Error Cases
+
+| Scenario | HTTP Status | Error Message |
+|---|---|---|
+| Requester is not board owner | 403 | `"Only the board owner can invite members"` |
+| Email is already an active coworker | 400 | `"User is already a member of this board"` |
+| Email is already in pendingInvites | 400 | `"An invitation has already been sent to this email"` |
+| SMTP failure | Non-fatal | Logged to server console; board state unchanged |
+
+---
+
+## SMTP Notes
+
+- **Gmail App Password Required:** `EMAIL_PASS` must be a 16-character App Password, not your normal Gmail password. Remove all spaces from the code before pasting it into `.env`.
+- **Reply-To Header:** Replies go directly to the board owner, not to the platform email address.
+
+See [`email-service.md`](./email-service.md) for complete SMTP setup instructions.
