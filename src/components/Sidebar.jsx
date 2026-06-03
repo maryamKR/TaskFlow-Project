@@ -25,8 +25,12 @@ function Sidebar({
   const isOwner = activeBoard?.user === currentUserId || activeBoard?.user?._id === currentUserId;
 
   const handleDeleteBoard = async (board) => {
-    if (!window.confirm(`Delete "${board.title}" and all its data?`)) return;
-    setDeletingId(board._id);
+  if (!isOwner) {
+    setToast({ message: 'Only the board owner can delete a board.', type: 'error' });
+    return;
+  }
+  if (!window.confirm(`Delete "${board.title}" and all its data?`)) return;
+  setDeletingId(board._id);
     try {
       await deleteBoard(board._id);
       onBoardDeleted(board._id);

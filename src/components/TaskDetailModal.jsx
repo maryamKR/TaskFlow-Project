@@ -120,7 +120,10 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   };
 
   const formatTimeAgo = (dateStr) => {
-    const diff = (new Date() - new Date(dateStr)) / 1000;
+    if (!dateStr) return 'unknown';
+    const parsed = new Date(dateStr);
+    if (isNaN(parsed.getTime())) return 'unknown';
+    const diff = (new Date() - parsed) / 1000;
     if (diff < 60) return 'just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
