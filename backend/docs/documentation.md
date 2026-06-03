@@ -1,149 +1,443 @@
-# TaskFlow Backend Technical Documentation
+# TaskFlow Backend — Technical Documentation
 
-This document provides a detailed technical overview of the backend architecture, including descriptions of controllers, middleware, models, and utility functions.
-
----
-
-## 1. Architecture Overview
-TaskFlow follows the **MVC (Model-View-Controller)** pattern.
-- **Models:** Define the data structure and business rules using Mongoose.
-- **Controllers:** Contain the logic for handling requests and interacting with models.
-- **Routes:** Map HTTP endpoints to specific controller functions.
-- **Middleware:** Handle cross-cutting concerns like authentication and error handling.
+This document provides detailed descriptions of all controllers, middleware, models, and utility functions in the TaskFlow backend.
 
 ---
 
-## 2. Controllers & Methods
+## 1. Controllers
 
-### Auth Controller (`authController.js`)
-Handles user identity and session management.
+### Auth Controller (`controllers/authController.js`)
 
-*   `registerUser(req, res)`:
-    *   Checks if the email is already in use.
-    *   Hashes the password.
-    *   Creates a new User and returns a JWT token.
-    *   Scans for any boards containing the user's email in `pendingInvites`. If found, adds the user to the board's coworkers list, removes them from pending lists, and generates notifications for both the user and the board owner.
-*   `loginUser(req, res)`:
-    *   Validates credentials against the database.
-    *   Returns a JWT token upon successful authentication.
-*   `forgotPassword(req, res)`:
-    *   Generates a secure, time-limited reset token.
-    *   Saves hashed token and expiry to the User model.
-    *   Dispatches a password reset email via `sendPasswordResetEmail`.
-*   `resetPassword(req, res)`:
-    *   Validates the reset token and its expiry.
-    *   Hashes the new password and updates the user record.
-    *   Clears the reset token fields.
+Manages user identity, session tokens, and password recovery.
 
-### Board Controller (`boardController.js`)
-Manages the lifecycle of project boards.
+#### `registerUser(req, res)`
+Creates a new user account and returns an immediate JWT token.
 
-*   `createBoard(req, res)`: Creates a board and automatically initializes four default columns: "To Do", "In Progress", "Review", and "Done".
-*   `getBoards(req, res)`: Retrieves all boards where the user is either the owner or a coworker, sorted by creation date.
-*   `getBoardById(req, res)`: Fetches a specific board with fully populated columns and tasks.
-*   `deleteBoard(req, res)`: Permanently removes a board along with all its associated columns and tasks.
-*   `reorderColumns(req, res)`: Updates the column order array on the Board model and emits a `columns_reordered` socket event.
+**Step-by-step logic:**
+1. Extracts `{ username, email, password }` from the validated request body.
+2. Queries the database for an existing user matching either the email OR username — a single `$or` query prevents duplicate accounts.
+3. Creates the User document. The `pre('save')` hook in `User.js` automatically hashes the password using `bcryptjs` with 10 salt rounds before storing it.
+4. **Pending Invitation Resolution:** Queries all Board documents where `pendingInvites` contains the newly registered email address. For each matched board:
+   - Adds the new user's `_id` to `board.coworkers`
+   - Removes the email from `board.pendingInvites`
+   - Saves the board
+   - Sends a `BOARD_INVITATION` notification to the new user via `notifyAndEmit()`
+   - Sends an `OWNER_ALERT` notification to the board owner via `notifyOwner()`
+5. Signs and returns a JWT: `jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' })`
 
-### Board Member Controller (`boardMemberController.js`)
-Handles collaboration and permissions.
+**Response:** `201 Created` with `{ _id, username, email, token }`
 
-*   `getBoardMembers(req, res)`: Retrieves a list of all users (owner + coworkers) associated with a board. Enforces authorization checks via `hasBoardAccess`.
-*   `inviteMember(req, res)`: Restricts invitations to board owners only. If the invited email exists, the user is added to `coworkers` immediately, and notifications are sent to both the user and the board owner. If the email is unregistered, it is saved to `pendingInvites`, and an email is dispatched inviting them to sign up. All emails utilize SMTP with the board owner's email in the `Reply-To` header.
-*   `removeMember(req, res)`: Removes a user from the `coworkers` array. Restricts removal permissions to the board owner only, preventing coworkers from removing other members. Prevents removing the board owner.
+---
 
-### Column Controller (`columnController.js`)
-Manages task groupings within boards.
+#### `loginUser(req, res)`
+Authenticates an existing user.
 
-*   `createColumn(req, res)`: Adds a new column to a board and updates the board's column reference list.
-*   `getColumnsByBoard(req, res)`: Retrieves all columns for a specific board.
-*   `updateColumn(req, res)`: Updates the title or position of an existing column. Explicitly destructures only `title` and `position` from `req.body` to prevent unauthorized field overwrites.
-*   `deleteColumn(req, res)`: Removes a column and deletes all tasks contained within it.
+**Step-by-step logic:**
+1. Extracts `{ email, password }` from the validated request body.
+2. Queries the User by email using `.select('+password')` — the password field is hidden by default (`select: false` in schema) and must be explicitly included for comparison.
+3. Calls `user.matchPassword(password)` (instance method on User model using `bcrypt.compare`).
+4. If credentials are valid, signs and returns a JWT.
 
-### Task Controller (`taskController.js`)
-The core logic for task management and real-time updates.
+**Security note:** Returns `401 Invalid email or password` for both non-existent email AND wrong password — a generic message that prevents user enumeration.
 
-*   `createTask(req, res)`: Creates a task with optional fields like `label`, assigns it to a column, and triggers a `TASK_ASSIGNED` notification if an assignee is specified. Emits `task_created` socket event.
-*   `getTask(req, res)`: Retrieves detailed information for a single task, including comments and populated activity log.
-*   `getTaskActivity(req, res)`: Retrieves only the activity log for a specific task, populated with the usernames of actors. Enforces board access permissions.
-*   `updateTask(req, res)`: Modifies task details (title, priority, etc.). Triggers `TASK_UPDATED` or `TASK_ASSIGNED` notifications as needed. Emits `task_updated` socket event and logs the change to `activityLog`.
-*   `deleteTask(req, res)`: Removes a task and cleans up the reference in the parent column. Restricts task deletion to the board owner only. Emits `task_deleted` socket event.
-*   `moveTask(req, res)`: Moves a task between columns. Synchronizes pointers and logs the move to `activityLog`. Emits `task_moved` socket event.
-*   `reorderTask(req, res)`: Reorders tasks within a single column. Emits `tasks_reordered` socket event.
-*   `getTasks(req, res)`: A versatile query method supporting search, priority filters, assignee filters, and date range filtering.
+**Response:** `200 OK` with `{ _id, username, email, token }`
 
-### Comment Controller (`commentController.js`)
+---
+
+#### `forgotPassword(req, res)`
+Initiates the password reset flow.
+
+**Step-by-step logic:**
+1. Looks up the user by email.
+2. **Enumeration guard:** If the user is not found, still returns `200 OK` with a generic message.
+3. Generates a random hex token using `crypto.randomBytes(20).toString('hex')`.
+4. Hashes the token using `SHA-256` before storing it on the user document (prevents token exposure if the database is compromised).
+5. Sets `resetPasswordExpire` to 10 minutes from now.
+6. Saves the user and sends the **unhashed** token in the reset URL via `sendPasswordResetEmail()`.
+7. **Rollback on email failure:** If the SMTP call throws, the token and expiry are cleared from the user document before re-throwing, preventing orphaned reset tokens.
+
+**Rate limiting:** Maximum 3 requests per hour per IP (`passwordResetLimiter`).
+
+**Response:** `200 OK` with generic message regardless of email existence.
+
+---
+
+#### `resetPassword(req, res)`
+Completes the password reset using the token from the email link.
+
+**Step-by-step logic:**
+1. Receives the raw token from `req.params.resetToken`.
+2. Re-hashes the token with SHA-256 and looks up the matching user where `resetPasswordToken` equals the hash and `resetPasswordExpire` is greater than the current time.
+3. If no user is found, the token is invalid or expired — returns `400 Bad Request`.
+4. Sets the new password (triggering the pre-save hash hook), then clears `resetPasswordToken` and `resetPasswordExpire` from the document.
+
+---
+
+### Board Controller (`controllers/boardController.js`)
+
+Manages the full lifecycle of project boards.
+
+#### `createBoard(req, res)`
+Creates a board and automatically scaffolds 4 default columns.
+
+**Step-by-step logic:**
+1. Creates the Board document with the authenticated user as owner.
+2. Immediately creates 4 Column documents: **To Do** (position 0), **In Progress** (position 1), **Review** (position 2), **Done** (position 3).
+3. Stores the 4 column ObjectIDs in `board.columns[]` and saves.
+4. Returns the fully populated board (with columns embedded).
+
+#### `getBoards(req, res)`
+Returns all boards visible to the authenticated user.
+
+Uses a `$or` query: `{ user: req.user._id }` (owner) OR `{ coworkers: req.user._id }` (member). Results are sorted by `createdAt` descending.
+
+#### `getBoardById(req, res)`
+Returns a single board with deep population.
+
+Populates the full hierarchy in a single query chain:
+- `board.columns` → populated as Column documents
+- Each column's `tasks` → populated as Task documents (with `assignedTo.username` and `assignedTo.email`)
+- Each task's `comments` → populated as Comment documents (with `author.username`)
+
+Enforces access via `hasBoardAccess(board, req.user._id)`.
+
+#### `deleteBoard(req, res)`
+Permanently removes a board and all child data. Restricted to board owner only.
+
+Cascade deletion order:
+1. Find all columns belonging to the board
+2. For each column, find all tasks → for each task, delete all Comments and related Notifications
+3. Delete all Tasks, then all Columns, then the Board itself
+
+#### `reorderColumns(req, res)`
+Validates that all incoming `columnIds` belong to the current board (prevents foreign ID injection), then updates `board.columns` array and emits `columns_reordered` to the board's Socket.IO room.
+
+---
+
+### Board Member Controller (`controllers/boardMemberController.js`)
+
+Handles collaborative membership and permissions.
+
+#### `getBoardMembers(req, res)`
+Returns the full user list for a board (owner + coworkers), populating `username` and `email` fields. Requires board access via `hasBoardAccess`.
+
+#### `inviteMember(req, res)`
+Adds a new collaborator to a board. **Restricted to board owner only.**
+
+**Decision tree:**
+```
+Invite Email Received
+        │
+        ▼
+Does a User with this email exist?
+    ├── YES → Is user already a coworker?
+    │              ├── YES → 400 "Already a member"
+    │              └── NO  → Add to board.coworkers
+    │                         → Send invite email (Reply-To = owner email)
+    │                         → Notify invited user (BOARD_INVITATION)
+    │                         → Notify owner (OWNER_ALERT)
+    └── NO  → Is email in board.pendingInvites?
+                   ├── YES → 400 "User already invited"
+                   └── NO  → Add to board.pendingInvites
+                              → Send sign-up invite email
+                              → 200 "Invitation email sent"
+```
+
+#### `removeMember(req, res)`
+Removes a user from `board.coworkers`. **Restricted to board owner only.** Prevents the owner from removing themselves. On successful removal, sends a `MEMBER_REMOVED` notification to the removed user and emits a `member_removed` socket event to the board room.
+
+---
+
+### Column Controller (`controllers/columnController.js`)
+
+Manages task groupings (lanes) within a board.
+
+#### `createColumn(req, res)`
+Creates a new Column and appends its `_id` to `board.columns[]`. Emits `column_added`. Triggers an `OWNER_ALERT` notification if the actor is not the board owner.
+
+#### `getColumnsByBoard(req, res)`
+Returns all columns for a board, populated with their tasks (including `assignedTo.username`).
+
+#### `updateColumn(req, res)`
+Updates only `title` and/or `position` on a column. Explicitly destructures these fields to prevent mass-assignment of unauthorized fields. Emits `column_updated`.
+
+#### `deleteColumn(req, res)`
+Cascade-deletes the column and all its tasks (including task Comments and Notifications). Removes the column reference from `board.columns[]`. Emits `column_deleted`.
+
+---
+
+### Task Controller (`controllers/taskController.js`)
+
+The central hub of TaskFlow's work management logic.
+
+#### `createTask(req, res)`
+Creates a task in the specified column.
+
+- Appends the new task's `_id` to `column.tasks[]`
+- If `assignedTo` is provided, sends a `TASK_ASSIGNED` notification to the assignee via `notifyAndEmit()`
+- Sets `createdBy` to `req.user._id`
+- Emits `task_created` to the board room
+
+#### `getTask(req, res)`
+Returns a single task with populated comments (including author username) and activity log. Uses `getTaskWithBoardAccess()` to verify board membership before returning data.
+
+#### `getTaskActivity(req, res)`
+Returns only the `activityLog` array for a task, with each entry's `performedBy` field populated with the actor's username. Enforces board access.
+
+#### `updateTask(req, res)`
+Updates task fields and generates granular activity log entries for each change.
+
+**Change tracking logic:**
+- If `title` changed → logs `"Title changed from 'Old' to 'New'"`
+- If `priority` changed → logs `"Priority changed from 'medium' to 'high'"`
+- If `description` changed → logs `"Description was updated"`
+- If `dueDate` changed → logs `"Due date changed to [date]"` (or `"Due date removed"`)
+- If `label` changed → logs `"Label changed to [label]"`
+- If `assignedTo` changed → logs `"Assigned to [username]"` and sends `TASK_ASSIGNED` notification
+
+Always emits `task_updated` to the board room.
+
+#### `deleteTask(req, res)`
+Deletes a task and its child Comments and Notifications. **Restricted to board owner only** — coworkers attempting this receive `403 Forbidden`. Removes the task's `_id` from `column.tasks[]`. Emits `task_deleted`.
+
+#### `moveTask(req, res)`
+Moves a task between columns atomically.
+
+**Operations performed:**
+1. Removes `taskId` from `sourceColumn.tasks[]`
+2. Appends `taskId` to `destinationColumn.tasks[]`
+3. Updates `task.column` to the destination column ID
+4. If the destination column title is "done" (case-insensitive), sets `task.isDone = true` and sends `TASK_MOVED_DONE` notification
+5. Logs the move action to `activityLog`
+6. Emits `task_moved` to the board room
+
+#### `reorderTask(req, res)`
+Validates that all incoming `taskIds` belong to the specified column (prevents injection), then replaces `column.tasks[]` with the new order. Emits `tasks_reordered`.
+
+#### `getTasks(req, res)`
+Flexible query endpoint supporting multiple simultaneous filters:
+
+| Query Param | Effect |
+|---|---|
+| `boardId` (required) | Scope tasks to a specific board via column lookup |
+| `columnId` | Narrow to a specific column |
+| `assignedTo` | Filter by assignee ObjectID |
+| `priority` | Filter by `low`, `medium`, or `high` |
+| `search` | MongoDB `$text` search across `title` and `description` |
+| `startDate` / `endDate` | Filter by due date range |
+
+---
+
+### Comment Controller (`controllers/commentController.js`)
+
 Handles task-level discussions.
 
-*   `addComment(req, res)`: Creates a comment and adds its reference to the Task model. Triggers a `COMMENT` notification for the task assignee. Emits `comment_added` socket event.
-*   `getComments(req, res)`: Retrieves all comments for a specific task.
-*   `deleteComment(req, res)`: Removes a comment and cleans up the reference in the Task model. Emits `comment_deleted` socket event.
+#### `addComment(req, res)`
+Creates a `Comment` document and appends its `_id` to `task.comments[]`. If the task has an assignee (and the commenter is not the assignee), sends a `COMMENT` notification. Emits `comment_added`.
+
+#### `getComments(req, res)`
+Returns all comments for a task in chronological order, with `author.username` and `author.email` populated.
+
+#### `deleteComment(req, res)`
+Removes the comment document and cleans up its reference from `task.comments[]`. **Restricted to comment author or board owner.** Emits `comment_deleted`.
 
 ---
 
-## 3. Real-time Events (Sockets)
+### Notification Controller (`controllers/notificationController.js`)
 
-TaskFlow uses Socket.io for live collaboration. Events are broadcast to rooms named after the `boardId`.
+Serves and manages the in-app notification feed for each user.
 
-| Event Name | Data Payload | Triggered By |
-| :--- | :--- | :--- |
-| `columns_reordered` | `{ columnIds }` | `reorderColumns` |
-| `column_added` | `{ column }` | `createColumn` |
-| `column_updated` | `{ column }` | `updateColumn` |
-| `column_deleted` | `{ columnId }` | `deleteColumn` |
-| `task_created` | `{ columnId, task, createdBy }` | `createTask` |
-| `task_updated` | `{ taskId, updatedTask }` | `updateTask` |
-| `task_deleted` | `{ taskId, columnId }` | `deleteTask` |
-| `task_moved` | `{ taskId, sourceColumnId, destinationColumnId }` | `moveTask` |
-| `tasks_reordered` | `{ columnId, taskIds }` | `reorderTask` |
-| `comment_added` | `{ taskId, comment }` | `addComment` |
-| `comment_deleted` | `{ taskId, commentId }` | `deleteComment` |
+| Method | Route | Description |
+|---|---|---|
+| `getNotifications` | `GET /notifications` | Returns all notifications for `req.user._id`, sorted newest-first, with sender populated |
+| `markAllAsRead` | `PATCH /notifications/read-all` | Sets `isRead: true` on all user's notifications |
+| `markAsRead` | `PATCH /notifications/:id/read` | Sets `isRead: true` on a single notification |
+| `deleteReadNotifications` | `DELETE /notifications/read` | Purges all read notifications for the user |
+| `deleteNotification` | `DELETE /notifications/:id` | Deletes a specific notification |
 
 ---
 
-## 4. Middleware
+### AI Controller (`controllers/aiController.js`)
 
-### Auth Middleware (`authMiddleware.js`)
-*   `protect`: A gatekeeper function that verifies the JWT in the `Authorization` header. It attaches the authenticated user object to `req.user`.
+#### `suggestPriority(req, res)`
+Sends the task's title and description to Google Gemini (`gemini-2.5-flash`) with a structured prompt asking it to return exactly one of: `high`, `medium`, or `low`. The response is sanitised (stripped of non-alphabetic characters) and validated against the allowed values before being returned. Falls back to `medium` if the model returns an unexpected response.
 
-### Error Handler (`errorHandler.js`)
-*   `errorHandler`: A centralized catch-all for errors. It provides specific formatting for:
-    *   **ZodError:** Validation failures.
-    *   **CastError:** Invalid MongoDB IDs.
-    *   **MongoServerError (11000):** Duplicate key errors (e.g., duplicate emails).
-    *   **JsonWebTokenError:** Authentication failures.
-
-### Validation Middleware (`validate.js`)
-*   `validate(schema)`: A factory function that returns a middleware using Zod to validate `req.body` or `req.query` before the controller logic executes.
+#### `autoLabel(req, res)`
+Performs fast, local keyword matching without calling any external API. Scans the task title and description against 8 predefined keyword dictionaries (Bug, Frontend, Backend, Documentation, DevOps, Testing, Feature, Design). Returns the first matching label, or `Other` if no keywords match.
 
 ---
 
-## 5. Models (Schemas)
+## 2. Middleware
 
-*   **User:** Stores credentials and profile info. Uses `bcrypt` for password hashing and has timestamps (`createdAt`, `updatedAt`) enabled automatically.
-*   **Board:** Tracks ownership (`user`), collaborators (`coworkers`), and the ordered list of `columns`.
-*   **Column:** Represents a vertical list. Holds a reference to the `board` and an ordered array of `tasks`.
-*   **Task:** The central unit of work. Includes fields for `priority`, `dueDate`, `assignedTo`, `label`, `comments`, and `overdueEmailSent` (tracks daily overdue alert mail dispatch). Supports text indexing for search.
-*   **Comment:** Simple text entries linked to a `task` and an `author`.
-*   **Notification:** Persistent alerts for users. Stores `message`, `type`, and `relatedId` (e.g., a Task ID). Uses uppercase enums: `COMMENT`, `TASK_ASSIGNED`, `TASK_UPDATED`, `BOARD_INVITATION`, `TASK_MOVED_DONE`, `OWNER_ALERT`, `MEMBER_REMOVED`.
+### Auth Middleware (`middleware/authMiddleware.js`)
+
+#### `protect`
+Guards all private routes. Extracts the token from the `Authorization: Bearer <token>` header, verifies it with `jwt.verify()`, and attaches the user document to `req.user`. Returns `401 Unauthorized` for missing, malformed, or expired tokens.
+
+### Rate Limiter (`middleware/rateLimiter.js`)
+
+Three instances of `express-rate-limit`, each configured independently:
+
+```js
+// registerLimiter: 5 requests per hour per IP
+// loginLimiter: 10 requests per 15 minutes per IP
+// passwordResetLimiter: 3 requests per hour per IP
+```
+
+All limiters return `{ success: false, error: "..." }` with `standardHeaders: true` (exposes `RateLimit-*` headers to clients for countdown timers in the UI).
+
+### Validation Middleware (`middleware/validate.js`)
+
+Factory function: `validate(schema)` returns an Express middleware that calls `schema.parseAsync({ body: req.body, params: req.params, query: req.query })`. On success, the parsed (and potentially transformed/trimmed) values replace the originals on `req`. On failure, a `ZodError` is thrown and caught by `errorHandler.js`.
+
+### Error Handler (`middleware/errorHandler.js`)
+
+Registered as the **last middleware** in the chain. Normalises all error types into a consistent JSON response:
+
+| Error Type | Detection | HTTP Status |
+|---|---|---|
+| Zod validation error | `err.name === 'ZodError'` | 400 |
+| Invalid MongoDB ObjectID | `err.name === 'CastError'` | 400 |
+| Duplicate key (unique index) | `err.code === 11000` | 400 |
+| JWT invalid signature | `err.name === 'JsonWebTokenError'` | 401 |
+| JWT expired | `err.name === 'TokenExpiredError'` | 401 |
+| All other errors | Fallback | `err.statusCode` or 500 |
+
+Never exposes raw stack traces in production (`NODE_ENV === 'production'`).
 
 ---
 
-## 6. Utilities
+## 3. Models
 
-### Board Auth (`boardAuth.js`)
-*   `hasBoardAccess(board, userId)`: Determines if a user has permission to view or modify a board. It handles both owner and coworker checks, safely unpacking both unpopulated ObjectIDs and populated User document objects.
+### User (`models/User.js`)
+```
+username     String  required · unique · min 3 chars
+email        String  required · unique · email format
+password     String  required · min 6 · bcrypt hashed · select: false
+isOnline     Boolean default: false (managed by Socket.IO)
+resetPasswordToken   String · select: false
+resetPasswordExpire  Date   · select: false
+```
+Instance method: `matchPassword(enteredPassword)` — calls `bcrypt.compare`.
+Pre-save hook: hashes `password` whenever it is modified.
 
-### Socket Utility (`socket.js`)
-*   `initSocket(server)`: Initializes the Socket.io instance.
-*   `getIO()`: Provides access to the IO instance from anywhere in the application to emit events.
+### Board (`models/Board.js`)
+```
+title          String    required
+user           ObjectId  ref: User  (owner) · indexed
+coworkers      ObjectId[] ref: User · indexed (multikey)
+columns        ObjectId[] ref: Column
+pendingInvites String[]  (lowercase email addresses)
+```
 
-### Email Service (`emailService.js`)
-*   `sendInviteEmail(toEmail, boardTitle, inviterName, inviterEmail)`: Sends a board invitation email using Nodemailer with a Reply-To pointing back to the board owner.
-*   `sendPasswordResetEmail(toEmail, resetUrl)`: Dispatches password reset token links to the user.
-*   `sendOverdueTaskEmail(toEmail, taskTitle, dueDate, boardTitle)`: Dispatches overdue notification emails to assignees or creators.
+### Column (`models/Column.js`)
+```
+title     String    required
+board     ObjectId  ref: Board · indexed
+position  Number    default: 0
+tasks     ObjectId[] ref: Task
+```
 
-### Email Templates (`emailTemplates.js`)
-*   `inviteTemplate`, `passwordResetTemplate`, `overdueTaskTemplate`: Branded, responsive HTML templates matching the project's visual identity.
+### Task (`models/Task.js`)
+```
+title            String    required · text-indexed
+description      String    default: ''  · text-indexed
+priority         String    enum: low|medium|high · default: medium · indexed
+label            String    enum: Bug|Frontend|Backend|Documentation|DevOps|Design|Testing|Feature|Other · nullable
+assignedTo       ObjectId  ref: User · nullable · indexed
+dueDate          Date      nullable
+column           ObjectId  ref: Column · required · indexed
+comments         ObjectId[] ref: Comment
+createdBy        ObjectId  ref: User · nullable
+isDone           Boolean   default: false
+overdueEmailSent Boolean   default: false
+activityLog      []        embedded sub-documents { action, performedBy, timestamp }
+```
 
-### Cron Scheduler (`scheduledJobs.js`)
-*   `initScheduledJobs()`: Schedules a daily cron task at midnight (`0 0 * * *`) that searches for incomplete overdue tasks, emails the assignee/creator, and sets `overdueEmailSent = true` to avoid duplicate emails.
+### Comment (`models/Comment.js`)
+```
+content   String    required
+task      ObjectId  ref: Task · indexed
+author    ObjectId  ref: User · required
+```
+
+### Notification (`models/Notification.js`)
+```
+user       ObjectId  ref: User (recipient) · indexed
+sender     ObjectId  ref: User · required
+message    String    required
+type       String    enum: COMMENT|TASK_ASSIGNED|TASK_UPDATED|BOARD_INVITATION|TASK_MOVED_DONE|OWNER_ALERT|MEMBER_REMOVED
+relatedId  ObjectId  nullable (e.g. Task ID)
+boardId    ObjectId  nullable
+isRead     Boolean   default: false · indexed
+```
+
+---
+
+## 4. Utilities
+
+### `boardAuth.js` → `hasBoardAccess(board, userId)`
+Determines if a user can view or modify a board. Accepts both populated documents (where `board.user` is a User object) and non-populated references (where `board.user` is a raw ObjectID string). Returns `true` if the userId matches the owner OR is present in `board.coworkers`.
+
+### `notifyAndEmit.js` → `notifyAndEmit({ recipientId, senderId, message, type, relatedId, boardId })`
+The single entry point for all notification creation:
+1. Persists a `Notification` document to MongoDB
+2. Populates the `sender` field (`username`, `email`) on the returned document
+3. Emits `new_notification` via Socket.IO to `user:<recipientId>` room
+
+### `notifyOwner.js` → `notifyOwner(board, actorId, message, type, relatedId)`
+A thin wrapper around `notifyAndEmit`. Computes the board owner ID from `board.user` (handles both populated and non-populated references), then skips the notification if `actorId === boardOwnerId` (prevents self-notification). Errors are caught and logged — notification failures never crash the primary operation.
+
+### `taskHelpers.js` → `getTaskWithBoardAccess(taskId, userId)`
+Shared resolver used by task and comment controllers to reduce boilerplate:
+1. Fetches the Task by `taskId` (throws 404 if not found)
+2. Fetches the parent Column (throws 404 if orphaned)
+3. Fetches the parent Board and checks `hasBoardAccess` (throws 403 if unauthorised)
+4. Returns `{ task, column, board }` for the caller to use
+
+### `emailService.js`
+Wraps three Nodemailer `transporter.sendMail()` calls:
+- `sendInviteEmail(toEmail, boardTitle, inviterName, inviterEmail)` — board invitation
+- `sendPasswordResetEmail(toEmail, resetUrl)` — password reset link
+- `sendOverdueTaskEmail(toEmail, taskTitle, dueDate, boardTitle)` — overdue alert
+
+### `emailTemplates.js`
+Exports three branded, responsive HTML template strings: `inviteTemplate`, `passwordResetTemplate`, `overdueTaskTemplate`. All templates include the TaskFlow brand colours and support both light and dark email clients.
+
+### `scheduledJobs.js` → `initScheduledJobs()`
+Registers a daily `node-cron` job running at midnight (`0 0 * * *`):
+- Queries: `{ isDone: false, dueDate: { $lt: now }, overdueEmailSent: false }`
+- For each result: calls `sendOverdueTaskEmail()` → assignee if set, else creator
+- Sets `task.overdueEmailSent = true` to prevent duplicate daily alerts
+
+---
+
+## 5. Testing
+
+### Test Structure
+The backend has a comprehensive test suite in `backend/tests/`:
+
+```
+tests/
+├── controllers/          # Unit tests for all controllers (mocked DB)
+├── integration/          # End-to-end tests against real MongoDB Atlas DB
+│   ├── setup.js          # beforeAll/afterAll hooks: connect, cleanup, mock sockets
+│   ├── auth.test.js      # Register, login, pending invites, rate limiting
+│   ├── board.test.js     # Board CRUD, member invites, cascade deletes
+│   ├── column.test.js    # Column CRUD, reorder, cascade deletes
+│   ├── task.test.js      # Task CRUD, move, Done column logic
+│   ├── comment.test.js   # Comment CRUD and sorting
+│   └── notification.test.js # Notification retrieval, read, purge
+├── middleware/           # Unit tests for authMiddleware, errorHandler, validate
+├── utils/                # Unit tests for boardAuth, notifyAndEmit, notifyOwner, taskHelpers
+├── validators/           # Unit tests for all Zod schemas
+└── helpers.js            # Shared test utilities (fakeId, mockReq, mockRes)
+```
+
+### Running Tests
+```bash
+npm test   # jest --runInBand --detectOpenHandles
+```
+Tests run sequentially (`--runInBand`) to avoid parallel Atlas connection limits. The integration test setup includes a 3-retry connection loop to survive transient network drops.
+
+**Results:** 255 unit and integration tests — all passing.

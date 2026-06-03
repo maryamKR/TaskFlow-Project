@@ -1,70 +1,189 @@
-# Getting Started with Create React App
+# TaskFlow
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A real-time collaborative Kanban project management application built on the MERN stack.
 
-## Available Scripts
+---
 
-In the project directory, you can run:
+## Features
 
-### `npm start`
+- **Kanban Boards** — Drag-and-drop task management across customisable columns
+- **Real-time Collaboration** — Live updates via Socket.IO; see teammates' changes instantly
+- **Team Management** — Invite collaborators by email; pending invitations auto-resolve on signup
+- **Task Tracking** — Priority levels, labels, due dates, assignees, and activity logs
+- **AI Assist** — Gemini-powered priority suggestions and automatic task labelling
+- **Notifications** — In-app real-time notifications for assignments, comments, and board events
+- **Overdue Alerts** — Automated daily email alerts for overdue tasks via a cron job
+- **Analytics Dashboard** — Charts and stats for task completion, priorities, and team productivity
+- **Dark / Light Mode** — System-aware theme with manual toggle
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+---
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## Tech Stack
 
-### `npm test`
+| Layer | Technology |
+|---|---|
+| Frontend | React 18, React Router, Axios, Socket.IO Client, @dnd-kit, Recharts, TailwindCSS |
+| Backend | Node.js, Express 5, Socket.IO, node-cron |
+| Database | MongoDB Atlas (Mongoose ODM) |
+| Auth | JWT Bearer Tokens, bcryptjs |
+| Validation | Zod schemas |
+| Email | Nodemailer (SMTP / Gmail) |
+| AI | Google Gemini API (`gemini-2.5-flash`) |
+| Security | Helmet, CORS, express-rate-limit |
+| Testing | Jest, Supertest (unit + integration) |
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## Getting Started
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+### Prerequisites
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+- Node.js v18+
+- A [MongoDB Atlas](https://mongodb.com/atlas) cluster (free tier works)
+- A Gmail account with an [App Password](https://myaccount.google.com/apppasswords)
+- A [Google Gemini API key](https://aistudio.google.com/app/apikey)
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 1. Clone the repository
 
-### `npm run eject`
+```bash
+git clone https://github.com/maryamKR/TaskFlow-Project.git
+cd TaskFlow-Project
+```
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+### 2. Configure the backend environment
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+```bash
+cp backend/.env.example backend/.env
+```
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+Edit `backend/.env`:
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+```env
+PORT=5000
+MONGO_URI=mongodb+srv://<username>:<password>@cluster0.xxxx.mongodb.net/taskflow
+JWT_SECRET=your_secure_random_secret
 
-## Learn More
+GEMINI_API_KEY=your_gemini_api_key
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+EMAIL_HOST=smtp.gmail.com
+EMAIL_PORT=587
+EMAIL_SECURE=false
+EMAIL_USER=your_app_email@gmail.com
+EMAIL_PASS=your16charapppassword
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+FRONTEND_URL=http://localhost:3000
+ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+```
 
-### Code Splitting
+> **Note:** `EMAIL_PASS` is a Gmail App Password, not your normal Gmail password. Remove all spaces from the 16-character code (e.g. `xxxxxxxxxxxxxxxx`).
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+### 3. Install dependencies
 
-### Analyzing the Bundle Size
+```bash
+# Backend
+cd backend && npm install
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+# Frontend (from root)
+cd .. && npm install
+```
 
-### Making a Progressive Web App
+### 4. Run in development
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+```bash
+# Terminal 1: Start the backend (http://localhost:5000)
+cd backend && npm run dev
 
-### Advanced Configuration
+# Terminal 2: Start the frontend (http://localhost:3000)
+npm start
+```
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+---
 
-### Deployment
+## Running Tests
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+```bash
+cd backend
+npm test
+```
 
-### `npm run build` fails to minify
+The test suite includes **255 unit and integration tests** covering all controllers, middleware, validators, utilities, and end-to-end HTTP flows. All tests run sequentially (`--runInBand`) to respect MongoDB Atlas connection limits.
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+---
+
+## Project Structure
+
+```
+TaskFlow-Project/
+├── backend/                  # Express.js API server
+│   ├── controllers/          # Route handlers
+│   ├── middleware/           # Auth, validation, error handling, rate limiting
+│   ├── models/               # Mongoose schemas
+│   ├── routes/               # API route definitions
+│   ├── utils/                # Email, notifications, cron, task helpers
+│   ├── docs/                 # Full backend documentation
+│   │   ├── API.md            # Complete REST API reference
+│   │   ├── architecture.md   # System design & data flow
+│   │   ├── documentation.md  # Controller & utility deep-dive
+│   │   ├── schema.md         # ER diagram & database indexes
+│   │   ├── userflow.md       # Backend-focused user flow
+│   │   ├── email-service.md  # Email & cron documentation
+│   │   └── pending-invitations-flow.md
+│   ├── tests/                # Jest unit + Supertest integration tests
+│   ├── server.js             # Application bootstrap
+│   └── socket.js             # Socket.IO room management
+├── src/                      # React frontend
+│   ├── components/           # Reusable UI components
+│   ├── context/              # ThemeContext
+│   ├── pages/                # Route-level page components
+│   ├── services/             # Axios API service functions
+│   └── socket.js             # Socket.IO client setup
+└── userflow.md               # Full end-to-end user flow documentation
+```
+
+---
+
+## API Reference
+
+See [`backend/docs/API.md`](./backend/docs/API.md) for the complete endpoint reference, including request/response schemas, rate limits, and error codes.
+
+**Base URL:** `http://localhost:5000/api`
+
+| Section | Endpoints |
+|---|---|
+| Auth | `POST /auth/register`, `/auth/login`, `/auth/forgot-password`, `/auth/reset-password/:token` |
+| Boards | `GET/POST /boards`, `GET/DELETE /boards/:id`, `PUT /boards/:id/reorder` |
+| Members | `GET /boards/:id/members`, `POST /boards/:id/invite`, `DELETE /boards/:id/members/:memberId` |
+| Columns | `GET/POST /columns`, `PUT/DELETE /columns/:id` |
+| Tasks | `GET/POST /tasks`, `GET/PUT/DELETE /tasks/:id`, `PATCH /tasks/move`, `PATCH /tasks/column/:id/reorder` |
+| Comments | `GET/POST /tasks/:id/comments`, `DELETE /comments/:id` |
+| Notifications | `GET /notifications`, `PATCH /notifications/read-all`, `DELETE /notifications/read` |
+| AI | `POST /ai/suggest-priority`, `POST /ai/auto-label` |
+
+---
+
+## Documentation Index
+
+| Document | Contents |
+|---|---|
+| [`userflow.md`](./userflow.md) | End-to-end user flows with API, socket events, and security summary |
+| [`backend/docs/API.md`](./backend/docs/API.md) | Full REST API reference |
+| [`backend/docs/architecture.md`](./backend/docs/architecture.md) | System design, security layers, real-time architecture |
+| [`backend/docs/documentation.md`](./backend/docs/documentation.md) | Detailed controller, middleware, and utility reference |
+| [`backend/docs/schema.md`](./backend/docs/schema.md) | ER diagram, collection indexes, notification types |
+| [`backend/docs/email-service.md`](./backend/docs/email-service.md) | Email setup, SMTP config, cron job |
+| [`backend/docs/pending-invitations-flow.md`](./backend/docs/pending-invitations-flow.md) | Board invitation workflow for registered and unregistered users |
+
+---
+
+## Security
+
+- All endpoints protected by JWT Bearer token authentication
+- Rate limiting on `/login` (10/15min), `/register` (5/hr), `/forgot-password` (3/hr)
+- Input validated via Zod schemas before controllers execute
+- HTTP headers hardened with Helmet
+- CORS restricted to configured allowed origins
+- Passwords hashed with bcryptjs (10 salt rounds)
+- User enumeration protection on password reset endpoint
+
+---
+
