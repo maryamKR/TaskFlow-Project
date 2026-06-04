@@ -220,7 +220,8 @@ function BoardPage() {
   };
 
   const loadBoard = async (boardId) => {
-    setLoading(true);
+  setSidebarOpen(false);
+  setLoading(true);
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
