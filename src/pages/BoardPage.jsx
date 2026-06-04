@@ -17,7 +17,7 @@ import {
   getBoards, getBoardById, getBoardMembers,
   moveTask, reorderColumns, reorderTasks
 } from '../services/board';
-
+import AiBanner from '../components/AiBanner';
 const normalizeTasks = (cols) =>
   cols.map(col => ({
     ...col,
@@ -267,6 +267,18 @@ function BoardPage() {
   const handleInviteSent = async (boardId) => {
     const membersData = await getBoardMembers(boardId);
     setMembers(Array.isArray(membersData) ? membersData : []);
+  };
+
+
+  // Callback to update local columns state with bulk priority overrides from AI
+  const handlePrioritiesUpdated = (updatedPriorities) => {
+    setColumns(prev => prev.map(col => ({
+      ...col,
+      tasks: col.tasks.map(task => {
+        const match = updatedPriorities.find(p => p.id === task._id || p.id === task.id);
+        return match ? { ...task, priority: match.priority } : task;
+      })
+    })));
   };
 
   const getColumnByTaskId = (taskId) =>
@@ -551,6 +563,15 @@ function BoardPage() {
               </div>
             )}
           </div>
+
+          {activeBoard && (
+            <div className="px-6">
+              <AiBanner 
+                columns={columns} 
+                onPrioritiesUpdated={handlePrioritiesUpdated} 
+              />
+            </div>
+          )}
 
           {/* Empty state */}
           {boards.length === 0 && (
