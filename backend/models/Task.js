@@ -32,6 +32,10 @@ const taskSchema = new mongoose.Schema(
       type: Date,
       default: null,
     },
+    startDate: {
+      type: Date,
+      default: null,
+    },
     column: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Column",
