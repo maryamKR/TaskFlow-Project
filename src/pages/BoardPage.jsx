@@ -90,24 +90,24 @@ function BoardPage() {
     socket.emit("join_board", { boardId: activeBoard._id, userId: currentUserId });
 
     socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
-        setColumns(prev => {
-            const task = prev
-                .find(col => col._id === sourceColumnId)
-                ?.tasks.find(t => t._id === taskId || t.id === taskId);
-            if (!task) return prev;
+      setColumns(prev => {
+        const task = prev
+          .find(col => col._id === sourceColumnId)
+          ?.tasks.find(t => t._id === taskId || t.id === taskId);
+        if (!task) return prev;
 
-            // Check if destination is Done column
-            const destCol = prev.find(col => col._id === destinationColumnId);
-            const isDone = destCol?.title?.toLowerCase() === 'done';
+        // Check if destination is Done column
+        const destCol = prev.find(col => col._id === destinationColumnId);
+        const isDone = destCol?.title?.toLowerCase() === 'done';
 
-            return prev.map(col => {
-                if (col._id === sourceColumnId)
-                    return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
-                if (col._id === destinationColumnId)
-                    return { ...col, tasks: [...col.tasks, { ...task, isDone }] };
-                return col;
-            });
+        return prev.map(col => {
+          if (col._id === sourceColumnId)
+            return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
+          if (col._id === destinationColumnId)
+            return { ...col, tasks: [...col.tasks, { ...task, isDone }] };
+          return col;
         });
+      });
     });
 
     socket.on("columns_reordered", ({ columnIds }) => {
@@ -325,23 +325,23 @@ function BoardPage() {
       }
 
       try {
-          await moveTask(active.id, sourceCol._id, destColId);
-          
-          // Check if destination is the "Done" column
-          const destCol = columns.find(c => c._id === destColId);
-          const isDone = destCol?.title?.toLowerCase() === 'done';
+        await moveTask(active.id, sourceCol._id, destColId);
 
-          // Update isDone visually without waiting for refresh
-          setColumns(prev => prev.map(col => ({
-              ...col,
-              tasks: col.tasks.map(t =>
-                  t._id === active.id || t.id === active.id
-                      ? { ...t, isDone }
-                      : t
-              )
-          })));
+        // Check if destination is the "Done" column
+        const destCol = columns.find(c => c._id === destColId);
+        const isDone = destCol?.title?.toLowerCase() === 'done';
+
+        // Update isDone visually without waiting for refresh
+        setColumns(prev => prev.map(col => ({
+          ...col,
+          tasks: col.tasks.map(t =>
+            t._id === active.id || t.id === active.id
+              ? { ...t, isDone }
+              : t
+          )
+        })));
       } catch (err) {
-          console.error('Task move failed:', err);
+        console.error('Task move failed:', err);
       }
     }
   };
@@ -401,26 +401,49 @@ function BoardPage() {
                   <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
                   <line x1="9" y1="3" x2="9" y2="21" strokeWidth={2} />
                 </svg>
-              </button> 
+              </button>
 
               <div>
-                <h1 className={`text-2xl font-bold uppercase ${isDark ? 'text-white' : 'text-gray-900'}`}>
-                  {activeBoard ? activeBoard.title : 'No boards yet'}
-                </h1>
-                <p className={`text-sm mt-0.5 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
-                  {columns.length > 0 ? (() => {
-                    const total = columns.reduce((acc, col) => acc + (col.tasks || []).length, 0);
-                    const done = columns
-                      .filter(col => col.title?.toLowerCase() === 'done')
-                      .reduce((acc, col) => acc + (col.tasks || []).length, 0);
-                    return `${done}/${total} tasks done`;
-                  })() : "Track your team's progress"}
+                <div className="flex items-center gap-3">
+                  <h1 className={`text-2xl font-bold uppercase ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                    {activeBoard ? activeBoard.title : 'No boards yet'}
+                  </h1>
                   {(activeBoard?.user?.username || activeBoard?.ownerUsername) && (
-                    <span className={`ml-3 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                      Created by {activeBoard?.user?.username || activeBoard?.ownerUsername}
+                    <span className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                      by {(activeBoard?.user?.username || activeBoard?.ownerUsername || '').charAt(0).toUpperCase() + (activeBoard?.user?.username || activeBoard?.ownerUsername || '').slice(1)}
                     </span>
                   )}
-                </p>
+                </div>
+                {(() => {
+                  const total = columns.reduce((acc, col) => acc + (col.tasks || []).length, 0);
+                  const done = columns
+                    .filter(col => col.title?.toLowerCase() === 'done')
+                    .reduce((acc, col) => acc + (col.tasks || []).length, 0);
+                  const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                  return (
+                    <div className="mt-1">
+                      <div className="flex items-center gap-3 mb-1">
+                        <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                          {total > 0 ? `${done}/${total} tasks done` : "Track your team's progress"}
+                        </p>
+                        
+                        {total > 0 && (
+                          <span className={`text-xs font-medium ${pct === 100 ? 'text-green-400' : isDark ? 'text-gray-400' : 'text-gray-500'}`}>
+                            {pct}%
+                          </span>
+                        )}
+                      </div>
+                      {total > 0 && (
+                        <div className={`w-64 h-1.5 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                          <div
+                            className={`h-1.5 rounded-full transition-all duration-500 ${pct === 100 ? 'bg-green-400' : 'bg-pink-700'}`}
+                            style={{ width: `${pct}%` }}
+                          />
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
             </div>
 

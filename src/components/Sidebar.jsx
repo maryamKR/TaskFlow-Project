@@ -92,13 +92,12 @@ function Sidebar({
           {boards.map(board => (
             <div
               key={board._id}
-              className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition duration-200 ${
-                activeBoard?._id === board._id
+              className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition duration-200 ${activeBoard?._id === board._id
                   ? 'bg-pink-700 text-white'
                   : isDark
                     ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
                     : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
-              }`}
+                }`}
               onClick={() => onBoardSelect(board._id)}
             >
               <span className="text-sm font-medium truncate">{board.title}</span>
@@ -186,7 +185,18 @@ function Sidebar({
                       onChange={(e) => setInviteEmail(e.target.value)}
                       className={`w-full px-3 py-2 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-200 text-gray-900 placeholder-gray-400'}`}
                     />
-                    {inviteError && <p className="text-red-400 text-xs">{inviteError}</p>}
+                    {inviteError && (
+                      <div className="flex items-center justify-between">
+                        <p className="text-red-400 text-xs">{inviteError}</p>
+                        <button
+                          type="button"
+                          onClick={() => { setShowInvite(false); setInviteEmail(''); setInviteError(''); }}
+                          className={`text-xs transition duration-200 ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    )}
                     {inviteSuccess && <p className="text-green-400 text-xs">{inviteSuccess}</p>}
                     <button
                       type="submit"
