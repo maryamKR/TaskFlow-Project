@@ -35,12 +35,11 @@ function SortableColumnWrapper({ column, children }) {
     opacity: isDragging ? 0.4 : 1,
   };
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} className="flex-1 min-w-[280px]">
       {children({ dragHandleProps: { ...attributes, ...listeners } })}
     </div>
   );
 }
-
 function BoardPage() {
   const { isDark } = useTheme();
   const [boards, setBoards] = useState([]);
@@ -395,10 +394,10 @@ function BoardPage() {
           />
         )}
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden w-full">
 
           {/* Board header */}
-          <div className={`px-6 py-4 border-b relative ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+          <div className={`px-8 py-5 border-b relative ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
             <div className="flex justify-between items-stretch mb-4 min-h-[60px]">
               <div className="flex items-center gap-4">
                 <button
@@ -473,7 +472,7 @@ function BoardPage() {
 
             {/* Filter bar — pill style */}
             {activeBoard && (
-              <div className="flex items-center gap-2 flex-wrap">
+              <div className="flex items-center gap-2 flex-wrap px-2">
                 <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition duration-200 ${isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
@@ -576,7 +575,7 @@ function BoardPage() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-                <div className="flex gap-4 p-6 overflow-x-auto flex-1 touch-pan-x">
+                <div className="flex gap-4 p-6 overflow-x-auto touch-pan-x" style={{width: '100%', boxSizing: 'border-box'}}>
                   {columns.map(column => (
                     <SortableColumnWrapper key={column._id} column={column}>
                       {({ dragHandleProps }) => (

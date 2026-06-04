@@ -216,7 +216,7 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
   return (
     <div
       style={{ borderTop: `3px solid ${columnColorHex[columnColor] || '#9ca3af'}` }}
-      className={`rounded-2xl p-4 w-72 flex-shrink-0 ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}
+      className={`rounded-2xl p-4 ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
