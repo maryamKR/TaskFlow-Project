@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { getAiInsight, autoPrioritizeTasks } from '../services/ai';
 
-function AiBanner({ columns, onPrioritiesUpdated }) {
+function AiBanner({ boardId, columns, onPrioritiesUpdated }) {
   const [insight, setInsight] = useState('');
   const [loading, setLoading] = useState(false);
   const [updating, setUpdating] = useState(false);
@@ -16,10 +16,10 @@ function AiBanner({ columns, onPrioritiesUpdated }) {
   const CHECK_INTERVAL = 5 * 60 * 1000; // 5 minutes
 
   const handleFetchInsight = async (forceRequest = false) => {
-    if (!columns || columns.length === 0) return;
+    if (!boardId) return;
 
     // Create a text snapshot of current task layout counts
-    const currentSignature = columns.map(c => `${c.title}-${(c.tasks || []).length}`).join('|');
+    const currentSignature = (columns || []).map(c => `${c.title}-${(c.tasks || []).length}`).join('|');
     const now = Date.now();
     const timeSinceLastForce = now - lastForcedFetchTime.current;
 
@@ -30,7 +30,7 @@ function AiBanner({ columns, onPrioritiesUpdated }) {
     }
 
     setLoading(true);
-    const message = await getAiInsight(columns);
+    const message = await getAiInsight(boardId);
     if (message) {
       setInsight(message);
       lastTaskSignature.current = currentSignature;
@@ -44,7 +44,7 @@ function AiBanner({ columns, onPrioritiesUpdated }) {
   // 1. Initial Load Hook
   useEffect(() => {
     handleFetchInsight(true); // Force an initial insight generation on board load
-  }, [columns?._id]); // Only triggers when switching to a completely different board
+  }, [boardId]); // Only triggers when switching to a completely different board
 
   // 2. Automated Background Timer Hook (5-minute cycle)
   useEffect(() => {
@@ -61,20 +61,14 @@ function AiBanner({ columns, onPrioritiesUpdated }) {
     }, CHECK_INTERVAL);
 
     return () => clearInterval(timer); // Clean up the timer when leaving the page
-  }, [columns]);
+  }, [boardId, columns]);
 
   const handleBulkPrioritize = async () => {
-    if (!columns || columns.length === 0) return;
+    if (!boardId) return;
     setUpdating(true);
-    
-    // Flatten all tasks into a single array for the AI service
-    const allTasks = columns.reduce((acc, col) => {
-      const tasksWithCol = (col.tasks || []).map(t => ({ ...t, columnTitle: col.title }));
-      return [...acc, ...tasksWithCol];
-    }, []);
 
     try {
-      const updatedPriorities = await autoPrioritizeTasks(allTasks);
+      const updatedPriorities = await autoPrioritizeTasks(boardId);
       if (updatedPriorities && updatedPriorities.length > 0) {
         onPrioritiesUpdated(updatedPriorities);
         // Refresh the insight sentence immediately to reflect the new updates

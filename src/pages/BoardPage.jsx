@@ -568,6 +568,7 @@ function BoardPage() {
           {activeBoard && (
             <div className="px-6">
               <AiBanner 
+                boardId={activeBoard._id}
                 columns={columns} 
                 onPrioritiesUpdated={handlePrioritiesUpdated} 
               />

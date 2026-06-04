@@ -1,4 +1,8 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
+const Board = require("../models/Board");
+const Column = require("../models/Column");
+const Task = require("../models/Task");
+const { hasBoardAccess } = require("../utils/boardAuth");
 
 // @desc     Suggest priority for a task
 // @route    POST /api/ai/suggest-priority
@@ -95,23 +99,52 @@ const autoLabel = async (req, res) => {
 // @desc     Get AI board insights for the banner
 // @route    POST /api/ai/board-insight
 const getBoardInsight = async (req, res) => {
-  const { allTasks } = req.body;
-  if (!allTasks || allTasks.length === 0) {
-    return res.status(200).json({ insight: "" });
+  const { boardId } = req.body;
+
+  if (!boardId) {
+    return res.status(400).json({ error: "boardId is required" });
   }
 
   try {
+    const board = await Board.findById(boardId).populate({
+      path: 'columns',
+      populate: { path: 'tasks' }
+    });
+
+    if (!board) {
+      return res.status(404).json({ error: "Board not found" });
+    }
+
+    if (!hasBoardAccess(board, req.user._id)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const allTasks = board.columns.flatMap(col => 
+      col.tasks.map(t => ({
+        title: t.title,
+        priority: t.priority,
+        status: col.title,
+        dueDate: t.dueDate,
+        createdAt: t.createdAt
+      }))
+    );
+
+    if (allTasks.length === 0) {
+      return res.status(200).json({ insight: "Add some tasks to see AI insights!" });
+    }
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
-    const prompt = `You are a project management AI assistant. Analyze these tasks and return ONE short summary insight layout (max 15 words).`;
+    const prompt = `You are a project management AI assistant. Analyze these tasks and return ONE short summary insight layout (max 15 words).
+    
+    Tasks data: ${JSON.stringify(allTasks)}`;
 
     const result = await model.generateContent(prompt);
     res.status(200).json({ insight: result.response.text().trim() });
   } catch (err) {
     console.error("Insight engine server error:", err.message);
 
-    // THIS IS YOUR BACKUP PLAN: If Google blocks you, show a beautiful fake insight so your UI stays pretty!
     if (err.message.includes("429") || err.message.includes("quota")) {
       return res.status(200).json({ 
         insight: "✨ (Demo Mode) 3 urgent bugs remain unassigned in your backlog column." 
@@ -125,12 +158,41 @@ const getBoardInsight = async (req, res) => {
 // @desc     Bulk task priority re-calculation array
 // @route    POST /api/ai/auto-prioritize
 const autoPrioritize = async (req, res) => {
-  const { allTasks } = req.body;
-  if (!allTasks || allTasks.length === 0) {
-    return res.status(200).json({ priorities: [] });
+  const { boardId } = req.body;
+
+  if (!boardId) {
+    return res.status(400).json({ error: "boardId is required" });
   }
 
   try {
+    const board = await Board.findById(boardId).populate({
+      path: 'columns',
+      populate: { path: 'tasks' }
+    });
+
+    if (!board) {
+      return res.status(404).json({ error: "Board not found" });
+    }
+
+    if (!hasBoardAccess(board, req.user._id)) {
+      return res.status(403).json({ error: "Access denied" });
+    }
+
+    const allTasks = board.columns.flatMap(col => 
+      col.tasks.map(t => ({
+        id: t._id,
+        title: t.title,
+        description: t.description || '',
+        status: col.title,
+        dueDate: t.dueDate,
+        currentPriority: t.priority
+      }))
+    );
+
+    if (allTasks.length === 0) {
+      return res.status(200).json({ priorities: [] });
+    }
+
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
