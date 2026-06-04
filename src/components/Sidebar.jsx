@@ -19,7 +19,6 @@ function Sidebar({
   const [toast, setToast] = useState(null);
   const [boardToDelete, setBoardToDelete] = useState(null);
 
-  // Determine if current user is owner
   const token = localStorage.getItem('token');
   const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
   const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
@@ -77,33 +76,29 @@ function Sidebar({
   };
 
   return (
-    <div className={`w-64 min-h-screen border-r flex flex-col ${isDark ? 'bg-[#0f1117] border-gray-700' : 'bg-gray-50 border-gray-200'
-      }`}>
+    <div className={`w-64 min-h-screen border-r flex flex-col ${isDark ? 'bg-[#0f1117] border-gray-700' : 'bg-gray-50 border-gray-200'}`}>
       <div className="p-4 flex-1 overflow-y-auto">
 
-        {/* Boards header */}
         <div className="flex items-center justify-between mb-3">
-          <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'
-            }`}>Boards</span>
+          <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Boards</span>
           <button
             onClick={() => setShowCreateModal(true)}
-            className={`text-lg leading-none transition duration-200 ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'
-              }`}
+            className={`text-lg leading-none transition duration-200 ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
             title="New board"
           >+</button>
         </div>
 
-        {/* Board list */}
         <div className="flex flex-col gap-1 mb-6">
           {boards.map(board => (
             <div
               key={board._id}
-              className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition duration-200 ${activeBoard?._id === board._id
-                ? 'bg-pink-700 text-white'
-                : isDark
-                  ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
-                  : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
-                }`}
+              className={`group flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer transition duration-200 ${
+                activeBoard?._id === board._id
+                  ? 'bg-pink-700 text-white'
+                  : isDark
+                    ? 'text-gray-400 hover:bg-gray-700 hover:text-white'
+                    : 'text-gray-600 hover:bg-gray-200 hover:text-gray-900'
+              }`}
               onClick={() => onBoardSelect(board._id)}
             >
               <span className="text-sm font-medium truncate">{board.title}</span>
@@ -123,16 +118,14 @@ function Sidebar({
           )}
         </div>
 
-        {/* Team section */}
         {activeBoard && (
           <div className={`border-t pt-4 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+
             <div className="flex items-center justify-between mb-3">
-              <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'
-                }`}>Team</span>
+              <span className={`text-xs font-semibold uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Team</span>
               <button
                 onClick={() => setShowMembers(prev => !prev)}
-                className={`text-xs transition duration-200 ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'
-                  }`}
+                className={`text-xs transition duration-200 ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}
               >
                 {showMembers ? 'Hide' : 'Show'}
               </button>
@@ -144,29 +137,19 @@ function Sidebar({
                   <p className={`text-xs px-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>No members yet</p>
                 ) : (
                   members.map(member => {
-                    const memberIsOwner = member._id === activeBoard?.user?._id ||
-                      member._id === activeBoard?.user;
+                    const memberIsOwner = member._id === activeBoard?.user?._id || member._id === activeBoard?.user;
                     return (
                       <div key={member._id} className="flex items-center justify-between px-1">
                         <div className="flex items-center gap-2">
-                          {/* Avatar with online dot */}
                           <div className="relative">
                             <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold">
                               {member.username[0].toUpperCase()}
                             </div>
-                            {/* Online dot */}
-                            <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${member.isOnline ? 'bg-green-400' : isDark ? 'bg-gray-600' : 'bg-gray-300'
-                              }`} />
+                            <span className={`absolute -bottom-0.5 -right-0.5 w-2 h-2 rounded-full border border-white ${member.isOnline ? 'bg-green-400' : isDark ? 'bg-gray-600' : 'bg-gray-300'}`} />
                           </div>
                           <div className="flex flex-col">
-                            <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                              {member.username}
-                            </span>
-                            {/* Owner / Coworker tag */}
-                            <span className={`text-xs px-1.5 py-0 rounded-full w-fit ${memberIsOwner
-                              ? 'bg-pink-700/20 text-pink-400'
-                              : isDark ? 'bg-gray-700 text-gray-500' : 'bg-gray-200 text-gray-500'
-                              }`}>
+                            <span className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{member.username}</span>
+                            <span className={`text-xs px-1.5 py-0 rounded-full w-fit ${memberIsOwner ? 'bg-pink-700/20 text-pink-400' : isDark ? 'bg-gray-700 text-gray-500' : 'bg-gray-200 text-gray-500'}`}>
                               {memberIsOwner ? 'Owner' : 'Coworker'}
                             </span>
                           </div>
@@ -174,8 +157,7 @@ function Sidebar({
                         <button
                           onClick={() => handleRemoveMember(member._id)}
                           disabled={removingId === member._id}
-                          className={`text-xs transition duration-200 ${isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500'
-                            }`}
+                          className={`text-xs transition duration-200 ${isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-400 hover:text-red-500'}`}
                         >
                           {removingId === member._id ? '·' : '×'}
                         </button>
@@ -186,18 +168,15 @@ function Sidebar({
               </div>
             )}
 
-            {/* Invite — only visible to owner */}
             {isOwner && (
               <>
                 <button
                   onClick={() => setShowInvite(prev => !prev)}
-                  className={`w-full text-left text-xs py-1.5 px-1 transition duration-200 flex items-center gap-2 ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'
-                    }`}
+                  className={`w-full text-left text-xs py-1.5 px-1 transition duration-200 flex items-center gap-2 ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}
                 >
                   <span>+</span>
                   <span>Invite member</span>
                 </button>
-
                 {showInvite && (
                   <form onSubmit={handleInvite} className="mt-2 flex flex-col gap-2">
                     <input
@@ -205,8 +184,7 @@ function Sidebar({
                       placeholder="Email address"
                       value={inviteEmail}
                       onChange={(e) => setInviteEmail(e.target.value)}
-                      className={`w-full px-3 py-2 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-200 text-gray-900 placeholder-gray-400'
-                        }`}
+                      className={`w-full px-3 py-2 rounded-lg text-xs focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-200 text-gray-900 placeholder-gray-400'}`}
                     />
                     {inviteError && <p className="text-red-400 text-xs">{inviteError}</p>}
                     {inviteSuccess && <p className="text-green-400 text-xs">{inviteSuccess}</p>}
@@ -221,9 +199,23 @@ function Sidebar({
                 )}
               </>
             )}
+
+            <div className={`border-t pt-3 mt-3 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <a
+                href={`/board/tasks?boardId=${activeBoard._id}`}
+                className={`flex items-center gap-2 px-1 py-1.5 rounded-lg text-xs transition duration-200 ${isDark ? 'text-gray-500 hover:text-white hover:bg-gray-700' : 'text-gray-400 hover:text-gray-900 hover:bg-gray-200'}`}
+              >
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 6h16M4 10h16M4 14h10" />
+                </svg>
+                Task List View
+              </a>
+            </div>
+
           </div>
         )}
       </div>
+
       {boardToDelete && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
           <div className={`rounded-2xl p-6 w-80 shadow-xl ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
@@ -242,6 +234,7 @@ function Sidebar({
           </div>
         </div>
       )}
+
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );

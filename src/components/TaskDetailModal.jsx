@@ -10,6 +10,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const [title, setTitle] = useState(task.title || '');
   const [description, setDescription] = useState(task.description || '');
   const [priority, setPriority] = useState(task.priority || 'low');
+  const [startDate, setStartDate] = useState(task.startDate ? task.startDate.split('T')[0] : '');
   const [dueDate, setDueDate] = useState(task.dueDate ? task.dueDate.split('T')[0] : '');
   const [assignee, setAssignee] = useState(task.assignedTo?._id || task.assignedTo || '');
   const [comments, setComments] = useState([]);
@@ -81,11 +82,15 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
 
   const handleSave = async () => {
     if (!title.trim()) { setError('Title is required'); return; }
+    if (startDate && dueDate && new Date(startDate) > new Date(dueDate)) {
+      setError('Start date cannot be after due date'); return;
+    }
     setSaving(true);
     setError('');
     try {
       const updated = await updateTask(task._id, {
         title, description, priority,
+        startDate: startDate ? new Date(startDate).toISOString() : null,
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         assignedTo: assignee || null,
       });
@@ -168,11 +173,20 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
               </select>
             </div>
             <div>
+              <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Start Date</label>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+            <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Due Date</label>
               <input
                 type="date"
                 value={dueDate}
-                min={new Date().toISOString().split('T')[0]}
+                min={startDate || new Date().toISOString().split('T')[0]}
                 onChange={(e) => setDueDate(e.target.value)}
                 className={inputClass}
               />
