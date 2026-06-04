@@ -22,7 +22,6 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
   const style = { transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.5 : 1 };
   const priorityColors = { high: 'text-red-400', medium: 'text-yellow-400', low: 'text-green-400' };
 
-  // Due date color coding
   const getDueDateStyle = () => {
     if (!task.dueDate) return null;
     const daysUntilDue = (new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24);
@@ -61,7 +60,6 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
       >
         <div {...listeners} {...attributes} className="cursor-grab" onClick={() => setShowDetail(true)}>
 
-          {/* Title row with done icon */}
           <div className="flex items-center gap-2 pr-6">
             {task.isDone ? (
               <span className="flex-shrink-0 w-4 h-4 rounded-full bg-green-500 flex items-center justify-center">
@@ -81,12 +79,10 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
             <p className={`text-xs mt-1 truncate ml-6 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{task.description}</p>
           )}
 
-          {/* Priority + Label */}
           <div className="flex items-center gap-2 mt-2 ml-6">
             <span className={`text-xs font-medium flex items-center gap-1 ${priorityColors[task.priority] || 'text-gray-400'}`}>
               <span className={`inline-block w-2 h-2 rounded-full ${task.priority === 'high' ? 'bg-red-400' :
-                task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'
-                }`} />
+                task.priority === 'medium' ? 'bg-yellow-400' : 'bg-green-400'}`} />
               {task.priority}
             </span>
             {task.label && task.label !== 'Other' && (
@@ -96,27 +92,20 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
             )}
           </div>
 
-          {/* Due date */}
           {task.dueDate && (
             <div className="flex items-center gap-2 mt-1 ml-6">
               {dueDateStatus === 'overdue' ? (
-                <span
-                  className="text-xs text-red-400 font-medium cursor-help"
-                  title={`Original due date: ${new Date(task.dueDate).toLocaleDateString()}`}
-                >
+                <span className="text-xs text-red-400 font-medium cursor-help" title={`Original due date: ${new Date(task.dueDate).toLocaleDateString()}`}>
                   Overdue · {new Date(task.dueDate).toLocaleDateString()}
                 </span>
               ) : (
-                <span className={`text-xs ${dueDateStatus === 'soon' ? 'text-orange-400 font-medium' :
-                  isDark ? 'text-gray-500' : 'text-gray-400'
-                  }`}>
+                <span className={`text-xs ${dueDateStatus === 'soon' ? 'text-orange-400 font-medium' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                   {new Date(task.dueDate).toLocaleDateString()}
                 </span>
               )}
             </div>
           )}
 
-          {/* Bottom row: assignee + createdBy + comments */}
           <div className="flex items-center justify-between mt-2 ml-6">
             <div className="flex items-center gap-2">
               {task.assignedTo && typeof task.assignedTo === 'object' && task.assignedTo.username && (
@@ -132,7 +121,6 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
               </span>
             </div>
 
-            {/* Comment count */}
             {task.comments && task.comments.length > 0 && (
               <div className={`flex items-center gap-1 text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
                 <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -150,8 +138,7 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
             onPointerDown={(e) => e.stopPropagation()}
             onClick={handleDelete}
             disabled={deleting}
-            className={`absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-sm font-bold transition duration-200 ${isDark ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'
-              }`}
+            className={`absolute top-2 right-2 w-5 h-5 flex items-center justify-center rounded-full text-sm font-bold transition duration-200 ${isDark ? 'text-gray-400 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
           >
             {deleting ? '·' : '×'}
           </button>
@@ -174,17 +161,41 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
   const [isHovered, setIsHovered] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [columnColor, setColumnColor] = useState(color);
+
+  const defaultColors = {
+    'to do': 'bg-purple-400',
+    'in progress': 'bg-blue-400',
+    'review': 'bg-yellow-400',
+    'done': 'bg-green-400',
+  };
+  const resolvedColor = defaultColors[title?.toLowerCase()] || color || 'bg-gray-400';
+  const [columnColor, setColumnColor] = useState(resolvedColor);
   const [toast, setToast] = useState(null);
 
   const isDoneColumn = title?.toLowerCase() === 'done';
 
-  const colors = ['bg-gray-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-red-400', 'bg-purple-400', 'bg-pink-400', 'bg-orange-400'];
+  const colors = ['bg-gray-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-red-400', 'bg-purple-400', 'bg-pink-500', 'bg-orange-400'];
+
+  const columnColorHex = {
+    'bg-gray-400': '#9ca3af',
+    'bg-blue-400': '#60a5fa',
+    'bg-green-400': '#4ade80',
+    'bg-yellow-400': '#facc15',
+    'bg-red-400': '#f87171',
+    'bg-purple-400': '#c084fc',
+    'bg-pink-500': '#ec4899',
+    'bg-orange-400': '#fb923c',
+  };
+
   const borderColorMap = {
-    'bg-gray-400': 'border-gray-400', 'bg-blue-400': 'border-blue-400',
-    'bg-green-400': 'border-green-400', 'bg-yellow-400': 'border-yellow-400',
-    'bg-red-400': 'border-red-400', 'bg-purple-400': 'border-purple-400',
-    'bg-pink-400': 'border-pink-400', 'bg-orange-400': 'border-orange-400',
+    'bg-gray-400': 'border-gray-500',
+    'bg-blue-400': 'border-blue-500',
+    'bg-green-400': 'border-green-500',
+    'bg-yellow-400': 'border-yellow-500',
+    'bg-red-400': 'border-red-500',
+    'bg-purple-400': 'border-purple-500',
+    'bg-pink-500': 'border-pink-500',
+    'bg-orange-400': 'border-orange-400',
   };
 
   const taskIds = tasks.map(t => t.id);
@@ -204,8 +215,8 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
 
   return (
     <div
-      className={`rounded-2xl p-4 w-72 flex-shrink-0 border-t-2 ${borderColorMap[columnColor] || 'border-gray-400'} ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200 border-t-2'
-        }`}
+      style={{ borderTop: `3px solid ${columnColorHex[columnColor] || '#9ca3af'}` }}
+      className={`rounded-2xl p-4 ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
@@ -227,8 +238,7 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
                 title="Change color"
               />
               {showColorPicker && (
-                <div className={`absolute top-5 right-0 rounded-xl p-2 flex gap-1.5 z-10 shadow-xl ${isDark ? 'bg-gray-700' : 'bg-white border border-gray-200'
-                  }`}>
+                <div className={`absolute top-5 right-0 rounded-xl p-2 flex gap-1.5 z-10 shadow-xl ${isDark ? 'bg-gray-700' : 'bg-white border border-gray-200'}`}>
                   {colors.map(c => (
                     <button
                       key={c}
@@ -251,7 +261,6 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
               {deleting ? '·' : '×'}
             </button>
           )}
-          {/* Hide + button on Done column */}
           {!isDoneColumn && (
             <button
               onPointerDown={(e) => e.stopPropagation()}

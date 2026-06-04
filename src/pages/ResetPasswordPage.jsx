@@ -1,4 +1,4 @@
-import { useState } from 'react';
+﻿import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/auth';
@@ -39,6 +39,11 @@ function ResetPasswordPage() {
 
         <h1 className={`text-3xl font-bold mb-2 text-center ${isDark ? 'text-white' : 'text-gray-900'}`}>TaskFlow</h1>
         <p className={`text-center mb-8 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Set a new password</p>
+        <div className="text-center mb-6">
+          <a href="/" className={`text-xs transition duration-200 ${isDark ? 'text-gray-500 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>
+            ← Back to Login
+          </a>
+        </div>
 
         {success ? (
           <div className="text-center">
@@ -55,9 +60,8 @@ function ResetPasswordPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 autoFocus
-                className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
-                  isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
-                }`}
+                className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
+                  }`}
               />
             </div>
 
@@ -68,9 +72,8 @@ function ResetPasswordPage() {
                 placeholder="••••••••"
                 value={confirmPassword}
                 onChange={(e) => setConfirmPassword(e.target.value)}
-                className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
-                  isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
-                }`}
+                className={`w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
+                  }`}
               />
             </div>
 
