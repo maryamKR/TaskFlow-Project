@@ -1,7 +1,10 @@
 const mongoose = require("mongoose");
+const { MongoMemoryServer } = require("mongodb-memory-server");
 
 // Increase Jest timeout for database connection/operations
-jest.setTimeout(30000);
+jest.setTimeout(60000);
+
+let mongoServer;
 
 // Mock Socket.io globally for integration tests
 jest.mock("../../socket", () => {
@@ -31,10 +34,13 @@ jest.mock("../../utils/emailService", () => ({
 beforeAll(async () => {
   // Ensure we are connected to the test database with a retry mechanism for transient network drops
   if (mongoose.connection.readyState === 0) {
+    mongoServer = await MongoMemoryServer.create();
+    const mongoUri = mongoServer.getUri();
+
     let retries = 3;
     while (retries > 0) {
       try {
-        await mongoose.connect(process.env.MONGO_URI);
+        await mongoose.connect(mongoUri);
         break;
       } catch (err) {
         retries -= 1;
@@ -61,5 +67,8 @@ afterEach(async () => {
 afterAll(async () => {
   if (mongoose.connection.readyState !== 0) {
     await mongoose.disconnect();
+  }
+  if (mongoServer) {
+    await mongoServer.stop();
   }
 });
