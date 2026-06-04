@@ -176,6 +176,17 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
 
   const colors = ['bg-gray-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-red-400', 'bg-purple-400', 'bg-pink-500', 'bg-orange-400'];
 
+  const columnColorHex = {
+    'bg-gray-400': '#9ca3af',
+    'bg-blue-400': '#60a5fa',
+    'bg-green-400': '#4ade80',
+    'bg-yellow-400': '#facc15',
+    'bg-red-400': '#f87171',
+    'bg-purple-400': '#c084fc',
+    'bg-pink-500': '#ec4899',
+    'bg-orange-400': '#fb923c',
+  };
+
   const borderColorMap = {
     'bg-gray-400': 'border-gray-500',
     'bg-blue-400': 'border-blue-500',
@@ -204,7 +215,8 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
 
   return (
     <div
-      className={`rounded-2xl p-4 w-72 flex-shrink-0 border-t-2 ${borderColorMap[columnColor] || 'border-gray-400'} ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200 border-t-2'}`}
+      style={{ borderTop: `3px solid ${columnColorHex[columnColor] || '#9ca3af'}` }}
+      className={`rounded-2xl p-4 w-72 flex-shrink-0 ${isDark ? 'bg-gray-800 border border-gray-700' : 'bg-white border border-gray-200'}`}
       onMouseEnter={() => setIsHovered(true)}
       onMouseLeave={() => setIsHovered(false)}
     >
