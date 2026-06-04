@@ -18,6 +18,7 @@ const mockEmit = jest.fn();
 const mockTo = jest.fn().mockReturnValue({ emit: mockEmit });
 
 beforeEach(() => {
+  jest.clearAllMocks();
   getIO.mockReturnValue({ to: mockTo });
   notifyAndEmit.mockResolvedValue({});
   notifyOwner.mockResolvedValue(undefined);
@@ -98,6 +99,41 @@ describe("commentController", () => {
 
       // Should NOT call notifyAndEmit since both recipients === commenter
       expect(notifyAndEmit).not.toHaveBeenCalled();
+    });
+
+    it("should NOT send duplicate notifications to the board owner if they are already in the recipients list", async () => {
+      const userId = fakeId(1);
+      const ownerId = fakeId(9);
+      const req = mockReq({
+        params: { taskId: fakeId(20) },
+        body: { content: "My comment" },
+        user: { _id: userId, username: "testuser" },
+      });
+      const res = mockRes();
+
+      const mockTask = {
+        _id: fakeId(20),
+        title: "Task",
+        assignedTo: { _id: ownerId },
+        createdBy: ownerId,
+        comments: [],
+        activityLog: [],
+        save: jest.fn(),
+        populate: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockBoard = { _id: fakeId(1), user: ownerId };
+      getTaskWithBoardAccess.mockResolvedValue({ task: mockTask, board: mockBoard });
+      Comment.create.mockResolvedValue({ _id: fakeId(30), populate: jest.fn().mockResolvedValue(undefined) });
+
+      await addComment(req, res);
+
+      // Should call notifyAndEmit once (to notify ownerId as assignee/creator)
+      expect(notifyAndEmit).toHaveBeenCalledTimes(1);
+      expect(notifyAndEmit).toHaveBeenCalledWith(
+        expect.objectContaining({ recipientId: ownerId })
+      );
+      // notifyOwner should NOT be called since owner was already in the recipients list
+      expect(notifyOwner).not.toHaveBeenCalled();
     });
 
     it("should propagate access errors from getTaskWithBoardAccess", async () => {

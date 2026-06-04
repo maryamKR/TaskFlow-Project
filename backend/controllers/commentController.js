@@ -61,15 +61,20 @@ exports.addComment = async (req, res) => {
     }
   }
 
-  // Notify the board owner (for moderation) via unified helper
-  // This helper handles checking if the actor IS the owner
-  await notifyOwner(
-    board,
-    req.user._id,
-    `${req.user.username} commented on: ${task.title}`,
-    "COMMENT",
-    taskId,
-  );
+  // Notify the board owner (for moderation) via unified helper if not already notified
+  const boardOwnerId = board.user?._id
+    ? board.user._id.toString()
+    : board.user.toString();
+
+  if (!recipients.has(boardOwnerId)) {
+    await notifyOwner(
+      board,
+      req.user._id,
+      `${req.user.username} commented on: ${task.title}`,
+      "COMMENT",
+      taskId,
+    );
+  }
 
   await comment.populate("author", "username");
 
