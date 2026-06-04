@@ -11,6 +11,7 @@ const createTaskSchema = z.object({
       .nullable()
       .optional(),
     dueDate: z.string().datetime().nullable().optional(),
+    startDate: z.string().datetime().nullable().optional(),
     assignedTo: z
       .string()
       .regex(/^[0-9a-fA-F]{24}$/, "Invalid User ID format")
@@ -24,7 +25,12 @@ const updateTaskSchema = z.object({
     title: z.string().min(1, "Task title is required").optional(),
     description: z.string().optional(),
     priority: z.enum(["low", "medium", "high"]).optional(),
+    label: z
+      .enum(["Bug", "Frontend", "Backend", "Documentation", "DevOps", "Design", "Testing", "Feature", "Other"])
+      .nullable()
+      .optional(),
     dueDate: z.string().datetime().nullable().optional(),
+    startDate: z.string().datetime().nullable().optional(),
     assignedTo: z
       .string()
       .regex(/^[0-9a-fA-F]{24}$/, "Invalid User ID format")

@@ -14,7 +14,7 @@ const { notifyOwner } = require("../utils/notifyOwner");
 // @route   POST /api/tasks
 // @access  Private
 const createTask = async (req, res) => {
-  const { title, columnId, description, priority, dueDate, assignedTo, label } =
+  const { title, columnId, description, priority, dueDate, startDate, assignedTo, label } =
     req.body;
 
   // 1. Ensure the column exists
@@ -54,6 +54,7 @@ const createTask = async (req, res) => {
     priority,
     label: label || null,
     dueDate,
+    startDate,
     assignedTo: assignedTo || null,
     column: columnId,
     createdBy: req.user._id,
@@ -166,6 +167,23 @@ const updateTask = async (req, res) => {
         task.overdueEmailSent = false;
       }
     }
+  }
+
+  if (req.body.startDate !== undefined) {
+    const oldTime = task.startDate ? new Date(task.startDate).getTime() : null;
+    const newTime = req.body.startDate
+      ? new Date(req.body.startDate).getTime()
+      : null;
+    if (oldTime !== newTime) {
+      const formattedDate = newTime ? new Date(newTime).toLocaleDateString() : "None";
+      changes.push(` : updated the Start date to ${formattedDate}`);
+      task.startDate = req.body.startDate;
+    }
+  }
+
+  if (req.body.label !== undefined && req.body.label !== task.label) {
+    changes.push(` : changed Label from "${task.label || 'None'}" to "${req.body.label || 'None'}"`);
+    task.label = req.body.label;
   }
 
   if (req.body.assignedTo !== undefined) {
