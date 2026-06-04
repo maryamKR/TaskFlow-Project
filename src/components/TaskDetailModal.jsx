@@ -3,6 +3,7 @@ import socket from '../socket';
 import { updateTask, getComments, addComment, deleteComment } from '../services/board';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/auth';
+import Toast from './Toast';
 
 function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const { isDark } = useTheme();
@@ -20,7 +21,8 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const [activeTab, setActiveTab] = useState('comments');
   const [activity, setActivity] = useState([]);
   const [activityLoading, setActivityLoading] = useState(false);
-  const [showAllActivity, setShowAllActivity] = useState(false);
+  const [showActivityModal, setShowActivityModal] = useState(false);
+  const [toast, setToast] = useState(null);
 
   useEffect(() => { fetchComments(); }, []);
 
@@ -87,7 +89,6 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         assignedTo: assignee || null,
       });
-      console.log('updated task:', updated);
       onTaskUpdated(task._id, { ...updated, createdBy: task.createdBy });
       onClose();
     } catch (err) {
@@ -131,8 +132,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
     return `${Math.floor(diff / 86400)}d ago`;
   };
 
-  const inputClass = `w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
-    }`;
+  const inputClass = `w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'}`;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 p-4">
@@ -235,7 +235,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
               <div className="flex flex-col gap-2 flex-1 overflow-y-auto">
                 {activityLoading ? <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Loading...</p> : activity.length === 0 ? <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>No activity recorded yet.</p> : (
                   <>
-                    {(showAllActivity ? activity : activity.slice(0, 3)).map((log, index) => (
+                    {activity.slice(0, 3).map((log, index) => (
                       <div key={index} className={`flex items-start gap-3 py-2 border-b last:border-0 ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
                         <div className="w-6 h-6 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">{log.performedBy?.username?.[0]?.toUpperCase() || '?'}</div>
                         <div className="flex-1 min-w-0">
@@ -246,14 +246,9 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
                         </div>
                       </div>
                     ))}
-                    {activity.length > 3 && !showAllActivity && (
-                      <button onClick={() => setShowAllActivity(true)} className="text-xs text-pink-400 hover:underline mt-2 text-center w-full">
+                    {activity.length > 3 && (
+                      <button onClick={() => setShowActivityModal(true)} className="text-xs text-pink-400 hover:underline mt-2 text-center w-full">
                         Show full activity log ({activity.length} entries)
-                      </button>
-                    )}
-                    {showAllActivity && activity.length > 3 && (
-                      <button onClick={() => setShowAllActivity(false)} className="text-xs text-gray-400 hover:underline mt-2 text-center w-full">
-                        Show less
                       </button>
                     )}
                   </>
@@ -262,7 +257,38 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
             )}
           </div>
         </div>
+
+        {showActivityModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-[60] p-4">
+            <div className={`rounded-2xl w-full max-w-lg shadow-xl flex flex-col max-h-[80vh] ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+              <div className={`flex items-center justify-between px-6 py-4 border-b flex-shrink-0 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+                <h3 className={`text-sm font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                  Full Activity Log <span className={`text-xs font-normal ml-1 ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>({activity.length} entries)</span>
+                </h3>
+                <button onClick={() => setShowActivityModal(false)} className={`text-xl leading-none ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>×</button>
+              </div>
+              <div className="overflow-y-auto flex-1 px-6 py-4 flex flex-col gap-3">
+                {activity.map((log, index) => (
+                  <div key={index} className={`flex items-start gap-3 py-2 border-b last:border-0 ${isDark ? 'border-gray-700' : 'border-gray-100'}`}>
+                    <div className="w-7 h-7 rounded-full bg-pink-700 flex items-center justify-center text-white text-xs font-bold flex-shrink-0 mt-0.5">
+                      {log.performedBy?.username?.[0]?.toUpperCase() || '?'}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-xs ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                        <span className="font-medium">{log.performedBy?.username || 'Unknown'}</span> {log.action}
+                      </p>
+                      <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>{formatTimeAgo(log.timestamp)}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
+
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
     </div>
   );
 }
