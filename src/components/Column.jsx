@@ -174,17 +174,24 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
   const [isHovered, setIsHovered] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
-  const [columnColor, setColumnColor] = useState(color);
+  const defaultColors = {
+    'to do': 'bg-purple-400',
+    'in progress': 'bg-blue-400',
+    'review': 'bg-yellow-400',
+    'done': 'bg-green-400',
+  };
+  const resolvedColor = defaultColors[title?.toLowerCase()] || color || 'bg-gray-400';
+  const [columnColor, setColumnColor] = useState(resolvedColor);
   const [toast, setToast] = useState(null);
 
   const isDoneColumn = title?.toLowerCase() === 'done';
 
   const colors = ['bg-gray-400', 'bg-blue-400', 'bg-green-400', 'bg-yellow-400', 'bg-red-400', 'bg-purple-400', 'bg-pink-400', 'bg-orange-400'];
   const borderColorMap = {
-    'bg-gray-400': 'border-gray-400', 'bg-blue-400': 'border-blue-400',
-    'bg-green-400': 'border-green-400', 'bg-yellow-400': 'border-yellow-400',
-    'bg-red-400': 'border-red-400', 'bg-purple-400': 'border-purple-400',
-    'bg-pink-400': 'border-pink-400', 'bg-orange-400': 'border-orange-400',
+    'bg-gray-400': 'border-gray-500', 'bg-blue-400': 'border-blue-500',
+    'bg-green-400': 'border-green-500', 'bg-yellow-400': 'border-yellow-500',
+    'bg-red-400': 'border-red-500', 'bg-purple-400': 'border-purple-500',
+    'bg-pink-400': 'border-pink-500', 'bg-orange-400': 'border-orange-500',
   };
 
   const taskIds = tasks.map(t => t.id);

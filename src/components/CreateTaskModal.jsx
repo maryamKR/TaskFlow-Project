@@ -15,6 +15,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
   const [suggesting, setSuggesting] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState(null);
   const [label, setLabel] = useState(null);
+  const [startDate, setStartDate] = useState('');
 
   const handleSuggestPriority = async () => {
     if (!title.trim()) { setError('Enter a title first'); return; }
@@ -54,6 +55,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
         priority,
         assignedTo: assignee || undefined,
         label,
+        startDate: startDate ? new Date(startDate).toISOString() : null,
         dueDate: dueDate ? new Date(dueDate).toISOString() : null
       });
       onTaskCreated(columnId, newTask);
@@ -65,9 +67,8 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
     }
   };
 
-  const inputClass = `w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${
-    isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
-  }`;
+  const inputClass = `w-full px-4 py-3 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-gray-100 text-gray-900 placeholder-gray-400'
+    }`;
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50">
@@ -128,6 +129,17 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
               </p>
             )}
           </div>
+          {/* Start Date */}
+          <div>
+            <label className={`text-sm mb-1 block ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>Start Date</label>
+            <input
+              type="date"
+              value={startDate}
+              min={new Date().toISOString().split('T')[0]}
+              onChange={(e) => setStartDate(e.target.value)}
+              className={inputClass}
+            />
+          </div>
 
           {/* Due Date */}
           <div>
@@ -135,6 +147,7 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
             <input
               type="date"
               value={dueDate}
+              min={startDate || new Date().toISOString().split('T')[0]}
               onChange={(e) => setDueDate(e.target.value)}
               className={inputClass}
             />
@@ -156,9 +169,8 @@ function CreateTaskModal({ columnId, onClose, onTaskCreated, members = [] }) {
             <button
               type="button"
               onClick={onClose}
-              className={`flex-1 py-3 rounded-lg border transition duration-200 ${
-                isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'
-              }`}
+              className={`flex-1 py-3 rounded-lg border transition duration-200 ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-300 text-gray-600 hover:bg-gray-100'
+                }`}
             >Cancel</button>
             <button
               type="submit"

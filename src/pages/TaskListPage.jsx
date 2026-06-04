@@ -27,6 +27,9 @@ function TaskListPage() {
     const [search, setSearch] = useState('');
     const [filterPriority, setFilterPriority] = useState('');
     const [filterStatus, setFilterStatus] = useState('');
+    const [filterLabel, setFilterLabel] = useState('');
+    const [filterStartDate, setFilterStartDate] = useState('');
+    const [filterDueDate, setFilterDueDate] = useState('');
     const [sortBy, setSortBy] = useState('');
 
     useEffect(() => {
@@ -55,6 +58,9 @@ function TaskListPage() {
         .filter(t => !search || t.title.toLowerCase().includes(search.toLowerCase()))
         .filter(t => !filterPriority || t.priority === filterPriority)
         .filter(t => !filterStatus || t.status?.toLowerCase() === filterStatus.toLowerCase())
+        .filter(t => !filterLabel || t.label === filterLabel)
+        .filter(t => !filterStartDate || (t.startDate && t.startDate.split('T')[0] === filterStartDate))
+        .filter(t => !filterDueDate || (t.dueDate && t.dueDate.split('T')[0] === filterDueDate))
         .sort((a, b) => {
             if (sortBy === 'dueDate') return new Date(a.dueDate || 0) - new Date(b.dueDate || 0);
             if (sortBy === 'priority') {
@@ -101,7 +107,7 @@ function TaskListPage() {
                 </div>
 
                 {/* Filters */}
-                <div className={`flex flex-wrap items-center gap-3 p-4 rounded-xl mb-6 ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}>
+                <div className={`flex flex-wrap items-end gap-3 p-4 rounded-xl mb-6 ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}>
                     <input
                         type="text"
                         placeholder="Search tasks..."
@@ -121,15 +127,33 @@ function TaskListPage() {
                             <option key={col._id} value={col.title}>{col.title}</option>
                         ))}
                     </select>
+                    <select value={filterLabel} onChange={(e) => setFilterLabel(e.target.value)} className={inputClass}>
+                        <option value="">All labels</option>
+                        <option value="Bug">Bug</option>
+                        <option value="Feature">Feature</option>
+                        <option value="Testing">Testing</option>
+                        <option value="Frontend">Frontend</option>
+                        <option value="Backend">Backend</option>
+                    </select>
+
+                    <div className="flex flex-col gap-1">
+                        <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start Date</label>
+                        <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className={inputClass} />
+                    </div>
+
+                    <div className="flex flex-col gap-1">
+                        <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Due Date</label>
+                        <input type="date" value={filterDueDate} onChange={(e) => setFilterDueDate(e.target.value)} className={inputClass} />
+                    </div>
                     <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={inputClass}>
                         <option value="">Sort by...</option>
                         <option value="dueDate">Due date</option>
                         <option value="priority">Priority</option>
                         <option value="title">Title</option>
                     </select>
-                    {(search || filterPriority || filterStatus || sortBy) && (
+                    {(search || filterPriority || filterStatus || filterLabel || filterStartDate || filterDueDate || sortBy) && (
                         <button
-                            onClick={() => { setSearch(''); setFilterPriority(''); setFilterStatus(''); setSortBy(''); }}
+                            onClick={() => { setSearch(''); setFilterPriority(''); setFilterStatus(''); setFilterLabel(''); setFilterStartDate(''); setFilterDueDate(''); setSortBy(''); }}
                             className={`text-sm transition duration-200 ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
                         >
                             Clear ×

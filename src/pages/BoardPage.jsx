@@ -56,6 +56,7 @@ function BoardPage() {
     priority: '',
     search: '',
     assignee: '',
+    startDate: '',
     dueDate: ''
   });
   const [dragSourceColId, setDragSourceColId] = useState(null);
@@ -82,6 +83,17 @@ function BoardPage() {
       socket.connect();
       socket.emit("join_user", currentUserId);
     }
+
+    socket.on("board_invite_accepted", ({ board }) => {
+      setBoards(prev => {
+        if (prev.some(b => b._id === board._id)) return prev;
+        return [...prev, board];
+      });
+    });
+
+    return () => {
+      socket.off("board_invite_accepted");
+    };
   }, []);
 
   useEffect(() => {
@@ -426,7 +438,7 @@ function BoardPage() {
                         <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                           {total > 0 ? `${done}/${total} tasks done` : "Track your team's progress"}
                         </p>
-                        
+
                         {total > 0 && (
                           <span className={`text-xs font-medium ${pct === 100 ? 'text-green-400' : isDark ? 'text-gray-400' : 'text-gray-500'}`}>
                             {pct}%
@@ -488,15 +500,28 @@ function BoardPage() {
                   <option key={member._id} value={member._id}>{member.username}</option>
                 ))}
               </select>
-              <input
-                type="date"
-                value={filter.dueDate}
-                onChange={(e) => setFilter(prev => ({ ...prev, dueDate: e.target.value }))}
-                className={inputClass}
-              />
-              {(filter.search || filter.priority || filter.assignee || filter.dueDate) && (
+              <div className="flex flex-col gap-1">
+                <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start Date</label>
+                <input
+                  type="date"
+                  value={filter.startDate}
+                  onChange={(e) => setFilter(prev => ({ ...prev, startDate: e.target.value }))}
+                  className={inputClass}
+                />
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Due Date</label>
+                <input
+                  type="date"
+                  value={filter.dueDate}
+                  onChange={(e) => setFilter(prev => ({ ...prev, dueDate: e.target.value }))}
+                  className={inputClass}
+                />
+              </div>
+              {(filter.search || filter.priority || filter.assignee || filter.startDate || filter.dueDate) && (
                 <button
-                  onClick={() => setFilter({ priority: '', search: '', assignee: '', dueDate: '' })}
+                  onClick={() => setFilter({ priority: '', search: '', assignee: '', startDate: '', dueDate: '' })}
                   className={`text-sm transition duration-200 ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}
                 >
                   Clear ×
@@ -551,7 +576,8 @@ function BoardPage() {
                             const matchesSearch = !filter.search || task.title.toLowerCase().includes(filter.search.toLowerCase());
                             const matchesAssignee = !filter.assignee || task.assignedTo?._id === filter.assignee || task.assignedTo === filter.assignee;
                             const matchesDueDate = !filter.dueDate || (task.dueDate && task.dueDate.split('T')[0] === filter.dueDate);
-                            return matchesPriority && matchesSearch && matchesAssignee && matchesDueDate;
+                            const matchesStartDate = !filter.startDate || (task.startDate && task.startDate.split('T')[0] === filter.startDate);
+                            return matchesPriority && matchesSearch && matchesAssignee && matchesDueDate && matchesStartDate;
                           })}
                         />
                       )}
