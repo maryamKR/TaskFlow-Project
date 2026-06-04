@@ -20,6 +20,16 @@ describe("boardMemberController", () => {
     notifyOwner.mockResolvedValue(undefined);
     sendInviteEmail.mockResolvedValue(undefined);
     sendUnregisteredInviteEmail.mockResolvedValue(undefined);
+
+    // Mock Mongoose's addToSet method for plain arrays in test mock objects
+    if (!Array.prototype.addToSet) {
+      Array.prototype.addToSet = function(item) {
+        if (!this.includes(item)) {
+          this.push(item);
+        }
+        return this;
+      };
+    }
   });
 
   // ═══════════════════════════════════════

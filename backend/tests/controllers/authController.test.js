@@ -19,6 +19,16 @@ describe("authController", () => {
   beforeEach(() => {
     process.env.JWT_SECRET = "test-secret";
     process.env.FRONTEND_URL = "http://localhost:3000";
+    
+    // Mock Mongoose's addToSet method for plain arrays in test mock objects
+    if (!Array.prototype.addToSet) {
+      Array.prototype.addToSet = function(item) {
+        if (!this.includes(item)) {
+          this.push(item);
+        }
+        return this;
+      };
+    }
   });
 
   // ═══════════════════════════════════════
