@@ -135,7 +135,7 @@ Does a User with this email exist?
     │              └── NO  → Add to board.coworkers
     │                         → Send invite email (Reply-To = owner email)
     │                         → Notify invited user (BOARD_INVITATION)
-    │                         → Notify owner (OWNER_ALERT)
+    │                         → Notify owner (BOARD_INVITATION)
     └── NO  → Is email in board.pendingInvites?
                    ├── YES → 400 "User already invited"
                    └── NO  → Add to board.pendingInvites
@@ -207,9 +207,11 @@ Moves a task between columns atomically.
 1. Removes `taskId` from `sourceColumn.tasks[]`
 2. Appends `taskId` to `destinationColumn.tasks[]`
 3. Updates `task.column` to the destination column ID
-4. If the destination column title is "done" (case-insensitive), sets `task.isDone = true` and sends `TASK_MOVED_DONE` notification
+4. If the destination column title is "done" (case-insensitive), sets `task.isDone = true`
 5. Logs the move action to `activityLog`
-6. Emits `task_moved` to the board room
+6. Sends a `TASK_UPDATED` notification to the assignee (if set and not the actor)
+7. Sends an `OWNER_ALERT` notification to the board owner (if not already notified as assignee)
+8. Emits `task_moved` to the board room
 
 #### `reorderTask(req, res)`
 Validates that all incoming `taskIds` belong to the specified column (prevents injection), then replaces `column.tasks[]` with the new order. Emits `tasks_reordered`.
@@ -233,10 +235,10 @@ Flexible query endpoint supporting multiple simultaneous filters:
 Handles task-level discussions.
 
 #### `addComment(req, res)`
-Creates a `Comment` document and appends its `_id` to `task.comments[]`. If the task has an assignee (and the commenter is not the assignee), sends a `COMMENT` notification. Emits `comment_added`.
+Creates a `Comment` document and appends its `_id` to `task.comments[]`. Sends a `COMMENT` notification to both the task **assignee** and the task **creator** (deduped via a `Set`; the commenter is always excluded). Also sends a `COMMENT` notification to the board owner via `notifyOwner()` (type `"COMMENT"` is passed — not `OWNER_ALERT`). Emits `comment_added` to the board room.
 
 #### `getComments(req, res)`
-Returns all comments for a task in chronological order, with `author.username` and `author.email` populated.
+Returns all comments for a task sorted by `createdAt` descending (newest first), with `author.username` populated.
 
 #### `deleteComment(req, res)`
 Removes the comment document and cleans up its reference from `task.comments[]`. **Restricted to comment author or board owner.** Emits `comment_deleted`.
@@ -249,11 +251,11 @@ Serves and manages the in-app notification feed for each user.
 
 | Method | Route | Description |
 |---|---|---|
-| `getNotifications` | `GET /notifications` | Returns all notifications for `req.user._id`, sorted newest-first, with sender populated |
-| `markAllAsRead` | `PATCH /notifications/read-all` | Sets `isRead: true` on all user's notifications |
-| `markAsRead` | `PATCH /notifications/:id/read` | Sets `isRead: true` on a single notification |
-| `deleteReadNotifications` | `DELETE /notifications/read` | Purges all read notifications for the user |
-| `deleteNotification` | `DELETE /notifications/:id` | Deletes a specific notification |
+| `getNotifications` | `GET /notifications` | Returns the latest 30 notifications for `req.user._id`, sorted newest-first, with `sender.username` populated |
+| `markAllAsRead` | `PATCH /notifications/read-all` | Sets `isRead: true` on all of the user's unread notifications |
+| `markAsRead` | `PATCH /notifications/:id/read` | Sets `isRead: true` on a single notification; enforces ownership via `{ _id, user }` query |
+| `deleteReadNotifications` | `DELETE /notifications/read` | Purges all notifications where `isRead: true` for the current user |
+| `deleteNotification` | `DELETE /notifications/:id` | Deletes a specific notification; enforces ownership before deletion |
 
 ---
 
@@ -264,6 +266,12 @@ Sends the task's title and description to Google Gemini (`gemini-2.5-flash`) wit
 
 #### `autoLabel(req, res)`
 Performs fast, local keyword matching without calling any external API. Scans the task title and description against 8 predefined keyword dictionaries (Bug, Frontend, Backend, Documentation, DevOps, Testing, Feature, Design). Returns the first matching label, or `Other` if no keywords match.
+
+#### `getBoardInsight(req, res)`
+Fetches all tasks for the specified board (via a deep `columns → tasks` populate), then sends the aggregated task data to Google Gemini with a prompt requesting a single short insight summary (max 15 words) suitable for a board banner. Returns a static placeholder if the board has no tasks. Gracefully degrades to a demo message string when the Gemini API returns a quota-exceeded (HTTP 429) error instead of propagating a 500.
+
+#### `autoPrioritize(req, res)`
+Bulk-analyses all tasks on a board using Google Gemini. Sends every task's `id`, `title`, `description`, `status` (column title), `dueDate`, and `currentPriority` in a single prompt and instructs the model to return a strict JSON array of `{ id, priority }` objects. The response is stripped of any Markdown code fences before JSON parsing, then forwarded directly to the client for batch-applying priority updates.
 
 ---
 

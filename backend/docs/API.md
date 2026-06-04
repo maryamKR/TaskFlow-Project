@@ -648,7 +648,7 @@ Adds a comment to a task. Triggers a `COMMENT` notification to the task assignee
 ```
 GET /tasks/:taskId/comments
 ```
-Returns all comments for a task, sorted by creation date ascending (oldest first).
+Returns all comments for a task, sorted by creation date descending (newest first).
 
 **Response `200`:**
 ```json
@@ -759,13 +759,13 @@ DELETE /notifications/:id
 
 ## 8. AI Endpoints
 
-Both AI endpoints require authentication.
+All AI endpoints require authentication.
 
 ### Suggest Priority
 ```
 POST /ai/suggest-priority
 ```
-Uses Google Gemini to analyse the task and recommend a priority level.
+Uses Google Gemini (`gemini-2.5-flash`) to analyse the task title and description and recommend a priority level.
 
 **Body:**
 ```json
@@ -791,7 +791,7 @@ Uses Google Gemini to analyse the task and recommend a priority level.
 ```
 POST /ai/auto-label
 ```
-Performs local keyword matching to suggest a task label — no external API call.
+Performs fast, local keyword matching to suggest a task label — no external API call required.
 
 **Body:**
 ```json
@@ -807,6 +807,57 @@ Performs local keyword matching to suggest a task label — no external API call
 ```
 
 **Possible labels:** `Bug` · `Frontend` · `Backend` · `Documentation` · `DevOps` · `Testing` · `Feature` · `Design` · `Other`
+
+---
+
+### Board Insight
+```
+POST /ai/board-insight
+```
+Uses Google Gemini to analyse all tasks on a board and return a single short insight summary (max 15 words) for display in the board banner.
+
+**Body:**
+```json
+{ "boardId": "60d5ee..." }
+```
+
+**Response `200`:**
+```json
+{ "insight": "3 high-priority tasks are overdue — review your backlog today." }
+```
+
+**Notes:**
+- Returns `{ insight: "Add some tasks to see AI insights!" }` if the board has no tasks
+- Falls back to a demo message if the Gemini API quota is exceeded (HTTP 429)
+- Requires `GEMINI_API_KEY` in the environment
+
+---
+
+### Auto-Prioritize Board
+```
+POST /ai/auto-prioritize
+```
+Bulk re-calculates priority for all tasks on a board using Google Gemini. Returns an array of `{ id, priority }` objects that the client can use to batch-update task priorities.
+
+**Body:**
+```json
+{ "boardId": "60d5ee..." }
+```
+
+**Response `200`:**
+```json
+{
+  "priorities": [
+    { "id": "60d5f3...", "priority": "high" },
+    { "id": "60d5f4...", "priority": "low" }
+  ]
+}
+```
+
+**Notes:**
+- Returns `{ priorities: [] }` if the board has no tasks
+- Requires `GEMINI_API_KEY` in the environment
+- The response is a raw JSON array parsed directly from the Gemini output
 
 ---
 

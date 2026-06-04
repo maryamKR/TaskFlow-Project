@@ -24,7 +24,7 @@ With the **Pending Invitations Flow**, board owners can invite **any email addre
 3. User is immediately added to `board.coworkers`
 4. Invite email is sent (with `Reply-To` set to the owner's email)
 5. `BOARD_INVITATION` notification is sent to the invited user (real-time via Socket.IO)
-6. `OWNER_ALERT` notification is sent to the board owner
+6. `BOARD_INVITATION` notification is sent to the board owner
 
 **API Response:**
 ```json
@@ -52,7 +52,7 @@ With the **Pending Invitations Flow**, board owners can invite **any email addre
    - Removes the email from `board.pendingInvites[]`
    - Saves the board
    - Creates a `BOARD_INVITATION` notification → new user (real-time via Socket.IO)
-   - Creates an `OWNER_ALERT` notification → board owner (real-time via Socket.IO)
+   - Creates a `BOARD_INVITATION` notification → board owner (real-time via Socket.IO)
 
 ---
 
@@ -70,7 +70,7 @@ graph TD
     E -- No --> G[Add to board.coworkers]
     G --> H[sendInviteEmail\nReply-To = owner email]
     G --> I[notifyAndEmit: BOARD_INVITATION → user]
-    G --> J[notifyOwner: OWNER_ALERT → board owner]
+    G --> J[notifyOwner: BOARD_INVITATION → board owner]
     G --> K[200: User invited successfully]
     D -- No --> L{Already in pendingInvites?}
     L -- Yes --> M[400: User already invited]
@@ -92,7 +92,7 @@ graph TD
     G --> H[Remove email from board.pendingInvites]
     H --> I[Save board]
     I --> J[notifyAndEmit: BOARD_INVITATION → new user]
-    I --> K[notifyOwner: OWNER_ALERT → board owner]
+    I --> K[notifyOwner: BOARD_INVITATION → board owner]
     K --> L[Repeat for next board]
 ```
 
@@ -135,8 +135,8 @@ Both emails are sent from the platform SMTP account (`EMAIL_USER`) but the `Repl
 | Scenario | HTTP Status | Error Message |
 |---|---|---|
 | Requester is not board owner | 403 | `"Only the board owner can invite members"` |
-| Email is already an active coworker | 400 | `"User is already a member of this board"` |
-| Email is already in pendingInvites | 400 | `"An invitation has already been sent to this email"` |
+| Email is already an active coworker | 400 | `"User is already a member"` |
+| Email is already in pendingInvites | 400 | `"User is already invited"` |
 | SMTP failure | Non-fatal | Logged to server console; board state unchanged |
 
 ---

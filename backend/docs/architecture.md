@@ -55,7 +55,7 @@ backend/
 │   └── db.js                    # Mongoose Atlas connection with retry logic
 ├── controllers/
 │   ├── authController.js        # Registration, login, password reset
-│   ├── aiController.js          # Gemini AI priority suggestion & auto-label
+│   ├── aiController.js          # Gemini AI: suggest priority, auto-label, board insight, auto-prioritize
 │   ├── boardController.js       # Board CRUD, column reordering
 │   ├── boardMemberController.js # Invite, list, and remove coworkers
 │   ├── columnController.js      # Column CRUD & cascade deletion
@@ -261,12 +261,12 @@ The `notifyOwner()` wrapper calls `notifyAndEmit()` but first checks if the acto
 
 | Type | When Triggered |
 |---|---|
-| `TASK_ASSIGNED` | A task is assigned to a user |
-| `TASK_UPDATED` | Task fields (title, priority, etc.) are modified |
-| `TASK_MOVED_DONE` | A task is moved into a "Done" column |
-| `COMMENT` | A comment is posted on a task |
-| `BOARD_INVITATION` | A user is invited to join a board |
-| `OWNER_ALERT` | A board action (column added, member joined) alerts the owner |
+| `TASK_ASSIGNED` | A task is created with an assignee, or reassigned to a new user |
+| `TASK_UPDATED` | Task details (title, priority, etc.) are modified, or a task is moved between columns |
+| `TASK_MOVED_DONE` | Reserved in schema; no controller currently emits this type |
+| `COMMENT` | A comment is posted on a task — sent to the assignee, the task creator, and the board owner |
+| `BOARD_INVITATION` | A user is invited to join a board (sent to both the invited user and the board owner) |
+| `OWNER_ALERT` | Owner is alerted when: a task is created, updated, or moved; a column is added, renamed, or reordered |
 | `MEMBER_REMOVED` | A member is removed from a board |
 
 ---
@@ -299,10 +299,12 @@ Express 5 automatically forwards rejected promise errors from async route handle
 
 ## 9. AI Features (Gemini Integration)
 
-Two AI-powered endpoints are available under `/api/ai` (authenticated):
+Four AI-powered endpoints are available under `/api/ai` (authenticated):
 
-- **`POST /api/ai/suggest-priority`** — Sends the task title and description to Google Gemini (gemini-2.5-flash). The model returns `high`, `medium`, or `low`, which is validated and returned to the client.
-- **`POST /api/ai/auto-label`** — Performs client-side keyword matching against a label dictionary (Bug, Frontend, Backend, etc.) and returns a suggested label without calling an external API.
+- **`POST /api/ai/suggest-priority`** — Sends the task title and description to Google Gemini (`gemini-2.5-flash`). The model returns `high`, `medium`, or `low`, which is validated and returned to the client. Falls back to `medium` if the response is ambiguous.
+- **`POST /api/ai/auto-label`** — Performs local keyword matching against a label dictionary (Bug, Frontend, Backend, etc.) and returns a suggested label without calling an external API.
+- **`POST /api/ai/board-insight`** — Aggregates all tasks on a board and sends them to Gemini, which returns a single short insight summary (max 15 words) for display in the board banner. Gracefully degrades to a demo message on API quota exhaustion (HTTP 429).
+- **`POST /api/ai/auto-prioritize`** — Sends all tasks on a board to Gemini in a single prompt and requests a JSON array of `{ id, priority }` objects, enabling bulk priority recalculation from the client.
 
 ---
 

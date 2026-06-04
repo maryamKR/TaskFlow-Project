@@ -23,7 +23,7 @@ Client                          Backend                              Database
   │                                │  ├─ Add user to board.coworkers   >│
   │                                │  ├─ Remove from pendingInvites    >│
   │                                │  ├─ Create BOARD_INVITATION notif >│
-  │                                │  └─ Create OWNER_ALERT notif      >│
+  │                                │  └─ Create BOARD_INVITATION notif     >│  (owner, via notifyOwner)
   │                                │─ Sign JWT (30d) ──────────────────│
   │<── 201 { _id, username, email, token } ───────────────────────────│
 ```
@@ -186,7 +186,7 @@ Response: { success: true, message: "Member removed successfully" }
 | Create task | `POST /tasks` | `task_created { columnId, task, createdBy }` | `TASK_ASSIGNED` → assignee (if set) |
 | Update task | `PUT /tasks/:id` | `task_updated { taskId, updatedTask }` | `TASK_ASSIGNED` (if reassigned), `TASK_UPDATED` (if other changes) |
 | Delete task | `DELETE /tasks/:id` | `task_deleted { taskId, columnId }` | — |
-| Move task | `PATCH /tasks/move` | `task_moved { taskId, sourceColumnId, destinationColumnId }` | `TASK_MOVED_DONE` if moved to "done" column |
+| Move task | `PATCH /tasks/move` | `task_moved { taskId, sourceColumnId, destinationColumnId, isDone }` | `TASK_UPDATED` → assignee (if set); `OWNER_ALERT` → board owner |
 | Reorder tasks | `PATCH /tasks/column/:id/reorder` | `tasks_reordered { columnId, taskIds }` | — |
 
 ---
@@ -239,14 +239,14 @@ Backend filter pipeline:
 
 | Action | API Call | Socket Event | Notifications |
 |---|---|---|---|
-| Post comment | `POST /tasks/:taskId/comments` | `comment_added { taskId, comment }` | `COMMENT` → task assignee |
+| Post comment | `POST /tasks/:taskId/comments` | `comment_added { taskId, comment }` | `COMMENT` → assignee + creator (deduped, commenter excluded); `COMMENT` → board owner |
 | Delete comment | `DELETE /comments/:commentId` | `comment_deleted { taskId, commentId }` | — |
 
 ---
 
-### 3.5 AI-Powered Task Creation
+### 3.7 AI-Powered Task Assistance
 
-**User action:** Clicks "Suggest Priority" or "Auto-Label" when creating a task.
+**User action:** Clicks "Suggest Priority", "Auto-Label", "Board Insight", or "Auto-Prioritize".
 
 ```
 Suggest Priority:
@@ -258,6 +258,17 @@ Auto-Label:
   Client ── POST /api/ai/auto-label { title, description } ──> Backend
   Backend: Local keyword matching (no external API)
   Response: { success: true, label: "Bug" }
+
+Board Insight:
+  Client ── POST /api/ai/board-insight { boardId } ──> Backend
+  Backend ── All board tasks ──> Google Gemini API ──> one-line summary (max 15 words)
+  Response: { insight: "3 high-priority tasks are overdue — review your backlog today." }
+  (Degrades gracefully to a demo message if Gemini quota is exceeded)
+
+Auto-Prioritize:
+  Client ── POST /api/ai/auto-prioritize { boardId } ──> Backend
+  Backend ── All board tasks ──> Google Gemini API ──> JSON array of { id, priority }
+  Response: { priorities: [{ "id": "...", "priority": "high" }, ...] }
 ```
 
 ---

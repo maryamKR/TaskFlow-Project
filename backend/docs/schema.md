@@ -143,12 +143,12 @@ erDiagram
 
 | Type | Trigger |
 |---|---|
-| `COMMENT` | A comment is posted on a task |
+| `COMMENT` | A comment is posted on a task (sent to assignee, creator, and board owner) |
 | `TASK_ASSIGNED` | A task is assigned or reassigned to a user |
-| `TASK_UPDATED` | Task details (title, priority, etc.) are modified |
-| `BOARD_INVITATION` | A user is invited to or auto-joined a board |
-| `TASK_MOVED_DONE` | A task is moved into a column with "done" in its name |
-| `OWNER_ALERT` | Board owner receives an alert (member joined, column added) |
+| `TASK_UPDATED` | Task details (title, priority, column move, etc.) are modified |
+| `BOARD_INVITATION` | A user is invited to or auto-joined a board (sent to both invited user and board owner) |
+| `TASK_MOVED_DONE` | Reserved in schema; no controller currently emits this type |
+| `OWNER_ALERT` | Board owner is alerted about a board action (task created/updated/moved, column added/renamed, columns reordered) |
 | `MEMBER_REMOVED` | A coworker is removed from a board |
 
 ---

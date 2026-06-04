@@ -157,7 +157,7 @@ See [`backend/docs/API.md`](./backend/docs/API.md) for the complete endpoint ref
 | Tasks | `GET/POST /tasks`, `GET/PUT/DELETE /tasks/:id`, `PATCH /tasks/move`, `PATCH /tasks/column/:id/reorder` |
 | Comments | `GET/POST /tasks/:id/comments`, `DELETE /comments/:id` |
 | Notifications | `GET /notifications`, `PATCH /notifications/read-all`, `DELETE /notifications/read` |
-| AI | `POST /ai/suggest-priority`, `POST /ai/auto-label` |
+| AI | `POST /ai/suggest-priority`, `POST /ai/auto-label`, `POST /ai/board-insight`, `POST /ai/auto-prioritize` |
 
 ---
 
