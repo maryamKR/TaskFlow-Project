@@ -62,7 +62,7 @@ exports.inviteMember = async (req, res) => {
     if (!board.pendingInvites) {
       board.pendingInvites = [];
     }
-    board.pendingInvites.push(cleanEmail);
+    board.pendingInvites.addToSet(cleanEmail);
     await board.save();
 
     // Send invite to register
@@ -94,7 +94,7 @@ exports.inviteMember = async (req, res) => {
   }
 
   // Update Board
-  board.coworkers.push(userToInvite._id);
+  board.coworkers.addToSet(userToInvite._id);
   await board.save();
 
   // Create real-time notification for the invited user

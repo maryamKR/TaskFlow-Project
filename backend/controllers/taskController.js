@@ -427,13 +427,16 @@ const moveTask = async (req, res) => {
   );
 
   // Notify assignee if not the actor
+  const notificationType = isDone ? "TASK_MOVED_DONE" : "TASK_UPDATED";
   let assigneeNotified = false;
   if (task.assignedTo && task.assignedTo.toString() !== req.user._id.toString()) {
     await notifyAndEmit({
       recipientId: task.assignedTo,
       senderId: req.user._id,
-      message: `${req.user.username} moved your task "${task.title}" to "${destColumn.title}"`,
-      type: "TASK_UPDATED",
+      message: isDone
+        ? `${req.user.username} marked your task "${task.title}" as done`
+        : `${req.user.username} moved your task "${task.title}" to "${destColumn.title}"`,
+      type: notificationType,
       relatedId: task._id,
       boardId: board._id.toString(),
     });
@@ -447,7 +450,9 @@ const moveTask = async (req, res) => {
     await notifyOwner(
       board,
       req.user._id,
-      `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`,
+      isDone
+        ? `${req.user.username} marked task "${task.title}" as done on your board`
+        : `${req.user.username} moved task "${task.title}" to "${destColumn.title}" on your board`,
       "OWNER_ALERT",
       task._id,
     );

@@ -6,10 +6,12 @@ const taskSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: [200, "Task title cannot exceed 200 characters"],
     },
     description: {
       type: String,
       default: "",
+      maxlength: [2000, "Task description cannot exceed 2000 characters"],
     },
     priority: {
       type: String,

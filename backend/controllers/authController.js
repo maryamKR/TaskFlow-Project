@@ -35,12 +35,7 @@ exports.registerUser = async (req, res, next) => {
   });
 
   for (const board of boardsWithPendingInvites) {
-    const isAlreadyCoworker = board.coworkers.some(
-      (id) => id.toString() === user._id.toString(),
-    );
-    if (!isAlreadyCoworker) {
-      board.coworkers.push(user._id);
-    }
+    board.coworkers.addToSet(user._id);
     board.pendingInvites = board.pendingInvites.filter(
       (e) => e.toLowerCase() !== cleanEmail,
     );

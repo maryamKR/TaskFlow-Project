@@ -6,6 +6,7 @@ const boardSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: [100, "Board title cannot exceed 100 characters"],
     },
     user: {
       type: mongoose.Schema.Types.ObjectId,

@@ -6,6 +6,7 @@ const columnSchema = new mongoose.Schema(
       type: String,
       required: true,
       trim: true,
+      maxlength: [50, "Column title cannot exceed 50 characters"],
     },
     board: {
       type: mongoose.Schema.Types.ObjectId,
