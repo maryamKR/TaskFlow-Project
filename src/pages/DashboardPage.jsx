@@ -151,10 +151,10 @@ const today = new Date(); today.setHours(0, 0, 0, 0);
               <StatCard label="In Progress" value={inProgressTasks} color="text-pink-400" isDark={isDark} />
               <StatCard label="Completed" value={completedTasks} color="text-green-400" isDark={isDark} />
               <StatCard label="High Priority" value={highPriorityTasks} color="text-red-400" isDark={isDark} />
-              <StatCard label="Overdue" value={overdueTasks} color="text-orange-400" isDark={isDark} />
+              <StatCard label="Overdue" value={overdueTasks} color="text-pink-400" isDark={isDark} />
               <StatCard label="Due Soon" value={dueSoonTasks} color="text-yellow-400" isDark={isDark} />
               <StatCard label="XP" value={xp} color="text-purple-400" isDark={isDark} />
-              <StatCard label="Streak" value={`${streak} day${streak !== 1 ? 's' : ''}`} color="text-orange-400" isDark={isDark} />
+              <StatCard label="Streak" value={`${streak} day${streak !== 1 ? 's' : ''}`} color="text-pink-400" isDark={isDark} />
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
