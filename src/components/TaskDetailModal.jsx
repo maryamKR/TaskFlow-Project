@@ -1,6 +1,7 @@
 ﻿import { useState, useEffect } from 'react';
 import socket from '../socket';
 import { updateTask, getComments, addComment, deleteComment } from '../services/board';
+import { suggestTaskPriority, autoDetectLabel } from '../services/ai';
 import { useTheme } from '../context/ThemeContext';
 import { api } from '../services/auth';
 import Toast from './Toast';
@@ -10,6 +11,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const [title, setTitle] = useState(task.title || '');
   const [description, setDescription] = useState(task.description || '');
   const [priority, setPriority] = useState(task.priority || 'low');
+  const [label, setLabel] = useState(task.label || 'Other');
   const [startDate, setStartDate] = useState(task.startDate ? task.startDate.split('T')[0] : '');
   const [dueDate, setDueDate] = useState(task.dueDate ? task.dueDate.split('T')[0] : '');
   const [assignee, setAssignee] = useState(task.assignedTo?._id || task.assignedTo || '');
@@ -18,6 +20,8 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const [loading, setLoading] = useState(false);
   const [commentLoading, setCommentLoading] = useState(false);
   const [saving, setSaving] = useState(false);
+    const [loadingPriority, setLoadingPriority] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState(false); 
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('comments');
   const [activity, setActivity] = useState([]);
@@ -78,6 +82,33 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
     if (tab === 'activity' && activity.length === 0) {
       fetchActivity();
     }
+  };
+
+
+    //  Run Single Task AI Suggestion
+  const handleAiSuggestPriority = async () => {
+    if (!title.trim()) { setError('Title is required before running AI'); return; }
+    setLoadingPriority(true);
+    setError('');
+    const suggested = await suggestTaskPriority(title, description);
+    if (suggested) {
+      setPriority(suggested);
+      setToast({ message: `AI priority set to ${suggested}`, type: 'success' });
+    }
+    setLoadingPriority(false);
+  };
+
+  // Run Auto-Label Scanner
+  const handleAiAutoLabel = async () => {
+    if (!title.trim()) { setError('Title is required before running AI'); return; }
+    setLoadingLabel(true);
+    setError('');
+    const detected = await autoDetectLabel(title, description);
+    if (detected) {
+      setLabel(detected);
+      setToast({ message: `Label categorized as "${detected}"`, type: 'success' });
+    }
+    setLoadingLabel(false);
   };
 
   const handleSave = async () => {
@@ -164,6 +195,53 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Description</label>
               <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add a description..." rows={3} className={`${inputClass} resize-none`} />
             </div>
+
+            {/* Priority Block with Ask AI */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Priority</label>
+                <button
+                  type="button"
+                  onClick={handleAiSuggestPriority}
+                  disabled={loadingPriority}
+                  className="text-xs text-pink-500 hover:text-pink-400 font-semibold transition disabled:opacity-40"
+                >
+                  {loadingPriority ? 'Thinking...' : '✨ Ask AI'}
+                </button>
+              </div>
+              <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+              </select>
+            </div>
+
+            {/* Label Block with Auto-Label */}
+            <div>
+              <div className="flex justify-between items-center mb-1">
+                <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Label</label>
+                <button
+                  type="button"
+                  onClick={handleAiAutoLabel}
+                  disabled={loadingLabel}
+                  className="text-xs text-indigo-400 hover:text-indigo-300 font-semibold transition disabled:opacity-40"
+                >
+                  {loadingLabel ? 'Scanning...' : '✨ Auto-Label'}
+                </button>
+              </div>
+              <select value={label} onChange={(e) => setLabel(e.target.value)} className={inputClass}>
+                <option value="Bug">Bug</option>
+                <option value="Frontend">Frontend</option>
+                <option value="Backend">Backend</option>
+                <option value="Feature">Feature</option>
+                <option value="Documentation">Documentation</option>
+                <option value="Design">Design</option>
+                <option value="DevOps">DevOps</option>
+                <option value="Testing">Testing</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
+
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Priority</label>
               <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>

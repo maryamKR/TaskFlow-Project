@@ -25,3 +25,25 @@ export const autoPrioritizeTasks = async (boardId) => {
     return [];
   }
 };
+
+// 3. Suggest a priority for a single task during update
+export const suggestTaskPriority = async (title, description) => {
+  try {
+    const response = await api.post('/ai/suggest-priority', { title, description });
+    return response.data.success ? response.data.priority : null;
+  } catch (error) {
+    console.error("AI Priority suggestion failed:", error);
+    return null;
+  }
+};
+
+// 4. Auto-detect a matching category label for a single task during update
+export const autoDetectLabel = async (title, description) => {
+  try {
+    const response = await api.post('/ai/auto-label', { title, description });
+    return response.data.success ? response.data.label : null;
+  } catch (error) {
+    console.error("AI Label detection failed:", error);
+    return null;
+  }
+};
