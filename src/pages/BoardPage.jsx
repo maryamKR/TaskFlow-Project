@@ -433,7 +433,7 @@ function BoardPage() {
                     const pct = total > 0 ? Math.round((done / total) * 100) : 0;
                     return total > 0 ? (
                       <div className="flex items-center gap-3">
-                        <div className={`w-48 h-1.5 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-200'}`}>
+                        <div className={`w-48 h-1.5 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-300'}`}>
                           <div
                             className={`h-1.5 rounded-full transition-all duration-500 ${pct === 100 ? 'bg-green-400' : 'bg-pink-700'}`}
                             style={{ width: `${pct}%` }}
