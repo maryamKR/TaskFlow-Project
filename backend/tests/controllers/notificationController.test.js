@@ -15,27 +15,33 @@ describe("notificationController", () => {
   // getNotifications
   // ═══════════════════════════════════════
   describe("getNotifications", () => {
-    it("should return notifications for logged in user", async () => {
+    it("should return notifications with pagination for logged in user", async () => {
       const userId = fakeId(1);
       const req = mockReq({ user: { _id: userId } });
       const res = mockRes();
 
       const mockNotifications = [{ _id: fakeId(10), message: "Alert" }];
+      Notification.countDocuments.mockResolvedValue(1);
       Notification.find.mockReturnValue({
         populate: jest.fn().mockReturnValue({
           sort: jest.fn().mockReturnValue({
-            limit: jest.fn().mockResolvedValue(mockNotifications),
+            skip: jest.fn().mockReturnValue({
+              limit: jest.fn().mockResolvedValue(mockNotifications),
+            }),
           }),
         }),
       });
 
       await getNotifications(req, res);
 
+      expect(Notification.countDocuments).toHaveBeenCalledWith({ user: userId });
       expect(Notification.find).toHaveBeenCalledWith({ user: userId });
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({
         success: true,
         count: 1,
+        total: 1,
+        pagination: {},
         data: mockNotifications,
       });
     });

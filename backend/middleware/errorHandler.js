@@ -26,8 +26,8 @@ const errorHandler = (err, req, res, next) => {
 
   // 5. Invalid Mongoose Object IDs (e.g., GET /api/boards/123-invalid-id)
   else if (err.name === "CastError") {
-    statusCode = 404;
-    message = `Resource not found with id of ${err.value}`;
+    statusCode = 400;
+    message = `Invalid ID format: ${err.value}`;
   }
 
   // 6. JSON Web Token Authentication Errors
@@ -39,6 +39,11 @@ const errorHandler = (err, req, res, next) => {
   else if (err.name === "TokenExpiredError") {
     statusCode = 401;
     message = "Session expired, please log in again.";
+  }
+
+  // Gate internal error messages in production for 500 status codes
+  if (process.env.NODE_ENV === "production" && statusCode === 500) {
+    message = "Internal Server Error";
   }
 
   // 7. Uniform payload structure 

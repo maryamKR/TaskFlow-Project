@@ -91,17 +91,17 @@ describe("errorHandler middleware", () => {
   });
 
   // ─── CastError ───
-  it("should return 404 for CastError with the invalid ID value", () => {
+  it("should return 400 for CastError with the invalid ID format", () => {
     const err = new Error("Cast failed");
     err.name = "CastError";
     err.value = "invalid-id-123";
 
     errorHandler(err, req, res, next);
 
-    expect(res.status).toHaveBeenCalledWith(404);
+    expect(res.status).toHaveBeenCalledWith(400);
     expect(res.json).toHaveBeenCalledWith({
       success: false,
-      error: "Resource not found with id of invalid-id-123",
+      error: "Invalid ID format: invalid-id-123",
     });
   });
 
@@ -141,5 +141,42 @@ describe("errorHandler middleware", () => {
     const payload = res.json.mock.calls[0][0];
     expect(payload).toHaveProperty("success", false);
     expect(payload).toHaveProperty("error");
+  });
+
+  // ─── NODE_ENV === 'production' masking ───
+  describe("when in production", () => {
+    let originalEnv;
+
+    beforeAll(() => {
+      originalEnv = process.env.NODE_ENV;
+      process.env.NODE_ENV = "production";
+    });
+
+    afterAll(() => {
+      process.env.NODE_ENV = originalEnv;
+    });
+
+    it("should mask 500 error messages with 'Internal Server Error'", () => {
+      const err = new Error("Sensitive database query failure error log");
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        error: "Internal Server Error",
+      });
+    });
+
+    it("should NOT mask non-500 error messages (e.g. validation/client errors)", () => {
+      res.statusCode = 403;
+      const err = new Error("Only the board owner can perform this action");
+      errorHandler(err, req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({
+        success: false,
+        error: "Only the board owner can perform this action",
+      });
+    });
   });
 });

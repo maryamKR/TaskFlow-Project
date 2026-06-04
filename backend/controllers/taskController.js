@@ -236,8 +236,8 @@ const updateTask = async (req, res) => {
 
   const newAssignee = task.assignedTo;
 
-  const hasAssigneeChanged = changes.includes("Assignee changed");
-  const hasDetailsChanged = changes.some((c) => c !== "Assignee changed");
+  const hasAssigneeChanged = changes.some((c) => c.includes("changed Assignee"));
+  const hasDetailsChanged = changes.some((c) => !c.includes("changed Assignee"));
 
   const isAssigneeChanged =
     hasAssigneeChanged &&
