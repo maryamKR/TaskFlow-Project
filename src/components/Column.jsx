@@ -161,6 +161,7 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
   const [isHovered, setIsHovered] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
 
   const defaultColors = {
     'to do': 'bg-purple-400',
@@ -200,17 +201,16 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
 
   const taskIds = tasks.map(t => t.id);
 
-  const handleDeleteColumn = async (e) => {
-    e.preventDefault(); e.stopPropagation();
+  const handleDeleteColumn = async () => {
     if (!isOwner) {
       setToast({ message: 'Only the board owner can delete columns.', type: 'error' });
       return;
     }
     if (deleting) return;
-    if (!window.confirm(`Delete column "${title}" and all its tasks?`)) return;
     setDeleting(true);
     try { await deleteColumn(id); onColumnDeleted(id); }
     catch (err) { console.error('Failed to delete column:', err); setDeleting(false); }
+    finally { setShowDeleteModal(false); }
   };
 
   return (
@@ -254,7 +254,7 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
           {isHovered && (
             <button
               onPointerDown={(e) => e.stopPropagation()}
-              onClick={handleDeleteColumn}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); if (!isOwner) { setToast({ message: 'Only the board owner can delete columns.', type: 'error' }); return; } setShowDeleteModal(true); }}
               disabled={deleting}
               className={`w-5 h-5 flex items-center justify-center rounded-full text-sm font-bold transition duration-200 ${isDark ? 'text-gray-500 hover:text-red-400 hover:bg-red-400/10' : 'text-gray-400 hover:text-red-500 hover:bg-red-50'}`}
             >
@@ -291,7 +291,26 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
       )}
 
       {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+      {showDeleteModal && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className={`rounded-2xl p-6 w-80 shadow-xl ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+            <h3 className={`text-sm font-bold mb-2 ${isDark ? 'text-white' : 'text-gray-900'}`}>Delete Column</h3>
+            <p className={`text-xs mb-5 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+              Delete "<span className="font-medium">{title}</span>" and all its tasks? This cannot be undone.
+            </p>
+            <div className="flex gap-2">
+              <button onClick={() => setShowDeleteModal(false)} className={`flex-1 py-2 rounded-lg text-xs font-medium transition duration-200 ${isDark ? 'bg-gray-700 text-gray-300 hover:bg-gray-600' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'}`}>
+                Cancel
+              </button>
+              <button onClick={handleDeleteColumn} disabled={deleting} className="flex-1 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg text-xs font-medium transition duration-200 disabled:opacity-50">
+                {deleting ? 'Deleting...' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
+
   );
 }
 
