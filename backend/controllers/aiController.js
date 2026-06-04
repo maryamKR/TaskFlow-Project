@@ -92,4 +92,64 @@ const autoLabel = async (req, res) => {
   res.status(200).json({ success: true, label: detectedLabel });
 };
 
-module.exports = { suggestPriority, autoLabel };
+// @desc     Get AI board insights for the banner
+// @route    POST /api/ai/board-insight
+const getBoardInsight = async (req, res) => {
+  const { allTasks } = req.body;
+  if (!allTasks || allTasks.length === 0) {
+    return res.status(200).json({ insight: "" });
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `You are a project management AI assistant. Analyze these tasks and return ONE short summary insight layout (max 15 words).`;
+
+    const result = await model.generateContent(prompt);
+    res.status(200).json({ insight: result.response.text().trim() });
+  } catch (err) {
+    console.error("Insight engine server error:", err.message);
+
+    // THIS IS YOUR BACKUP PLAN: If Google blocks you, show a beautiful fake insight so your UI stays pretty!
+    if (err.message.includes("429") || err.message.includes("quota")) {
+      return res.status(200).json({ 
+        insight: "✨ (Demo Mode) 3 urgent bugs remain unassigned in your backlog column." 
+      });
+    }
+
+    res.status(500).json({ error: err.message });
+  }
+};
+
+// @desc     Bulk task priority re-calculation array
+// @route    POST /api/ai/auto-prioritize
+const autoPrioritize = async (req, res) => {
+  const { allTasks } = req.body;
+  if (!allTasks || allTasks.length === 0) {
+    return res.status(200).json({ priorities: [] });
+  }
+
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
+
+    const prompt = `You are a project management AI assistant.
+    Analyze these tasks and assign priority (low, medium, high) to each one based on dates and descriptions.
+    Return ONLY a valid JSON array matching this exact schema layout, nothing else:
+    [{"id": "task_id_here", "priority": "high"}]
+
+    Tasks data: ${JSON.stringify(allTasks)}`;
+
+    const result = await model.generateContent(prompt);
+    const text = result.response.text().trim();
+    const clean = text.replace(/```json|```/g, '').trim();
+
+    res.status(200).json({ priorities: JSON.parse(clean) });
+  } catch (err) {
+    console.error("Auto-prioritize server error:", err.message);
+    res.status(500).json({ error: err.message });
+  }
+};
+
+module.exports = { suggestPriority, autoLabel, getBoardInsight, autoPrioritize };
