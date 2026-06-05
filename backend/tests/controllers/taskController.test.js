@@ -6,7 +6,6 @@ const Task = require("../../models/Task");
 const Column = require("../../models/Column");
 const Board = require("../../models/Board");
 const Comment = require("../../models/Comment");
-const User = require("../../models/User");
 const Notification = require("../../models/Notification");
 const { hasBoardAccess } = require("../../utils/boardAuth");
 const notifyAndEmit = require("../../utils/notifyAndEmit");
@@ -151,6 +150,49 @@ describe("taskController", () => {
       getTaskWithBoardAccess.mockRejectedValue(err);
 
       await expect(getTask(req, res)).rejects.toThrow("Task not found");
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // updateTask
+  // ═══════════════════════════════════════
+  describe("updateTask", () => {
+    it("should update a task title and notify the board owner", async () => {
+      const req = mockReq({
+        params: { id: fakeId(20) },
+        user: { _id: fakeId(1), username: "owner" },
+        body: { title: "Updated Title" },
+      });
+      const res = mockRes();
+
+      const mockTask = {
+        _id: fakeId(20),
+        title: "Original Title",
+        description: "Original description",
+        priority: "medium",
+        dueDate: null,
+        startDate: null,
+        label: null,
+        assignedTo: null,
+        activityLog: [],
+        save: jest.fn().mockResolvedValue(undefined),
+        populate: jest.fn().mockResolvedValue(undefined),
+      };
+      const mockBoard = { _id: fakeId(1), user: fakeId(1) };
+      getTaskWithBoardAccess.mockResolvedValue({ task: mockTask, board: mockBoard });
+
+      await updateTask(req, res);
+
+      expect(mockTask.save).toHaveBeenCalled();
+      expect(notifyOwner).toHaveBeenCalledWith(
+        mockBoard,
+        req.user._id,
+        expect.stringContaining("updated task \"Updated Title\""),
+        "OWNER_ALERT",
+        mockTask._id,
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, data: mockTask }));
     });
   });
 

@@ -4,6 +4,8 @@ const mongoose = require("mongoose");
 // when the DB connection is unavailable, rather than timing out after 10s
 mongoose.set("bufferCommands", false);
 
+mongoose.set("returnDocument", "after");
+
 const connectDB = async (retries = 5, delay = 5000) => {
   while (retries > 0) {
     try {

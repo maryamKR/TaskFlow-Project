@@ -2,11 +2,10 @@ const { registerUser, loginUser, forgotPassword, resetPassword } = require("../.
 const User = require("../../models/User");
 const Board = require("../../models/Board");
 const jwt = require("jsonwebtoken");
-const crypto = require("crypto");
 const { sendPasswordResetEmail } = require("../../utils/emailService");
 const notifyAndEmit = require("../../utils/notifyAndEmit");
 const { notifyOwner } = require("../../utils/notifyOwner");
-const { mockReq, mockRes, mockNext, fakeId } = require("../helpers");
+const { mockReq, mockRes, fakeId } = require("../helpers");
 
 jest.mock("../../models/User");
 jest.mock("../../models/Board");
@@ -19,16 +18,6 @@ describe("authController", () => {
   beforeEach(() => {
     process.env.JWT_SECRET = "test-secret";
     process.env.FRONTEND_URL = "http://localhost:3000";
-    
-    // Mock Mongoose's addToSet method for plain arrays in test mock objects
-    if (!Array.prototype.addToSet) {
-      Array.prototype.addToSet = function(item) {
-        if (!this.includes(item)) {
-          this.push(item);
-        }
-        return this;
-      };
-    }
   });
 
   // ═══════════════════════════════════════
@@ -67,6 +56,12 @@ describe("authController", () => {
         coworkers: [],
         pendingInvites: ["invited@test.com"],
         save: jest.fn(),
+      };
+      mockBoard.coworkers.addToSet = function (item) {
+        if (!this.includes(item)) {
+          this.push(item);
+        }
+        return this;
       };
       // coworkers.some check
       mockBoard.coworkers.some = jest.fn().mockReturnValue(false);

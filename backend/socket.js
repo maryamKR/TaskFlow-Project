@@ -120,9 +120,11 @@ const initIO = (server) => {
   return io;
 };
 
+const hasIO = () => Boolean(io);
+
 const getIO = () => {
   if (!io) throw new Error("Socket.io has not been initialized!");
   return io;
 };
 
-module.exports = { initIO, getIO };
+module.exports = { initIO, getIO, hasIO };
