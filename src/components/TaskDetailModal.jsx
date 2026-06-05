@@ -20,8 +20,8 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const [loading, setLoading] = useState(false);
   const [commentLoading, setCommentLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-    const [loadingPriority, setLoadingPriority] = useState(false);
-  const [loadingLabel, setLoadingLabel] = useState(false); 
+  const [loadingPriority, setLoadingPriority] = useState(false);
+  const [loadingLabel, setLoadingLabel] = useState(false);
   const [error, setError] = useState('');
   const [activeTab, setActiveTab] = useState('comments');
   const [activity, setActivity] = useState([]);
@@ -85,7 +85,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   };
 
 
-    //  Run Single Task AI Suggestion
+  //  Run Single Task AI Suggestion
   const handleAiSuggestPriority = async () => {
     if (!title.trim()) { setError('Title is required before running AI'); return; }
     setLoadingPriority(true);
@@ -120,7 +120,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
     setError('');
     try {
       const updated = await updateTask(task._id, {
-        title, description, priority,
+        title, description, priority, label,
         startDate: startDate ? new Date(startDate).toISOString() : null,
         dueDate: dueDate ? new Date(dueDate).toISOString() : null,
         assignedTo: assignee || null,
@@ -179,8 +179,8 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
           <button onClick={onClose} className={`text-2xl leading-none ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>×</button>
         </div>
 
-        <div className="grid grid-cols-2 gap-0 max-h-[75vh]">
-          <div className={`p-5 flex flex-col gap-3 border-r overflow-y-auto ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+        <div className="grid grid-cols-2 gap-0 max-h-[80vh] overflow-hidden">
+          <div className={`p-4 flex flex-col gap-2 border-r overflow-y-auto max-h-[80vh] ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
             <h3 className={`text-xs font-medium uppercase tracking-wider ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Edit Task</h3>
             {task.createdBy?.username && (
               <p className={`text-xs ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
@@ -194,7 +194,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
             </div>
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Description</label>
-              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add a description..." rows={3} className={`${inputClass} resize-none`} />
+              <textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Add a description..." rows={2} className={`${inputClass} resize-none`} />
             </div>
 
             {/* Priority Block with Ask AI */}
@@ -243,14 +243,6 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
               </select>
             </div>
 
-            <div>
-              <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Priority</label>
-              <select value={priority} onChange={(e) => setPriority(e.target.value)} className={inputClass}>
-                <option value="high">High</option>
-                <option value="medium">Medium</option>
-                <option value="low">Low</option>
-              </select>
-            </div>
             <div>
               <label className={`text-xs mb-1 block ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>Start Date</label>
               <input
