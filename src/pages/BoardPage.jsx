@@ -229,7 +229,11 @@ function BoardPage() {
     try {
       const data = await getBoards();
       setBoards(data || []);
-      if (data && data.length > 0) loadBoard(data[0]._id);
+      if (data && data.length > 0) {
+        const lastId = localStorage.getItem('lastActiveBoardId');
+        const startId = data.find(b => b._id === lastId) ? lastId : data[0]._id;
+        loadBoard(startId);
+      }
       else setLoading(false);
     } catch (err) {
       if (err.response?.status === 401) {
@@ -245,6 +249,7 @@ function BoardPage() {
   const loadBoard = async (boardId) => {
   setSidebarOpen(false);
   setLoading(true);
+  localStorage.setItem('lastActiveBoardId', boardId);
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
