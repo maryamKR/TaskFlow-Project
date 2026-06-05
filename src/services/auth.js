@@ -1,6 +1,7 @@
 import axios from 'axios';
-import socket from "../socket"; // eslint-disable-line no-unused-vars
-const API_URL = 'http://localhost:5000/api';
+import socket from "../socket";
+
+const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api';
 
 export const api = axios.create({
   baseURL: API_URL,
@@ -33,10 +34,10 @@ export const login = async (email, password) => {
   return response.data;
 };
 
-
 export const logout = () => {
   localStorage.removeItem('token');
+  localStorage.removeItem('username');
+  localStorage.removeItem('email');
+  localStorage.removeItem('userId');
   socket.disconnect();
 };
-
-
