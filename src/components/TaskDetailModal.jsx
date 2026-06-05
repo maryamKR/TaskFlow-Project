@@ -141,6 +141,7 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
     try {
       await addComment(task._id, newComment);
       setNewComment('');
+      onTaskUpdated(task._id, { ...task, comments: [...(task.comments || []), 'new'] });
     } catch (err) {
       console.error('Failed to add comment:', err);
     } finally {

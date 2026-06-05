@@ -186,6 +186,17 @@ function BoardPage() {
       ));
     });
 
+    socket.on("comment_added", ({ taskId }) => {
+      setColumns(prev => prev.map(col => ({
+        ...col,
+        tasks: col.tasks.map(t =>
+          t._id === taskId
+            ? { ...t, comments: [...(t.comments || []), 'placeholder'] }
+            : t
+        )
+      })));
+    });
+
     return () => {
       socket.emit("leave_board", activeBoard._id);
       socket.off("task_moved");
@@ -199,6 +210,7 @@ function BoardPage() {
       socket.off("member_online");
       socket.off("member_offline");
       socket.off("new_notification");
+      socket.off("comment_added");
     };
   }, [activeBoard?._id]);
 
