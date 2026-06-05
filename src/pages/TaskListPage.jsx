@@ -130,10 +130,14 @@ function TaskListPage() {
                     <select value={filterLabel} onChange={(e) => setFilterLabel(e.target.value)} className={inputClass}>
                         <option value="">All labels</option>
                         <option value="Bug">Bug</option>
-                        <option value="Feature">Feature</option>
-                        <option value="Testing">Testing</option>
                         <option value="Frontend">Frontend</option>
                         <option value="Backend">Backend</option>
+                        <option value="Documentation">Documentation</option>
+                        <option value="DevOps">DevOps</option>
+                        <option value="Design">Design</option>
+                        <option value="Testing">Testing</option>
+                        <option value="Feature">Feature</option>
+                        <option value="Other">Other</option>
                     </select>
 
                     <div className="flex flex-col gap-1">

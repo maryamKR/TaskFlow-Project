@@ -56,7 +56,8 @@ function BoardPage() {
     search: '',
     assignee: '',
     startDate: '',
-    dueDate: ''
+    dueDate: '',
+    label: ''
   });
   const [dragSourceColId, setDragSourceColId] = useState(null);
 
@@ -198,13 +199,13 @@ function BoardPage() {
     });
 
     socket.on("member_joined", ({ boardId, member }) => {
-        if (boardId === activeBoard?._id) {
-            setMembers(prev => {
-                // avoid duplicates
-                if (prev.some(m => m._id === member._id)) return prev;
-                return [...prev, member];
-            });
-        }
+      if (boardId === activeBoard?._id) {
+        setMembers(prev => {
+          // avoid duplicates
+          if (prev.some(m => m._id === member._id)) return prev;
+          return [...prev, member];
+        });
+      }
     });
 
     return () => {
@@ -247,9 +248,9 @@ function BoardPage() {
   };
 
   const loadBoard = async (boardId) => {
-  setSidebarOpen(false);
-  setLoading(true);
-  localStorage.setItem('lastActiveBoardId', boardId);
+    setSidebarOpen(false);
+    setLoading(true);
+    localStorage.setItem('lastActiveBoardId', boardId);
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
@@ -481,12 +482,11 @@ function BoardPage() {
                           />
                         </div>
                         <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{done}/{total} tasks</span>
-                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-  pct === 100
-    ? 'bg-green-500 text-white'
-    : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-300 text-gray-700'
-}`}>{pct}%</span>
-{pct === 100 && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500 text-white">All done! </span>}
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pct === 100
+                          ? 'bg-green-500 text-white'
+                          : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-300 text-gray-700'
+                          }`}>{pct}%</span>
+                        {pct === 100 && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500 text-white">All done! </span>}
                       </div>
                     ) : (
                       <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Track your team's progress</p>
@@ -581,9 +581,29 @@ function BoardPage() {
                   />
                 </div>
 
-                {(filter.search || filter.priority || filter.assignee || filter.startDate || filter.dueDate) && (
+                <select
+                  value={filter.label}
+                  onChange={(e) => setFilter(prev => ({ ...prev, label: e.target.value }))}
+                  className={`px-3 py-1.5 rounded-full border text-sm transition duration-200 ${filter.label
+                    ? 'border-pink-500 text-pink-400 bg-pink-500/10'
+                    : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'
+                    }`}
+                >
+                  <option value="">Label</option>
+                  <option value="Bug">Bug</option>
+                  <option value="Frontend">Frontend</option>
+                  <option value="Backend">Backend</option>
+                  <option value="Documentation">Documentation</option>
+                  <option value="DevOps">DevOps</option>
+                  <option value="Design">Design</option>
+                  <option value="Testing">Testing</option>
+                  <option value="Feature">Feature</option>
+                  <option value="Other">Other</option>
+                </select>
+
+                {(filter.search || filter.priority || filter.assignee || filter.startDate || filter.dueDate || filter.label) && (
                   <button
-                    onClick={() => setFilter({ priority: '', search: '', assignee: '', startDate: '', dueDate: '' })}
+                    onClick={() => setFilter({ priority: '', search: '', assignee: '', startDate: '', dueDate: '', label: '' })}
                     className={`px-3 py-1.5 rounded-full border text-xs transition duration-200 ${isDark ? 'border-gray-600 text-gray-400 hover:text-white hover:border-gray-400' : 'border-gray-200 text-gray-400 hover:text-gray-900'}`}
                   >
                     Clear ×
@@ -595,10 +615,10 @@ function BoardPage() {
 
           {activeBoard && (
             <div className="px-6">
-              <AiBanner 
+              <AiBanner
                 boardId={activeBoard._id}
-                columns={columns} 
-                onPrioritiesUpdated={handlePrioritiesUpdated} 
+                columns={columns}
+                onPrioritiesUpdated={handlePrioritiesUpdated}
               />
             </div>
           )}
@@ -626,7 +646,7 @@ function BoardPage() {
               onDragEnd={handleDragEnd}
             >
               <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-                <div className="flex gap-4 p-6 overflow-x-auto touch-pan-x" style={{width: '100%', boxSizing: 'border-box'}}>
+                <div className="flex gap-4 p-6 overflow-x-auto touch-pan-x" style={{ width: '100%', boxSizing: 'border-box' }}>
                   {columns.map(column => (
                     <SortableColumnWrapper key={column._id} column={column}>
                       {({ dragHandleProps }) => (
@@ -647,6 +667,7 @@ function BoardPage() {
                             const matchesAssignee = !filter.assignee || task.assignedTo?._id === filter.assignee || task.assignedTo === filter.assignee;
                             const matchesDueDate = !filter.dueDate || (task.dueDate && task.dueDate.split('T')[0] === filter.dueDate);
                             const matchesStartDate = !filter.startDate || (task.startDate && task.startDate.split('T')[0] === filter.startDate);
+                            const matchesLabel = !filter.label || task.label === filter.label;
                             return matchesPriority && matchesSearch && matchesAssignee && matchesDueDate && matchesStartDate;
                           })}
                         />
