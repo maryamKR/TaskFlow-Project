@@ -1,6 +1,6 @@
 const User = require("../models/User");
 const Board = require("../models/Board");
-
+const { getIO } = require("../socket");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const crypto = require("crypto");
@@ -40,6 +40,19 @@ exports.registerUser = async (req, res, next) => {
       (e) => e.toLowerCase() !== cleanEmail,
     );
     await board.save();
+
+    try {
+        getIO().to(board._id.toString()).emit("member_joined", {
+            boardId: board._id.toString(),
+            member: {
+                _id: user._id,
+                username: user.username,
+                isOnline: true,
+            }
+        });
+    } catch (socketErr) {
+        console.error("Socket emit failed:", socketErr.message);
+    }
 
     console.log(
       `[Invite Auto-Join] Adding new user ${user.email} as coworker to board ${board.title}`,

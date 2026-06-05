@@ -197,6 +197,16 @@ function BoardPage() {
       })));
     });
 
+    socket.on("member_joined", ({ boardId, member }) => {
+        if (boardId === activeBoard?._id) {
+            setMembers(prev => {
+                // avoid duplicates
+                if (prev.some(m => m._id === member._id)) return prev;
+                return [...prev, member];
+            });
+        }
+    });
+
     return () => {
       socket.emit("leave_board", activeBoard._id);
       socket.off("task_moved");
@@ -211,6 +221,7 @@ function BoardPage() {
       socket.off("member_offline");
       socket.off("new_notification");
       socket.off("comment_added");
+      socket.off("member_joined");
     };
   }, [activeBoard?._id]);
 
