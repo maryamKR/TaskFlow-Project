@@ -8,6 +8,13 @@ const allowedOrigins = process.env.ALLOWED_ORIGINS
 
 let io;
 
+// Telemetry utility that completely gates console logging out of production
+const logDebug = (...args) => {
+  if (process.env.NODE_ENV !== 'production') {
+    console.log(...args);
+  }
+};
+
 const initIO = (server) => {
   io = new Server(server, {
     cors: {
@@ -18,7 +25,7 @@ const initIO = (server) => {
   });
 
   io.on("connection", (socket) => {
-    console.log(`Socket connected: ${socket.id}`);
+    logDebug(`Socket connected: ${socket.id}`);
 
     // Isolated Personal User Rooms
     socket.on("join_user", (userId) => {
@@ -26,19 +33,28 @@ const initIO = (server) => {
       
       const userRoom = `user:${userId}`; // Standardized custom prefix
       socket.join(userRoom);
-      console.log(`User ${userId} registered to room: ${userRoom}`);
+      socket.data.userId = userId.toString(); // Track on socket object for disconnect logic
+      logDebug(`User ${userId} registered to room: ${userRoom}`);
     });
 
     // Object Payload Room Joining & Presence Activation
     socket.on("join_board", async ({ boardId, userId }) => {
       if (!boardId || !userId) {
-        console.error("Invalid join_board payload block structure");
+        if (process.env.NODE_ENV !== 'production') {
+          console.error("Invalid join_board payload block structure");
+        }
         return;
       }
 
       // Store userId inside internal socket state data so it's accessible during disconnect
       socket.data.userId = userId.toString();
       
+      // Track which boards this connection joins BEFORE disconnection clears them
+      if (!socket.data.activeBoards) {
+        socket.data.activeBoards = new Set();
+      }
+      socket.data.activeBoards.add(boardId.toString());
+
       // Bind socket connection to rooms
       socket.join(boardId.toString());
       socket.join(`user:${userId}`);
@@ -46,7 +62,7 @@ const initIO = (server) => {
       try {
         // Toggle user state to true inside MongoDB User Schema
         await User.findByIdAndUpdate(userId, { isOnline: true });
-        console.log(`DB Marker Updated: User ${userId} is ONLINE`);
+        logDebug(`DB Marker Updated: User ${userId} is ONLINE`);
 
         // Broadcast presence change to everyone else inside this project room
         socket.to(boardId.toString()).emit("member_online", { 
@@ -54,7 +70,7 @@ const initIO = (server) => {
           boardId: boardId.toString() 
         });
       } catch (err) {
-        console.error("Presence status modification error:", err.message);
+        logDebug("Presence status modification error:", err.message);
       }
     });
 
@@ -62,14 +78,16 @@ const initIO = (server) => {
     socket.on("leave_board", (boardId) => {
       if (!boardId) return;
       socket.leave(boardId.toString());
-      console.log(`Socket left board room: ${boardId}`);
+      
+      if (socket.data.activeBoards) {
+        socket.data.activeBoards.delete(boardId.toString());
+      }
+      logDebug(`Socket left board room: ${boardId}`);
     });
 
-
     // Multi-Tab Buffer Disconnect Logic
-
     socket.on("disconnect", async () => {
-      console.log(`Socket disconnected: ${socket.id}`);
+      logDebug(`Socket disconnected: ${socket.id}`);
       
       const userId = socket.data.userId;
       if (!userId) return; // Connection was never registered, drop safely
@@ -81,15 +99,20 @@ const initIO = (server) => {
         // Multi-tab check: only declare them offline if they closed their LAST open browser tab!
         if (remainingSockets.length === 0) {
           await User.findByIdAndUpdate(userId, { isOnline: false });
-          console.log(`User ${userId} closed all sessions. DB Marker set to OFFLINE.`);
+          logDebug(`User ${userId} closed all sessions. DB Marker set to OFFLINE.`);
 
-          // Broadcast offline event to the system
-          io.emit("member_offline", { userId: userId.toString() });
+          // Target only the user's active board rooms to prevent global data leakage
+          if (socket.data.activeBoards && socket.data.activeBoards.size > 0) {
+            socket.data.activeBoards.forEach((boardRoomId) => {
+              io.to(boardRoomId).emit("member_offline", { userId: userId.toString() });
+            });
+            logDebug(`User ${userId} offline notice routed to active board rooms safely.`);
+          }
         } else {
-          console.log(`User ${userId} closed a tab, but has ${remainingSockets.length} tab(s) running.`);
+          logDebug(`User ${userId} closed a tab, but has ${remainingSockets.length} tab(s) running.`);
         }
       } catch (err) {
-        console.error("Error setting network disconnection state flags:", err.message);
+        logDebug("Error setting network disconnection state flags:", err.message);
       }
     });
   });
