@@ -20,6 +20,7 @@ jest.mock("../../socket", () => {
   return {
     initIO: jest.fn().mockReturnValue(mockIO),
     getIO: jest.fn().mockReturnValue(mockIO),
+    hasIO: jest.fn().mockReturnValue(true),
   };
 });
 

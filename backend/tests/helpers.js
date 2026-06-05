@@ -1,5 +1,3 @@
-const mongoose = require("mongoose");
-
 /**
  * Generate a valid 24-char hex string that looks like a Mongoose ObjectId.
  * Optionally accepts a seed digit (0-9) to create distinguishable IDs in tests.

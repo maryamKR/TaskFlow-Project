@@ -63,11 +63,10 @@ describe("notificationController", () => {
       await markAsRead(req, res);
 
       expect(Notification.findOneAndUpdate).toHaveBeenCalledWith(
-        { _id: notifId, user: userId },
-        { isRead: true },
-        { new: true }
-      );
-      expect(res.status).toHaveBeenCalledWith(200);
+       { _id: notifId, user: userId },
+       { isRead: true },
+       { returnDocument: "after" }
+      );      expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith({ success: true, data: mockNotif });
     });
 

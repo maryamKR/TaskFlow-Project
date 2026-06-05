@@ -1,7 +1,5 @@
 const { GoogleGenerativeAI } = require("@google/generative-ai");
 const Board = require("../models/Board");
-const Column = require("../models/Column");
-const Task = require("../models/Task");
 const { hasBoardAccess } = require("../utils/boardAuth");
 
 // @desc     Suggest priority for a task
