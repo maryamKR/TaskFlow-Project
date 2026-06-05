@@ -63,22 +63,22 @@ describe("notifyAndEmit", () => {
     expect(result).toBe(mockNotification);
   });
 
-  // ─── Unhappy: DB failure propagates ───
-  it("should propagate errors when Notification.create fails", async () => {
+  // ─── Unhappy: DB failure is caught ───
+  it("should catch errors and return null when Notification.create fails", async () => {
     Notification.create.mockRejectedValue(new Error("DB write failed"));
 
-    await expect(
-      notifyAndEmit({
-        recipientId,
-        senderId,
-        message: "msg",
-        type: "COMMENT",
-      })
-    ).rejects.toThrow("DB write failed");
+    const result = await notifyAndEmit({
+      recipientId,
+      senderId,
+      message: "msg",
+      type: "COMMENT",
+    });
+
+    expect(result).toBeNull();
   });
 
-  // ─── Unhappy: socket.io not initialized ───
-  it("should propagate errors when getIO throws", async () => {
+  // ─── Unhappy: socket.io not initialized is caught ───
+  it("should catch errors and return null when getIO throws", async () => {
     const mockNotification = {
       populate: jest.fn().mockResolvedValue(undefined),
     };
@@ -87,13 +87,13 @@ describe("notifyAndEmit", () => {
       throw new Error("Socket.io has not been initialized!");
     });
 
-    await expect(
-      notifyAndEmit({
-        recipientId,
-        senderId,
-        message: "msg",
-        type: "COMMENT",
-      })
-    ).rejects.toThrow("Socket.io has not been initialized!");
+    const result = await notifyAndEmit({
+      recipientId,
+      senderId,
+      message: "msg",
+      type: "COMMENT",
+    });
+
+    expect(result).toBeNull();
   });
 });
