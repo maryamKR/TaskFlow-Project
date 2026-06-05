@@ -668,7 +668,7 @@ function BoardPage() {
                             const matchesDueDate = !filter.dueDate || (task.dueDate && task.dueDate.split('T')[0] === filter.dueDate);
                             const matchesStartDate = !filter.startDate || (task.startDate && task.startDate.split('T')[0] === filter.startDate);
                             const matchesLabel = !filter.label || task.label === filter.label;
-                            return matchesPriority && matchesSearch && matchesAssignee && matchesDueDate && matchesStartDate;
+                            return matchesPriority && matchesSearch && matchesAssignee && matchesDueDate && matchesStartDate && matchesLabel;
                           })}
                         />
                       )}
