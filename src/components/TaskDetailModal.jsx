@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import socket from '../socket';
 import { updateTask, getComments, addComment, deleteComment } from '../services/board';
 import { suggestTaskPriority, autoDetectLabel } from '../services/ai';
