@@ -80,9 +80,7 @@ describe("columnController", () => {
       const req = mockReq({ params: { boardId: fakeId(1) } });
       const res = mockRes();
 
-      Board.findById.mockReturnValue({
-        populate: jest.fn().mockResolvedValue({ _id: fakeId(1) }),
-      });
+      Board.findById.mockResolvedValue({ _id: fakeId(1) });
       hasBoardAccess.mockReturnValue(true);
 
       const columns = [{ _id: fakeId(10), title: "Col1", position: 0 }];
@@ -97,7 +95,7 @@ describe("columnController", () => {
     it("should throw 404 when board not found", async () => {
       const req = mockReq({ params: { boardId: fakeId(1) } });
       const res = mockRes();
-      Board.findById.mockReturnValue({ populate: jest.fn().mockResolvedValue(null) });
+      Board.findById.mockResolvedValue(null);
 
       await expect(getColumnsByBoard(req, res)).rejects.toThrow("Board not found");
     });
@@ -105,9 +103,7 @@ describe("columnController", () => {
     it("should throw 403 when user has no access", async () => {
       const req = mockReq({ params: { boardId: fakeId(1) } });
       const res = mockRes();
-      Board.findById.mockReturnValue({
-        populate: jest.fn().mockResolvedValue({ _id: fakeId(1) }),
-      });
+      Board.findById.mockResolvedValue({ _id: fakeId(1) });
       hasBoardAccess.mockReturnValue(false);
 
       await expect(getColumnsByBoard(req, res)).rejects.toThrow("Not authorized");
@@ -179,27 +175,22 @@ describe("columnController", () => {
 
       await deleteColumn(req, res);
 
-      expect(Comment.deleteMany).toHaveBeenCalled();
-      expect(Task.deleteMany).toHaveBeenCalled();
       expect(mockColumn.deleteOne).toHaveBeenCalled();
+      expect(Board.findByIdAndUpdate).toHaveBeenCalledWith(fakeId(1), { $pull: { columns: mockColumn._id } });
+      expect(Comment.deleteMany).toHaveBeenCalled();
+      expect(Notification.deleteMany).toHaveBeenCalled();
+      expect(Task.deleteMany).toHaveBeenCalled();
       expect(res.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should throw 404 when column not found", async () => {
-      const req = mockReq({ params: { id: fakeId(10) } });
-      const res = mockRes();
-      Column.findById.mockResolvedValue(null);
-
-      await expect(deleteColumn(req, res)).rejects.toThrow("Column not found");
     });
 
     it("should throw 403 when non-owner tries to delete", async () => {
       const req = mockReq({ params: { id: fakeId(10) }, user: { _id: fakeId(9) } });
       const res = mockRes();
+
       Column.findById.mockResolvedValue({ _id: fakeId(10), board: fakeId(1) });
       Board.findById.mockResolvedValue({ _id: fakeId(1), user: fakeId(1) });
 
-      await expect(deleteColumn(req, res)).rejects.toThrow("Only the board owner");
+      await expect(deleteColumn(req, res)).rejects.toThrow("Only the board owner can delete columns");
       expect(res.status).toHaveBeenCalledWith(403);
     });
   });

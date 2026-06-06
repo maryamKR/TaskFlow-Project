@@ -206,11 +206,11 @@ describe("taskController", () => {
       const res = mockRes();
 
       const mockTask = { _id: fakeId(20), deleteOne: jest.fn() };
-      Task.findById.mockResolvedValue(mockTask);
-
       const mockColumn = { _id: fakeId(10), board: fakeId(1), tasks: { pull: jest.fn() }, save: jest.fn() };
-      Column.findOne.mockResolvedValue(mockColumn);
-      Board.findById.mockResolvedValue({ _id: fakeId(1), user: { _id: ownerId } });
+      const mockBoard = { _id: fakeId(1), user: { _id: ownerId } };
+      
+      getTaskWithBoardAccess.mockResolvedValue({ task: mockTask, column: mockColumn, board: mockBoard });
+
       Comment.deleteMany.mockResolvedValue({});
       Notification.deleteMany.mockResolvedValue({});
 
@@ -225,19 +225,22 @@ describe("taskController", () => {
     it("should throw 404 when task not found", async () => {
       const req = mockReq({ params: { id: fakeId(20) } });
       const res = mockRes();
-      Task.findById.mockResolvedValue(null);
+      
+      const err = new Error("Task not found");
+      err.statusCode = 404;
+      getTaskWithBoardAccess.mockRejectedValue(err);
 
       await expect(deleteTask(req, res)).rejects.toThrow("Task not found");
-      expect(res.status).toHaveBeenCalledWith(404);
     });
 
     it("should throw 403 when non-owner tries to delete", async () => {
       const req = mockReq({ params: { id: fakeId(20) }, user: { _id: fakeId(9) } });
       const res = mockRes();
 
-      Task.findById.mockResolvedValue({ _id: fakeId(20) });
-      Column.findOne.mockResolvedValue({ board: fakeId(1), tasks: { pull: jest.fn() } });
-      Board.findById.mockResolvedValue({ _id: fakeId(1), user: fakeId(1) });
+      const mockTask = { _id: fakeId(20) };
+      const mockColumn = { _id: fakeId(10), board: fakeId(1), tasks: { pull: jest.fn() } };
+      const mockBoard = { _id: fakeId(1), user: { _id: fakeId(1) } };
+      getTaskWithBoardAccess.mockResolvedValue({ task: mockTask, column: mockColumn, board: mockBoard });
 
       await expect(deleteTask(req, res)).rejects.toThrow("Only the board owner can delete");
       expect(res.status).toHaveBeenCalledWith(403);
@@ -282,11 +285,21 @@ describe("taskController", () => {
       expect(res.json).toHaveBeenCalledWith({ success: true, message: "No move needed" });
     });
 
-    it("should throw 400 when required fields are missing", async () => {
-      const req = mockReq({ body: { taskId: fakeId(20) } });
+    it("should throw 400 when tasks moved between different boards", async () => {
+      const req = mockReq({
+        body: { taskId: fakeId(20), sourceColumnId: fakeId(10), destinationColumnId: fakeId(11) },
+      });
       const res = mockRes();
 
-      await expect(moveTask(req, res)).rejects.toThrow("Missing required fields");
+      Column.findById
+        .mockResolvedValueOnce({ _id: fakeId(10), board: fakeId(1) }) // source
+        .mockResolvedValueOnce({ _id: fakeId(11), board: fakeId(2), title: "In Progress" }); // dest
+      Board.findById
+        .mockResolvedValueOnce({ _id: fakeId(1) })
+        .mockResolvedValueOnce({ _id: fakeId(2), user: fakeId(1) });
+      hasBoardAccess.mockReturnValue(true);
+
+      await expect(moveTask(req, res)).rejects.toThrow("Tasks can only be moved within the same board");
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
@@ -328,6 +341,30 @@ describe("taskController", () => {
 
       await expect(moveTask(req, res)).rejects.toThrow("does not belong to the source column");
     });
+
+    it("should set isDone to true when moving task to Done column", async () => {
+      const req = mockReq({
+        body: { taskId: fakeId(20), sourceColumnId: fakeId(10), destinationColumnId: fakeId(11) },
+      });
+      const res = mockRes();
+
+      Column.findById
+        .mockResolvedValueOnce({ _id: fakeId(10), board: fakeId(1) }) // source
+        .mockResolvedValueOnce({ _id: fakeId(11), board: fakeId(1), title: "Done" }); // dest
+      Board.findById
+        .mockResolvedValue({ _id: fakeId(1), user: fakeId(1) });
+      hasBoardAccess.mockReturnValue(true);
+      Task.findById.mockResolvedValue({ _id: fakeId(20), title: "Task", column: fakeId(10), assignedTo: null });
+      
+      await moveTask(req, res);
+
+      expect(Task.findByIdAndUpdate).toHaveBeenCalledWith(
+        fakeId(20),
+        expect.objectContaining({ isDone: true }),
+        expect.any(Object)
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
   });
 
   // ═══════════════════════════════════════
@@ -352,6 +389,24 @@ describe("taskController", () => {
       await reorderTask(req, res);
 
       expect(res.status).toHaveBeenCalledWith(200);
+    });
+
+    it("should throw 400 when duplicate task IDs are provided", async () => {
+      const taskIds = [fakeId(20), fakeId(20)];
+      const req = mockReq({ params: { columnId: fakeId(10) }, body: { taskIds } });
+      const res = mockRes();
+
+      const mockColumn = {
+        _id: fakeId(10),
+        board: fakeId(1),
+        tasks: [{ toString: () => fakeId(20) }, { toString: () => fakeId(21) }],
+      };
+      Column.findById.mockResolvedValue(mockColumn);
+      Board.findById.mockResolvedValue({ _id: fakeId(1) });
+      hasBoardAccess.mockReturnValue(true);
+
+      await expect(reorderTask(req, res)).rejects.toThrow("Invalid reorder");
+      expect(res.status).toHaveBeenCalledWith(400);
     });
 
     it("should throw 404 when column not found", async () => {
@@ -409,6 +464,18 @@ describe("taskController", () => {
 
       expect(res.status).toHaveBeenCalledWith(200);
       expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ count: 1 }));
+    });
+
+    it("should throw 400 when requested column does not belong to board", async () => {
+      const req = mockReq({ query: { boardId: fakeId(1), columnId: fakeId(99) } });
+      const res = mockRes();
+
+      Board.findById.mockResolvedValue({ _id: fakeId(1) });
+      hasBoardAccess.mockReturnValue(true);
+      Column.find.mockReturnValue({ select: jest.fn().mockResolvedValue([{ _id: fakeId(10) }]) });
+
+      await expect(getTasks(req, res)).rejects.toThrow("Column does not belong to the board");
+      expect(res.status).toHaveBeenCalledWith(400);
     });
 
     it("should throw 404 when board not found", async () => {

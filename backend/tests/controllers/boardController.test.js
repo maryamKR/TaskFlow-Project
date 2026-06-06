@@ -222,7 +222,7 @@ describe("boardController", () => {
       Board.findById.mockResolvedValue({ _id: fakeId(1), columns: [] });
       hasBoardAccess.mockReturnValue(false);
 
-      await expect(reorderColumns(req, res)).rejects.toThrow("Not authorized to reorder columns");
+      await expect(reorderColumns(req, res)).rejects.toThrow("Not authorized to modify this board");
     });
 
     it("should throw 400 when column count mismatches", async () => {
@@ -231,7 +231,7 @@ describe("boardController", () => {
       Board.findById.mockResolvedValue({ _id: fakeId(1), columns: [fakeId(10), fakeId(11)] });
       hasBoardAccess.mockReturnValue(true);
 
-      await expect(reorderColumns(req, res)).rejects.toThrow("Column count mismatch");
+      await expect(reorderColumns(req, res)).rejects.toThrow("Mismatched column count");
     });
 
     it("should throw 400 when column IDs don't belong to the board", async () => {
@@ -246,7 +246,7 @@ describe("boardController", () => {
       });
       hasBoardAccess.mockReturnValue(true);
 
-      await expect(reorderColumns(req, res)).rejects.toThrow("do not belong to this board");
+      await expect(reorderColumns(req, res)).rejects.toThrow("Column IDs do not match the board's columns");
     });
   });
 });

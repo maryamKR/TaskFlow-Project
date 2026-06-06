@@ -9,9 +9,12 @@ const {
 } = require("../controllers/notificationController");
 const { protect } = require("../middleware/authMiddleware");
 const validate = require("../middleware/validate");
-const { notificationIdParamSchema } = require("../middleware/validators/notificationValidator");
+const { 
+  getNotificationsQuerySchema, 
+  notificationIdParamSchema 
+} = require("../middleware/validators/notificationValidator");
 
-router.get("/", protect, getNotifications);
+router.get("/", protect, validate(getNotificationsQuerySchema), getNotifications);
 router.patch("/read-all", protect, markAllAsRead);
 router.patch("/:id/read", protect, validate(notificationIdParamSchema), markAsRead);
 

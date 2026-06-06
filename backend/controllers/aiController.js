@@ -205,7 +205,15 @@ const autoPrioritize = async (req, res) => {
     const text = result.response.text().trim();
     const clean = text.replace(/```json|```/g, '').trim();
 
-    res.status(200).json({ priorities: JSON.parse(clean) });
+    let priorities = [];
+    try {
+      priorities = JSON.parse(clean);
+    } catch (parseError) {
+      console.warn("Failed to parse AI auto-prioritize response:", parseError.message);
+      return res.status(200).json({ priorities: [], error: "Failed to parse AI response" });
+    }
+
+    res.status(200).json({ priorities });
   } catch (err) {
     console.error("Auto-prioritize server error:", err.message);
     res.status(500).json({ error: err.message });

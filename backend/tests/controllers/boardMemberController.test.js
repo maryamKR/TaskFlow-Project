@@ -181,7 +181,7 @@ describe("boardMemberController", () => {
       Board.findById.mockResolvedValue({ _id: fakeId(5), user: ownerId, coworkers: [] });
       User.findOne.mockResolvedValue({ _id: ownerId });
 
-      await expect(inviteMember(req, res)).rejects.toThrow("cannot invite yourself");
+      await expect(inviteMember(req, res)).rejects.toThrow("You cannot invite yourself to your own board");
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
@@ -204,7 +204,7 @@ describe("boardMemberController", () => {
       Board.findById.mockResolvedValue(mockBoard);
       User.findOne.mockResolvedValue({ _id: memberId });
 
-      await expect(inviteMember(req, res)).rejects.toThrow("already a member");
+      await expect(inviteMember(req, res)).rejects.toThrow("User is already a member");
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
@@ -225,7 +225,7 @@ describe("boardMemberController", () => {
       });
       User.findOne.mockResolvedValue(null);
 
-      await expect(inviteMember(req, res)).rejects.toThrow("already invited");
+      await expect(inviteMember(req, res)).rejects.toThrow("User is already invited");
       expect(res.status).toHaveBeenCalledWith(400);
     });
   });
@@ -277,7 +277,7 @@ describe("boardMemberController", () => {
       const res = mockRes();
       Board.findById.mockResolvedValue({ _id: fakeId(1), user: fakeId(1) });
 
-      await expect(removeMember(req, res)).rejects.toThrow("Only the board owner");
+      await expect(removeMember(req, res)).rejects.toThrow("Only the board owner can remove members");
       expect(res.status).toHaveBeenCalledWith(403);
     });
 
@@ -290,7 +290,7 @@ describe("boardMemberController", () => {
       const res = mockRes();
       Board.findById.mockResolvedValue({ _id: fakeId(5), user: ownerId });
 
-      await expect(removeMember(req, res)).rejects.toThrow("cannot remove the board owner");
+      await expect(removeMember(req, res)).rejects.toThrow("You cannot remove the board owner");
       expect(res.status).toHaveBeenCalledWith(400);
     });
 
@@ -310,7 +310,7 @@ describe("boardMemberController", () => {
       mockBoard.coworkers.some = jest.fn().mockReturnValue(false);
       Board.findById.mockResolvedValue(mockBoard);
 
-      await expect(removeMember(req, res)).rejects.toThrow("not a member");
+      await expect(removeMember(req, res)).rejects.toThrow("This user is not a member of this board");
       expect(res.status).toHaveBeenCalledWith(400);
     });
   });

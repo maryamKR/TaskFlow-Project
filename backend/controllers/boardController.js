@@ -121,22 +121,27 @@ const reorderColumns = async (req, res) => {
 
   if (!hasBoardAccess(board, req.user._id)) {
     res.status(403);
-    throw new Error("Not authorized to reorder columns");
+    throw new Error("Not authorized to modify this board");
   }
 
   if (columnIds.length !== board.columns.length) {
     res.status(400);
-    throw new Error("Invalid reorder: Column count mismatch");
+    throw new Error("Mismatched column count");
   }
 
-  // Validate every incoming ID actually belongs to this board
+  // Validate every incoming ID actually belongs to this board and no duplicates
+  const ids = columnIds.map((id) => id.toString());
+  const uniqueIds = new Set(ids);
+  if (uniqueIds.size !== ids.length) {
+    res.status(400);
+    throw new Error("Duplicate column IDs detected");
+  }
+
   const boardColumnSet = new Set(board.columns.map((id) => id.toString()));
-  const allBelong = columnIds.every((id) => boardColumnSet.has(id));
+  const allBelong = ids.every((id) => boardColumnSet.has(id));
   if (!allBelong) {
     res.status(400);
-    throw new Error(
-      "Invalid reorder: One or more column IDs do not belong to this board",
-    );
+    throw new Error("Column IDs do not match the board's columns");
   }
 
   board.columns = columnIds;

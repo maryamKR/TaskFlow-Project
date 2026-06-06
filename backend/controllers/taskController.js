@@ -334,34 +334,26 @@ const updateTask = async (req, res) => {
 // @route   DELETE /api/tasks/:id
 // @access  Private
 const deleteTask = async (req, res) => {
-  const task = await Task.findById(req.params.id);
-  if (!task) {
-    res.status(404);
-    throw new Error("Task not found");
+  const { task, column, board } = await getTaskWithBoardAccess(
+    req.params.id,
+    req.user._id
+  );
+
+  const boardOwnerId = board?.user?._id
+    ? board.user._id.toString()
+    : board?.user?.toString();
+  const currentUserId = req.user._id.toString();
+
+  if (boardOwnerId !== currentUserId) {
+    res.status(403);
+    throw new Error(
+      "Only the board owner can delete tasks. Contact your board owner to delete this task."
+    );
   }
 
-  // Find the column containing this task
-  const column = await Column.findOne({ tasks: task._id });
-  let board = null;
-
-  if (column) {
-    board = await Board.findById(column.board);
-
-    const boardOwnerId = board?.user?._id
-      ? board.user._id.toString()
-      : board?.user?.toString();
-    const currentUserId = req.user._id.toString();
-
-    if (boardOwnerId !== currentUserId) {
-      res.status(403);
-      throw new Error(
-        "Only the board owner can delete tasks. Contact your board owner to delete this task.",
-      );
-    }
-
-    column.tasks.pull(task._id);
-    await column.save();
-  }
+  // Remove the task from the column
+  column.tasks.pull(task._id);
+  await column.save();
 
   // Cascade delete Comments and Notifications for this task
   await Comment.deleteMany({ task: task._id });
@@ -369,12 +361,10 @@ const deleteTask = async (req, res) => {
 
   await task.deleteOne();
 
-  if (board && column) {
-    getIO().to(board._id.toString()).emit("task_deleted", {
-      taskId: task._id.toString(),
-      columnId: column._id.toString(),
-    });
-  }
+  getIO().to(board._id.toString()).emit("task_deleted", {
+    taskId: task._id.toString(),
+    columnId: column._id.toString(),
+  });
 
   res.status(200).json({ success: true, message: "Task deleted successfully" });
 };
@@ -384,11 +374,6 @@ const deleteTask = async (req, res) => {
 // @access  Private
 const moveTask = async (req, res) => {
   const { taskId, sourceColumnId, destinationColumnId } = req.body;
-
-  if (!taskId || !sourceColumnId || !destinationColumnId) {
-    res.status(400);
-    throw new Error("Missing required fields");
-  }
 
   if (sourceColumnId === destinationColumnId) {
     return res.status(200).json({ success: true, message: "No move needed" });
@@ -418,6 +403,11 @@ const moveTask = async (req, res) => {
   if (!board || !hasBoardAccess(board, req.user._id)) {
     res.status(403);
     throw new Error("Not authorized to access the destination board");
+  }
+
+  if (sourceBoard._id.toString() !== board._id.toString()) {
+    res.status(400);
+    throw new Error("Tasks can only be moved within the same board");
   }
 
   // 3. Validate task existence and verify it belongs to the source column
@@ -523,12 +513,14 @@ const reorderTask = async (req, res) => {
     throw new Error("Not authorized to reorder this board");
   }
 
-  // Validate that all provided task IDs belong to this column
+  // Validate that all provided task IDs belong to this column and are unique
   const existingTaskIds = new Set(column.tasks.map((id) => id.toString()));
+  const hasDuplicates = new Set(taskIds).size !== taskIds.length;
   const allBelong =
     taskIds.length === column.tasks.length &&
     taskIds.every((id) => existingTaskIds.has(id));
-  if (!allBelong) {
+
+  if (hasDuplicates || !allBelong) {
     res.status(400);
     throw new Error(
       "Invalid reorder: Task IDs do not match this column's tasks",
@@ -586,7 +578,14 @@ const getTasks = async (req, res) => {
     query.$text = { $search: search };
   }
 
-  if (columnId) query.column = columnId;
+  if (columnId) {
+    const isColumnInBoard = columnIds.some(id => id.toString() === columnId);
+    if (!isColumnInBoard) {
+      res.status(400);
+      throw new Error("Column does not belong to the board");
+    }
+    query.column = columnId;
+  }
   if (assignedTo) query.assignedTo = assignedTo;
   if (priority) query.priority = priority;
 

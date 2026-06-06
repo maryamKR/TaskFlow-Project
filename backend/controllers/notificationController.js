@@ -4,8 +4,9 @@ const Notification = require("../models/Notification");
 // @route   GET /api/notifications
 // @access  Private
 exports.getNotifications = async (req, res) => {
-  const page = parseInt(req.query.page, 10) || 1;
-  const limit = parseInt(req.query.limit, 10) || 30;
+  const page = req.query.page || 1;
+  const limit = req.query.limit || 30;
+
   const startIndex = (page - 1) * limit;
 
   const total = await Notification.countDocuments({ user: req.user._id });

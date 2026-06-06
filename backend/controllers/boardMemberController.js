@@ -14,7 +14,7 @@ const {
 // @route   GET /api/boards/:boardId/members
 exports.getBoardMembers = async (req, res) => {
   const board = await Board.findById(req.params.boardId)
-    .populate("coworkers", "username email isOnline") // Added isOnline to reflect active indicators
+    .populate("coworkers", "username email isOnline")
     .populate("user", "username email isOnline");
 
   if (!board) {
@@ -37,6 +37,8 @@ exports.inviteMember = async (req, res) => {
   const { email } = req.body;
   const { boardId } = req.params;
 
+  const cleanEmail = email.trim().toLowerCase();
+
   const board = await Board.findById(boardId);
   if (!board) {
     res.status(404);
@@ -48,24 +50,20 @@ exports.inviteMember = async (req, res) => {
     throw new Error("Only the board owner can invite members");
   }
 
-  const userToInvite = await User.findOne({ email });
+  const userToInvite = await User.findOne({ email: cleanEmail });
   if (!userToInvite) {
-    const cleanEmail = email.trim().toLowerCase();
+    if (!board.pendingInvites) {
+      board.pendingInvites = [];
+    }
 
-    // Check if user is already invited
-    if (board.pendingInvites && board.pendingInvites.includes(cleanEmail)) {
+    if (board.pendingInvites.includes(cleanEmail)) {
       res.status(400);
       throw new Error("User is already invited");
     }
 
-    // Add to pendingInvites
-    if (!board.pendingInvites) {
-      board.pendingInvites = [];
-    }
-    board.pendingInvites.addToSet(cleanEmail);
+    board.pendingInvites.push(cleanEmail);
     await board.save();
 
-    // Send invite to register
     await sendUnregisteredInviteEmail(
       cleanEmail,
       board.title,
@@ -118,7 +116,6 @@ exports.inviteMember = async (req, res) => {
   try {
     await sendInviteEmail(userToInvite.email, board.title, req.user.username);
   } catch (emailErr) {
-    // Log error but don't fail the request if out-of-app notification delivery struggles
     console.error("Failed to send invitation email:", emailErr.message);
   }
 
