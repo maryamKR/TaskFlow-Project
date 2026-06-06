@@ -14,8 +14,16 @@ const { notifyOwner } = require("../utils/notifyOwner");
 // @route   POST /api/tasks
 // @access  Private
 const createTask = async (req, res) => {
-  const { title, columnId, description, priority, dueDate, startDate, assignedTo, label } =
-    req.body;
+  const {
+    title,
+    columnId,
+    description,
+    priority,
+    dueDate,
+    startDate,
+    assignedTo,
+    label,
+  } = req.body;
 
   // 1. Ensure the column exists
   const column = await Column.findById(columnId);
@@ -122,7 +130,7 @@ const getTask = async (req, res) => {
     { path: "assignedTo", select: "username" },
     { path: "createdBy", select: "username" },
     { path: "comments" },
-    { path: "activityLog.performedBy", select: "username" }
+    { path: "activityLog.performedBy", select: "username" },
   ]);
 
   res.status(200).json({ success: true, data: task });
@@ -132,11 +140,16 @@ const getTask = async (req, res) => {
 // @route   PUT /api/tasks/:id
 // @access  Private
 const updateTask = async (req, res) => {
-  const { task, board } = await getTaskWithBoardAccess(req.params.id, req.user._id);
+  const { task, board } = await getTaskWithBoardAccess(
+    req.params.id,
+    req.user._id,
+  );
 
   const changes = [];
   if (req.body.title !== undefined && req.body.title !== task.title) {
-    changes.push(` : changed title from "${task.title}" to "${req.body.title}"`);
+    changes.push(
+      ` : changed title from "${task.title}" to "${req.body.title}"`,
+    );
     task.title = req.body.title;
   }
   if (
@@ -158,7 +171,9 @@ const updateTask = async (req, res) => {
       ? new Date(req.body.dueDate).getTime()
       : null;
     if (oldTime !== newTime) {
-      const formattedDate = newTime ? new Date(newTime).toLocaleDateString() : "None";
+      const formattedDate = newTime
+        ? new Date(newTime).toLocaleDateString()
+        : "None";
       changes.push(` : updated the Due date to  ${formattedDate}`);
       task.dueDate = req.body.dueDate;
 
@@ -175,14 +190,18 @@ const updateTask = async (req, res) => {
       ? new Date(req.body.startDate).getTime()
       : null;
     if (oldTime !== newTime) {
-      const formattedDate = newTime ? new Date(newTime).toLocaleDateString() : "None";
+      const formattedDate = newTime
+        ? new Date(newTime).toLocaleDateString()
+        : "None";
       changes.push(` : updated the Start date to ${formattedDate}`);
       task.startDate = req.body.startDate;
     }
   }
 
   if (req.body.label !== undefined && req.body.label !== task.label) {
-    changes.push(` : changed Label from "${task.label || 'None'}" to "${req.body.label || 'None'}"`);
+    changes.push(
+      ` : changed Label from "${task.label || "None"}" to "${req.body.label || "None"}"`,
+    );
     task.label = req.body.label;
   }
 
@@ -202,18 +221,24 @@ const updateTask = async (req, res) => {
         if (task.assignedTo.username) {
           oldUsername = task.assignedTo.username;
         } else {
-          const oldUser = await User.findById(task.assignedTo).select("username");
+          const oldUser = await User.findById(task.assignedTo).select(
+            "username",
+          );
           if (oldUser) oldUsername = oldUser.username;
         }
       }
 
       let newUsername = "None";
       if (req.body.assignedTo) {
-        const newUser = await User.findById(req.body.assignedTo).select("username");
+        const newUser = await User.findById(req.body.assignedTo).select(
+          "username",
+        );
         if (newUser) newUsername = newUser.username;
       }
 
-      changes.push(` : changed Assignee from "${oldUsername}" to "${newUsername}"`);
+      changes.push(
+        ` : changed Assignee from "${oldUsername}" to "${newUsername}"`,
+      );
       task.assignedTo = req.body.assignedTo || null;
     }
   }
@@ -232,12 +257,19 @@ const updateTask = async (req, res) => {
   }
 
   await task.save();
-  await task.populate("assignedTo", "username");
+  await task.populate([
+    { path: "assignedTo", select: "username" },
+    { path: "createdBy", select: "username" },
+  ]);
 
   const newAssignee = task.assignedTo;
 
-  const hasAssigneeChanged = changes.some((c) => c.includes("changed Assignee"));
-  const hasDetailsChanged = changes.some((c) => !c.includes("changed Assignee"));
+  const hasAssigneeChanged = changes.some((c) =>
+    c.includes("changed Assignee"),
+  );
+  const hasDetailsChanged = changes.some(
+    (c) => !c.includes("changed Assignee"),
+  );
 
   const isAssigneeChanged =
     hasAssigneeChanged &&
@@ -429,7 +461,10 @@ const moveTask = async (req, res) => {
   // Notify assignee if not the actor
   const notificationType = isDone ? "TASK_MOVED_DONE" : "TASK_UPDATED";
   let assigneeNotified = false;
-  if (task.assignedTo && task.assignedTo.toString() !== req.user._id.toString()) {
+  if (
+    task.assignedTo &&
+    task.assignedTo.toString() !== req.user._id.toString()
+  ) {
     await notifyAndEmit({
       recipientId: task.assignedTo,
       senderId: req.user._id,
