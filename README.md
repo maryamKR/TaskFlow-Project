@@ -7,6 +7,7 @@ A real-time collaborative Kanban project management application built on the MER
 ## Features
 
 - **Kanban Boards** — Drag-and-drop task management across customisable columns
+- **Task List View** — Alternative tabular layout for bulk task management
 - **Real-time Collaboration** — Live updates via Socket.IO; see teammates' changes instantly
 - **Team Management** — Invite collaborators by email; pending invitations auto-resolve on signup
 - **Task Tracking** — Priority levels, labels, due dates, assignees, and activity logs
@@ -106,7 +107,7 @@ cd backend
 npm test
 ```
 
-The test suite includes **255 unit and integration tests** covering all controllers, middleware, validators, utilities, and end-to-end HTTP flows. All tests run sequentially (`--runInBand`) to respect MongoDB Atlas connection limits.
+The test suite includes **259 unit and integration tests** covering all controllers, middleware, validators, utilities, and end-to-end HTTP flows. All tests run sequentially (`--runInBand`) to respect MongoDB Atlas connection limits.
 
 ---
 
@@ -137,7 +138,6 @@ TaskFlow-Project/
 │   ├── pages/                # Route-level page components
 │   ├── services/             # Axios API service functions
 │   └── socket.js             # Socket.IO client setup
-└── userflow.md               # Full end-to-end user flow documentation
 ```
 
 ---
@@ -165,7 +165,7 @@ See [`backend/docs/API.md`](./backend/docs/API.md) for the complete endpoint ref
 
 | Document | Contents |
 |---|---|
-| [`userflow.md`](./userflow.md) | End-to-end user flows with API, socket events, and security summary |
+| [`backend/docs/userflow.md`](./backend/docs/userflow.md) | End-to-end user flows with API, socket events, and security summary |
 | [`backend/docs/API.md`](./backend/docs/API.md) | Full REST API reference |
 | [`backend/docs/architecture.md`](./backend/docs/architecture.md) | System design, security layers, real-time architecture |
 | [`backend/docs/documentation.md`](./backend/docs/documentation.md) | Detailed controller, middleware, and utility reference |
