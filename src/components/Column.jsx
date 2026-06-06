@@ -92,18 +92,38 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
             )}
           </div>
 
-          {task.dueDate && (
-            <div className="flex items-center gap-2 mt-1 ml-6">
-              {dueDateStatus === 'overdue' ? (
-                <span className="text-xs text-red-400 font-medium cursor-help" title={`Original due date: ${new Date(task.dueDate).toLocaleDateString()}`}>
-                  Overdue · {new Date(task.dueDate).toLocaleDateString()}
-                </span>
-              ) : (
-                <span className={`text-xs ${dueDateStatus === 'soon' ? 'text-orange-400 font-medium' : isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-                  {new Date(task.dueDate).toLocaleDateString()}
-                </span>
-              )}
-            </div>
+          {(task.startDate || task.dueDate) && (
+              <div className="flex items-center gap-2 mt-1 ml-6">
+                  {/* Calendar icon */}
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  </svg>
+
+                  {dueDateStatus === 'overdue' ? (
+                      <span
+                          className="text-xs text-red-400 font-medium cursor-help"
+                          title={`Original due date: ${new Date(task.dueDate).toLocaleDateString()}`}
+                      >
+                          {task.startDate && (
+                              `${new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – `
+                          )}
+                          {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })} · Overdue
+                      </span>
+                  ) : (
+                      <span className={`text-xs ${
+                          dueDateStatus === 'soon' 
+                              ? 'text-orange-400 font-medium' 
+                              : isDark ? 'text-gray-500' : 'text-gray-400'
+                      }`}>
+                          {task.startDate && task.dueDate
+                              ? `${new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} – ${new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`
+                              : task.startDate
+                              ? new Date(task.startDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                              : new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+                          }
+                      </span>
+                  )}
+              </div>
           )}
 
           <div className="flex items-center justify-between mt-2 ml-6">
