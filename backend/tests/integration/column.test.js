@@ -54,6 +54,19 @@ describe("Column Integration Tests", () => {
       const updatedBoard = await Board.findById(board._id);
       expect(updatedBoard.columns.map((id) => id.toString())).toContain(columnId);
     });
+
+    it("should return 400 when attempting to create a column with a reserved default name", async () => {
+      const response = await request(app)
+        .post("/api/columns")
+        .set("Authorization", `Bearer ${userToken}`)
+        .send({
+          title: "To Do",
+          boardId: board._id.toString(),
+        })
+        .expect(400);
+
+      expect(response.body.error).toMatch(/reserved as a default column name/i);
+    });
   });
 
   // ─── Get Columns By Board ───

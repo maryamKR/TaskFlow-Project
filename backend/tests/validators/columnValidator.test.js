@@ -9,16 +9,26 @@ describe("Column Validators", () => {
   describe("createColumnSchema", () => {
     it("should pass with valid title and boardId", async () => {
       const result = await createColumnSchema.parseAsync({
-        body: { title: "To Do", boardId: fakeId(1) },
+        body: { title: "Backlog", boardId: fakeId(1) },
       });
-      expect(result.body.title).toBe("To Do");
+      expect(result.body.title).toBe("Backlog");
     });
 
     it("should trim whitespace from title", async () => {
       const result = await createColumnSchema.parseAsync({
-        body: { title: "  In Progress  ", boardId: fakeId(1) },
+        body: { title: "  On Hold  ", boardId: fakeId(1) },
       });
-      expect(result.body.title).toBe("In Progress");
+      expect(result.body.title).toBe("On Hold");
+    });
+
+    it("should reject reserved default column names", async () => {
+      await expect(createColumnSchema.parseAsync({
+        body: { title: "To Do", boardId: fakeId(1) },
+      })).rejects.toThrow(/reserved/i);
+
+      await expect(createColumnSchema.parseAsync({
+        body: { title: "done", boardId: fakeId(1) },
+      })).rejects.toThrow(/reserved/i);
     });
 
     it("should reject when title is missing", async () => {
