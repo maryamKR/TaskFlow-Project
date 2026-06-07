@@ -158,9 +158,6 @@ Creates a new Column and appends its `_id` to `board.columns[]`. Emits `column_a
 #### `getColumnsByBoard(req, res)`
 Returns all columns for a board, populated with their tasks (including `assignedTo.username`).
 
-#### `updateColumn(req, res)`
-Updates only `title` and/or `position` on a column. Explicitly destructures these fields to prevent mass-assignment of unauthorized fields. Emits `column_updated`.
-
 #### `deleteColumn(req, res)`
 Cascade-deletes the column and all its tasks (including task Comments and Notifications). Removes the column reference from `board.columns[]`. Emits `column_deleted`.
 

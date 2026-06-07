@@ -387,27 +387,6 @@ Returns all columns for a board with their tasks populated.
 
 ---
 
-### Update Column
-```
-PUT /columns/:id
-```
-Updates a column's title and/or position.
-
-**Body:**
-```json
-{
-  "title": "Updated Title",
-  "position": 2
-}
-```
-
-**Response `200`:**
-```json
-{ "success": true, "data": { ... } }
-```
-
----
-
 ### Delete Column
 ```
 DELETE /columns/:id

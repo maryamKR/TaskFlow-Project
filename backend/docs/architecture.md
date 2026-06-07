@@ -236,7 +236,6 @@ Socket.IO uses two room namespaces to prevent cross-tenant data leakage:
 | `new_notification` | Server → User Room | `{ notification }` | Any notification event |
 | `columns_reordered` | Server → Board Room | `{ columnIds }` | reorderColumns |
 | `column_added` | Server → Board Room | `{ column }` | createColumn |
-| `column_updated` | Server → Board Room | `{ column }` | updateColumn |
 | `column_deleted` | Server → Board Room | `{ columnId }` | deleteColumn |
 | `task_created` | Server → Board Room | `{ columnId, task, createdBy }` | createTask |
 | `task_updated` | Server → Board Room | `{ taskId, updatedTask }` | updateTask |

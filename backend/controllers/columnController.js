@@ -29,16 +29,15 @@ const createColumn = async (req, res) => {
     title,
     board: boardId,
   });
-
-  // Add column reference to the Board
+ // Add column reference to the Board
   board.columns.push(column._id);
   await board.save();
 
   await notifyOwner(
-    board,
-    req.user._id,
-    `${req.user.username} added column "${title}" to your board`,
-    "OWNER_ALERT",
+    board, 
+    req.user._id, 
+    `${req.user.username} added column "${title}" to your board`, 
+    "OWNER_ALERT", 
     column._id
   );
 
@@ -63,57 +62,6 @@ const getColumnsByBoard = async (req, res) => {
 
   const columns = await Column.find({ board: req.params.boardId }).sort({ position: 1 });
   res.status(200).json({ success: true, data: columns });
-};
-
-// @desc    Update a column
-// @route   PUT /api/columns/:id
-// @access  Private
-const updateColumn = async (req, res) => {
-  const column = await Column.findById(req.params.id);
-
-  if (!column) {
-    res.status(404);
-    throw new Error("Column not found");
-  }
-
-  const board = await Board.findById(column.board);
-  if (!board || !hasBoardAccess(board, req.user._id)) {
-    res.status(403);
-    throw new Error("Not authorized to update this column");
-  }
-
-  const { title, position } = req.body;
-  const updateData = {};
-  if (title !== undefined) updateData.title = title;
-  if (position !== undefined) updateData.position = position;
-
-  const updatedColumn = await Column.findByIdAndUpdate(
-    req.params.id,
-    updateData,
-    { returnDocument: 'after', runValidators: true }
-  );
-
-  if (updateData.title) {
-    await notifyOwner(
-      board,
-      req.user._id,
-      `${req.user.username} renamed a column to "${updatedColumn.title}" on your board`,
-      "OWNER_ALERT",
-      updatedColumn._id
-    );
-  } else if (updateData.position !== undefined) {
-    await notifyOwner(
-      board,
-      req.user._id,
-      `${req.user.username} changed the position of column "${updatedColumn.title}" on your board`,
-      "OWNER_ALERT",
-      updatedColumn._id
-    );
-  }
-
-  getIO().to(board._id.toString()).emit("column_updated", { column: updatedColumn });
-
-  res.status(200).json({ success: true, data: updatedColumn });
 };
 
 // @desc    Delete a column
@@ -148,4 +96,4 @@ const deleteColumn = async (req, res) => {
   res.status(200).json({ success: true, message: "Column and associated tasks removed" });
 };
 
-module.exports = { createColumn, getColumnsByBoard, updateColumn, deleteColumn };
+module.exports = { createColumn, getColumnsByBoard, deleteColumn };
