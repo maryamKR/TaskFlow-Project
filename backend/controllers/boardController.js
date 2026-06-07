@@ -11,17 +11,22 @@ const { getIO } = require("../socket");
 const createBoard = async (req, res) => {
   const { title, coworkers } = req.body;
 
-  const board = await Board.create({
+  // Create board instance in memory to get _id for columns without saving yet
+  const board = new Board({
     title,
     user: req.user._id,
     coworkers: coworkers || [],
   });
 
-  const DEFAULT_COLUMNS = ["To Do", "In Progress", "Review", "Done"];
-  const columnData = DEFAULT_COLUMNS.map((title, index) => ({
-    title,
+  // Prepare default system columns
+  const columnData = [
+    { title: "To Do", type: "todo", position: 0 },
+    { title: "In Progress", type: "in-progress", position: 1 },
+    { title: "Review", type: "review", position: 2 },
+    { title: "Done", type: "done", position: 3 },
+  ].map((col) => ({
+    ...col,
     board: board._id,
-    position: index,
   }));
 
   const createdColumns = await Column.insertMany(columnData);
@@ -29,7 +34,7 @@ const createBoard = async (req, res) => {
   board.columns = createdColumns.map((col) => col._id);
   await board.save();
 
-  const populatedBoard = await Board.findById(board._id).populate("columns");
+  const populatedBoard = await board.populate("columns");
   res.status(201).json({ success: true, data: populatedBoard });
 };
 

@@ -33,10 +33,10 @@ const createTask = async (req, res) => {
   }
 
   // Guard block against creating directly in Done column
-  if (/^done$/i.test(column.title.trim())) {
-    res.status(400);
-    throw new Error("Tasks cannot be created directly in the Done column.");
-  }
+  if (column.type === 'done') {
+  res.status(400);
+  throw new Error("Tasks cannot be created directly in the Done column.");
+}
 
   // 2. Ensure the board exists and check access
   const board = await Board.findById(column.board);
@@ -431,7 +431,7 @@ const moveTask = async (req, res) => {
   });
 
   // Update target column pointer state, isDone evaluation, and state logs
-  const isDone = /^done$/i.test(destColumn.title.trim());
+  const isDone = destColumn.type === 'done';
 
   await Task.findByIdAndUpdate(
     taskId,

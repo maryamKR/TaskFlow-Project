@@ -1,6 +1,5 @@
 const {
   createColumnSchema,
-  updateColumnSchema,
   getColumnsSchema,
   columnIdParamSchema,
 } = require("../../middleware/validators/columnValidator");
@@ -32,22 +31,6 @@ describe("Column Validators", () => {
 
     it("should reject when boardId has invalid format", async () => {
       await expect(createColumnSchema.parseAsync({ body: { title: "Col", boardId: "bad" } })).rejects.toThrow(/Invalid Board ID/i);
-    });
-  });
-
-  describe("updateColumnSchema", () => {
-    it("should pass with valid title and id param", async () => {
-      const result = await updateColumnSchema.parseAsync({ body: { title: "Updated" }, params: { id: fakeId(1) } });
-      expect(result.body.title).toBe("Updated");
-    });
-
-    it("should pass with position update", async () => {
-      const result = await updateColumnSchema.parseAsync({ body: { position: 2 }, params: { id: fakeId(1) } });
-      expect(result.body.position).toBe(2);
-    });
-
-    it("should reject invalid column ID param", async () => {
-      await expect(updateColumnSchema.parseAsync({ body: {}, params: { id: "bad" } })).rejects.toThrow(/Invalid Column ID/i);
     });
   });
 

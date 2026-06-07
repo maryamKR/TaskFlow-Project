@@ -1,4 +1,4 @@
-const { createColumn, getColumnsByBoard, updateColumn, deleteColumn } = require("../../controllers/columnController");
+const { createColumn, getColumnsByBoard, deleteColumn } = require("../../controllers/columnController");
 const Column = require("../../models/Column");
 const Board = require("../../models/Board");
 const Task = require("../../models/Task");
@@ -107,47 +107,6 @@ describe("columnController", () => {
       hasBoardAccess.mockReturnValue(false);
 
       await expect(getColumnsByBoard(req, res)).rejects.toThrow("Not authorized");
-    });
-  });
-
-  // ═══════════════════════════════════════
-  // updateColumn
-  // ═══════════════════════════════════════
-  describe("updateColumn", () => {
-    it("should update column title", async () => {
-      const req = mockReq({ params: { id: fakeId(10) }, body: { title: "Renamed" } });
-      const res = mockRes();
-
-      Column.findById.mockResolvedValue({ _id: fakeId(10), board: fakeId(1) });
-      Board.findById.mockResolvedValue({ _id: fakeId(1) });
-      hasBoardAccess.mockReturnValue(true);
-
-      const updatedCol = { _id: fakeId(10), title: "Renamed" };
-      Column.findByIdAndUpdate.mockResolvedValue(updatedCol);
-
-      await updateColumn(req, res);
-
-      expect(Column.findByIdAndUpdate).toHaveBeenCalled();
-      expect(res.status).toHaveBeenCalledWith(200);
-    });
-
-    it("should throw 404 when column not found", async () => {
-      const req = mockReq({ params: { id: fakeId(10) }, body: { title: "X" } });
-      const res = mockRes();
-      Column.findById.mockResolvedValue(null);
-
-      await expect(updateColumn(req, res)).rejects.toThrow("Column not found");
-      expect(res.status).toHaveBeenCalledWith(404);
-    });
-
-    it("should throw 403 when user has no access", async () => {
-      const req = mockReq({ params: { id: fakeId(10) }, body: { title: "X" } });
-      const res = mockRes();
-      Column.findById.mockResolvedValue({ _id: fakeId(10), board: fakeId(1) });
-      Board.findById.mockResolvedValue(null);
-
-      await expect(updateColumn(req, res)).rejects.toThrow("Not authorized");
-      expect(res.status).toHaveBeenCalledWith(403);
     });
   });
 

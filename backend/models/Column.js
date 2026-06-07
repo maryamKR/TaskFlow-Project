@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-
+ 
 const columnSchema = new mongoose.Schema(
   {
     title: {
@@ -23,9 +23,29 @@ const columnSchema = new mongoose.Schema(
       type: mongoose.Schema.Types.ObjectId,
       ref : "Task"
     }
-  ]
+  ],
+  type: {
+  type: String,
+  enum: ['todo', 'in-progress', 'review', 'done'],
+  default: 'todo'
+}
   },
   { timestamps: true }
 );
+
+columnSchema.pre('save', function() {
+  const titleLower = this.title.toLowerCase();
+  
+  const typeMap = {
+    'done': 'done',
+    'review': 'review',
+    'in progress': 'in-progress',
+    'to do': 'todo'
+  };
+
+  if (typeMap[titleLower]) {
+    this.type = typeMap[titleLower];
+  }
+});
 
 module.exports = mongoose.model("Column", columnSchema);
