@@ -6,7 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
+    "build" : "echo \"build complete\"",
     "test": "jest --runInBand --detectOpenHandles"
+
+
   },
   "keywords": [],
   "author": "",
