@@ -1,4 +1,12 @@
 const mongoose = require("mongoose");
+const dns = require("dns");
+
+// Node's resolver is pointed at a local DNS proxy (127.0.0.1) that refuses
+// SRV queries (ECONNREFUSED), even though the OS resolver works fine. Point
+// Node at a public resolver so `mongodb+srv://` SRV lookups can succeed.
+if (dns.getServers().some((server) => server === "127.0.0.1")) {
+  dns.setServers(["8.8.8.8", "1.1.1.1"]);
+}
 
 // Disable command buffering — queries fail immediately instead of hanging
 // when the DB connection is unavailable, rather than timing out after 10s
