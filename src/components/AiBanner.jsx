@@ -82,23 +82,24 @@ function AiBanner({ boardId, columns, onPrioritiesUpdated }) {
   };
 
   return (
-    <div className="bg-gradient-to-r from-pink-900 to-indigo-900 rounded-xl p-4 my-3 text-white shadow-md flex items-center justify-between border border-pink-500/30">
-      <div className="flex items-center gap-3">
-        <div className="bg-pink-600/30 p-2 rounded-lg border border-pink-400/20 animate-pulse">
+  <div className="bg-gradient-to-r from-pink-900 to-indigo-900 rounded-xl p-3 md:p-4 my-3 text-white shadow-md border border-pink-500/30">
+    <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-2">
+      <div className="flex items-start gap-2">
+        <div className="bg-pink-600/30 p-1.5 md:p-2 rounded-lg border border-pink-400/20 animate-pulse flex-shrink-0">
           ✨
         </div>
-        <div>
+        <div className="flex-1 min-w-0">
           <h4 className="text-xs uppercase font-semibold tracking-wider text-pink-300">
             TaskFlow AI Engine
           </h4>
-          <p className="text-sm text-gray-200 font-medium mt-0.5">
+          <p className="text-xs md:text-sm text-gray-200 font-medium mt-0.5 leading-relaxed">
             {loading ? (
               <span className="opacity-60 flex items-center gap-2">
-                <svg className="animate-spin h-4 w-4 text-white" fill="none" viewBox="0 0 24 24">
+                <svg className="animate-spin h-3 w-3 md:h-4 md:w-4 text-white flex-shrink-0" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                 </svg>
-                Analyzing board changes...
+                Analyzing board...
               </span>
             ) : (
               insight || "No immediate risks detected. Your board structure looks solid!"
@@ -110,7 +111,7 @@ function AiBanner({ boardId, columns, onPrioritiesUpdated }) {
       <button
         onClick={handleBulkPrioritize}
         disabled={updating || loading}
-        className="bg-white/10 hover:bg-white/20 active:bg-white/30 text-white border border-white/20 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center gap-1.5"
+        className="w-full md:w-auto md:flex-shrink-0 bg-white/10 hover:bg-white/20 active:bg-white/30 text-white border border-white/20 px-4 py-2 rounded-lg text-xs font-semibold tracking-wide transition duration-150 disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-1.5"
       >
         {updating ? (
           <>
@@ -121,11 +122,12 @@ function AiBanner({ boardId, columns, onPrioritiesUpdated }) {
             Re-calculating...
           </>
         ) : (
-          <> Auto-Prioritize Board</>
+          <>Auto-Prioritize Board</>
         )}
       </button>
     </div>
-  );
+  </div>
+);
 }
 
 export default AiBanner;

@@ -1,4 +1,4 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import socket from '../socket';
 import {
   DndContext, closestCenter, PointerSensor, useSensor, useSensors,
@@ -18,6 +18,7 @@ import {
   moveTask, reorderColumns, reorderTasks
 } from '../services/board';
 import AiBanner from '../components/AiBanner';
+
 const normalizeTasks = (cols) =>
   cols.map(col => ({
     ...col,
@@ -40,6 +41,7 @@ function SortableColumnWrapper({ column, children }) {
     </div>
   );
 }
+
 function BoardPage() {
   const { isDark } = useTheme();
   const [boards, setBoards] = useState([]);
@@ -60,6 +62,7 @@ function BoardPage() {
     label: ''
   });
   const [dragSourceColId, setDragSourceColId] = useState(null);
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
 
   const sensors = useSensors(useSensor(PointerSensor, {
     activationConstraint: { distance: 8 },
@@ -83,145 +86,72 @@ function BoardPage() {
       socket.connect();
       socket.emit("join_user", currentUserId);
     }
-
     socket.on("board_invite_accepted", ({ board }) => {
       setBoards(prev => {
         if (prev.some(b => b._id === board._id)) return prev;
         return [...prev, board];
       });
     });
-
-    return () => {
-      socket.off("board_invite_accepted");
-    };
+    return () => { socket.off("board_invite_accepted"); };
   }, []);
 
   useEffect(() => {
     if (!activeBoard) return;
-
     socket.emit("join_board", { boardId: activeBoard._id, userId: currentUserId });
-
     socket.on("task_moved", ({ taskId, sourceColumnId, destinationColumnId }) => {
       setColumns(prev => {
-        const task = prev
-          .find(col => col._id === sourceColumnId)
-          ?.tasks.find(t => t._id === taskId || t.id === taskId);
+        const task = prev.find(col => col._id === sourceColumnId)?.tasks.find(t => t._id === taskId || t.id === taskId);
         if (!task) return prev;
-
-        // Check if destination is Done column
         const destCol = prev.find(col => col._id === destinationColumnId);
         const isDone = destCol?.title?.toLowerCase() === 'done';
-
         return prev.map(col => {
-          if (col._id === sourceColumnId)
-            return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
-          if (col._id === destinationColumnId)
-            return { ...col, tasks: [...col.tasks, { ...task, isDone }] };
+          if (col._id === sourceColumnId) return { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) };
+          if (col._id === destinationColumnId) return { ...col, tasks: [...col.tasks, { ...task, isDone }] };
           return col;
         });
       });
     });
-
     socket.on("columns_reordered", ({ columnIds }) => {
       setColumns(prev => {
-        const reordered = columnIds
-          .map(id => prev.find(col => col._id === id))
-          .filter(Boolean);
+        const reordered = columnIds.map(id => prev.find(col => col._id === id)).filter(Boolean);
         return reordered.length === prev.length ? reordered : prev;
       });
     });
-
-    socket.on("column_added", ({ column }) => {
-      setColumns(prev => [...prev, { ...column, tasks: [] }]);
-    });
-
-    socket.on("column_deleted", ({ columnId }) => {
-      setColumns(prev => prev.filter(col => col._id !== columnId));
-    });
-
+    socket.on("column_added", ({ column }) => { setColumns(prev => [...prev, { ...column, tasks: [] }]); });
+    socket.on("column_deleted", ({ columnId }) => { setColumns(prev => prev.filter(col => col._id !== columnId)); });
     socket.on("tasks_reordered", ({ columnId, taskIds }) => {
       setColumns(prev => prev.map(col => {
         if (col._id !== columnId) return col;
-        const reordered = taskIds
-          .map(id => col.tasks.find(t => t._id === id || t.id === id))
-          .filter(Boolean);
+        const reordered = taskIds.map(id => col.tasks.find(t => t._id === id || t.id === id)).filter(Boolean);
         return { ...col, tasks: reordered };
       }));
     });
-
     socket.on("task_created", ({ columnId, task, createdBy }) => {
       if (createdBy === currentUserId) return;
-      setColumns(prev => prev.map(col =>
-        col._id === columnId
-          ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] }
-          : col
-      ));
+      setColumns(prev => prev.map(col => col._id === columnId ? { ...col, tasks: [...col.tasks, { ...task, id: task._id }] } : col));
     });
-
     socket.on("task_updated", ({ taskId, updatedTask }) => {
-      setColumns(prev => prev.map(col => ({
-        ...col,
-        tasks: col.tasks.map(t =>
-          t._id === taskId ? { ...t, ...updatedTask, id: taskId } : t
-        )
-      })));
+      setColumns(prev => prev.map(col => ({ ...col, tasks: col.tasks.map(t => t._id === taskId ? { ...t, ...updatedTask, id: taskId } : t) })));
     });
-
     socket.on("task_deleted", ({ taskId, columnId }) => {
-      setColumns(prev => prev.map(col =>
-        col._id === columnId
-          ? { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) }
-          : col
-      ));
+      setColumns(prev => prev.map(col => col._id === columnId ? { ...col, tasks: col.tasks.filter(t => t._id !== taskId && t.id !== taskId) } : col));
     });
-
-    socket.on("member_online", ({ userId }) => {
-      setMembers(prev => prev.map(m =>
-        m._id === userId ? { ...m, isOnline: true } : m
-      ));
-    });
-
-    socket.on("member_offline", ({ userId }) => {
-      setMembers(prev => prev.map(m =>
-        m._id === userId ? { ...m, isOnline: false } : m
-      ));
-    });
-
+    socket.on("member_online", ({ userId }) => { setMembers(prev => prev.map(m => m._id === userId ? { ...m, isOnline: true } : m)); });
+    socket.on("member_offline", ({ userId }) => { setMembers(prev => prev.map(m => m._id === userId ? { ...m, isOnline: false } : m)); });
     socket.on("comment_added", ({ taskId }) => {
-      setColumns(prev => prev.map(col => ({
-        ...col,
-        tasks: col.tasks.map(t =>
-          t._id === taskId
-            ? { ...t, comments: [...(t.comments || []), 'placeholder'] }
-            : t
-        )
-      })));
+      setColumns(prev => prev.map(col => ({ ...col, tasks: col.tasks.map(t => t._id === taskId ? { ...t, comments: [...(t.comments || []), 'placeholder'] } : t) })));
     });
-
     socket.on("member_joined", ({ boardId, member }) => {
       if (boardId === activeBoard?._id) {
-        setMembers(prev => {
-          // avoid duplicates
-          if (prev.some(m => m._id === member._id)) return prev;
-          return [...prev, member];
-        });
+        setMembers(prev => { if (prev.some(m => m._id === member._id)) return prev; return [...prev, member]; });
       }
     });
-
     return () => {
       socket.emit("leave_board", activeBoard._id);
-      socket.off("task_moved");
-      socket.off("columns_reordered");
-      socket.off("column_added");
-      socket.off("column_deleted");
-      socket.off("tasks_reordered");
-      socket.off("task_created");
-      socket.off("task_updated");
-      socket.off("task_deleted");
-      socket.off("member_online");
-      socket.off("member_offline");
-      socket.off("new_notification");
-      socket.off("comment_added");
+      socket.off("task_moved"); socket.off("columns_reordered"); socket.off("column_added");
+      socket.off("column_deleted"); socket.off("tasks_reordered"); socket.off("task_created");
+      socket.off("task_updated"); socket.off("task_deleted"); socket.off("member_online");
+      socket.off("member_offline"); socket.off("new_notification"); socket.off("comment_added");
       socket.off("member_joined");
     };
   }, [activeBoard?._id]);
@@ -234,16 +164,10 @@ function BoardPage() {
         const lastId = localStorage.getItem('lastActiveBoardId');
         const startId = data.find(b => b._id === lastId) ? lastId : data[0]._id;
         loadBoard(startId);
-      }
-      else setLoading(false);
+      } else setLoading(false);
     } catch (err) {
-      if (err.response?.status === 401) {
-        localStorage.removeItem('token');
-        window.location.href = '/';
-      } else {
-        setError('Cannot connect to server.');
-        setLoading(false);
-      }
+      if (err.response?.status === 401) { localStorage.removeItem('token'); window.location.href = '/'; }
+      else { setError('Cannot connect to server.'); setLoading(false); }
     }
   };
 
@@ -254,15 +178,11 @@ function BoardPage() {
     try {
       const board = await getBoardById(boardId);
       setActiveBoard(board);
-      console.log('board.user:', board.user);
       setColumns(normalizeTasks(board.columns || []));
       const membersData = await getBoardMembers(boardId);
       setMembers(Array.isArray(membersData) ? membersData : []);
-    } catch (err) {
-      setError('Failed to load board.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError('Failed to load board.'); }
+    finally { setLoading(false); }
   };
 
   const handleBoardCreated = (newBoard) => { setBoards(prev => [...prev, newBoard]); loadBoard(newBoard._id); };
@@ -277,20 +197,13 @@ function BoardPage() {
     return [...prev, { ...newColumn, tasks: [] }];
   });
   const handleTaskCreated = (columnId, newTask) => {
-    setColumns(prev => prev.map(col =>
-      col._id === columnId
-        ? { ...col, tasks: [...(col.tasks || []), { ...newTask, id: newTask._id }] }
-        : col
-    ));
+    setColumns(prev => prev.map(col => col._id === columnId ? { ...col, tasks: [...(col.tasks || []), { ...newTask, id: newTask._id }] } : col));
   };
   const handleTaskDeleted = (taskId) => {
     setColumns(prev => prev.map(col => ({ ...col, tasks: col.tasks.filter(t => t._id !== taskId) })));
   };
   const handleTaskUpdated = (taskId, updatedTask) => {
-    setColumns(prev => prev.map(col => ({
-      ...col,
-      tasks: col.tasks.map(t => t._id === taskId ? { ...t, ...updatedTask, id: taskId } : t)
-    })));
+    setColumns(prev => prev.map(col => ({ ...col, tasks: col.tasks.map(t => t._id === taskId ? { ...t, ...updatedTask, id: taskId } : t) })));
   };
   const handleColumnDeleted = (columnId) => setColumns(prev => prev.filter(col => col._id !== columnId));
   const handleMemberRemoved = (memberId) => setMembers(prev => prev.filter(m => m._id !== memberId));
@@ -298,9 +211,6 @@ function BoardPage() {
     const membersData = await getBoardMembers(boardId);
     setMembers(Array.isArray(membersData) ? membersData : []);
   };
-
-
-  // Callback to update local columns state with bulk priority overrides from AI
   const handlePrioritiesUpdated = (updatedPriorities) => {
     setColumns(prev => prev.map(col => ({
       ...col,
@@ -311,13 +221,11 @@ function BoardPage() {
     })));
   };
 
-  const getColumnByTaskId = (taskId) =>
-    columns.find(col => col.tasks.some(t => t.id === taskId || t._id === taskId));
+  const getColumnByTaskId = (taskId) => columns.find(col => col.tasks.some(t => t.id === taskId || t._id === taskId));
 
   const handleDragStart = ({ active }) => {
     const isCol = columns.some(c => c._id === active.id);
     setActiveType(isCol ? 'column' : 'task');
-
     if (!isCol) {
       const sourceCol = columns.find(c => c.tasks.some(t => t.id === active.id || t._id === active.id));
       setDragSourceColId(sourceCol?._id || null);
@@ -376,26 +284,12 @@ function BoardPage() {
         catch (err) { console.error('Task reorder failed:', err); }
         return;
       }
-
       try {
         await moveTask(active.id, sourceCol._id, destColId);
-
-        // Check if destination is the "Done" column
         const destCol = columns.find(c => c._id === destColId);
         const isDone = destCol?.title?.toLowerCase() === 'done';
-
-        // Update isDone visually without waiting for refresh
-        setColumns(prev => prev.map(col => ({
-          ...col,
-          tasks: col.tasks.map(t =>
-            t._id === active.id || t.id === active.id
-              ? { ...t, isDone }
-              : t
-          )
-        })));
-      } catch (err) {
-        console.error('Task move failed:', err);
-      }
+        setColumns(prev => prev.map(col => ({ ...col, tasks: col.tasks.map(t => t._id === active.id || t.id === active.id ? { ...t, isDone } : t) })));
+      } catch (err) { console.error('Task move failed:', err); }
     }
   };
 
@@ -412,16 +306,15 @@ function BoardPage() {
   );
 
   const columnIds = columns.map(c => c._id);
-
-  const inputClass = `px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white placeholder-gray-500' : 'bg-white text-gray-900 placeholder-gray-400 border border-gray-200'
-    }`;
+  const hasActiveFilters = filter.search || filter.priority || filter.assignee || filter.startDate || filter.dueDate || filter.label;
+  const clearFilters = () => setFilter({ priority: '', search: '', assignee: '', startDate: '', dueDate: '', label: '' });
+  const labels = ['Bug', 'Frontend', 'Backend', 'Documentation', 'DevOps', 'Design', 'Testing', 'Feature', 'Other'];
 
   return (
     <div className={`min-h-screen flex flex-col ${isDark ? 'bg-gray-900' : 'bg-gray-200'}`}>
       <Navbar />
 
       <div className="flex flex-1">
-
         {sidebarOpen && (
           <Sidebar
             boards={boards}
@@ -439,226 +332,150 @@ function BoardPage() {
         <div className="flex-1 flex flex-col overflow-hidden w-full">
 
           {/* Board header */}
-<div className={`px-4 lg:px-8 py-4 border-b relative ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-  
-  {/* Top row: sidebar toggle + board info + Add Column button */}
-  <div className="flex items-center justify-between gap-4 mb-3">
-    <div className="flex items-center gap-3 flex-1 min-w-0">
-      
-      {/* Sidebar toggle */}
-      <button
-        onClick={() => setSidebarOpen(prev => !prev)}
-        className={`p-2 rounded-lg transition duration-200 flex-shrink-0 ${sidebarOpen
-          ? isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'
-          : isDark ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
-        }`}
-      >
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-          <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
-          <line x1="9" y1="3" x2="9" y2="21" strokeWidth={2} />
-        </svg>
-      </button>
+          <div className={`px-4 lg:px-8 py-4 border-b relative ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
 
-      {/* Board title + progress */}
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 mb-1 flex-wrap">
-          <h1 className={`text-lg lg:text-xl font-bold uppercase truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
-            {activeBoard ? activeBoard.title : 'No boards yet'}
-          </h1>
-          {(activeBoard?.user?.username || activeBoard?.ownerUsername) && (
-            <span className={`text-xs flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
-              by {(activeBoard?.user?.username || activeBoard?.ownerUsername || '').charAt(0).toUpperCase() + (activeBoard?.user?.username || activeBoard?.ownerUsername || '').slice(1)}
-            </span>
-          )}
-        </div>
-        {(() => {
-          const total = columns.reduce((acc, col) => acc + (col.tasks || []).length, 0);
-          const done = columns
-            .filter(col => col.title?.toLowerCase() === 'done')
-            .reduce((acc, col) => acc + (col.tasks || []).length, 0);
-          const pct = total > 0 ? Math.round((done / total) * 100) : 0;
-          return total > 0 ? (
-            <div className="flex items-center gap-2 flex-wrap">
-              <div className={`w-32 lg:w-48 h-1.5 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-300'}`}>
-                <div
-                  className={`h-1.5 rounded-full transition-all duration-500 ${pct === 100 ? 'bg-green-400' : 'bg-pink-700'}`}
-                  style={{ width: `${pct}%` }}
-                />
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <button
+                  onClick={() => setSidebarOpen(prev => !prev)}
+                  className={`p-2 rounded-lg transition duration-200 flex-shrink-0 ${sidebarOpen
+                    ? isDark ? 'bg-gray-700 text-white' : 'bg-gray-200 text-gray-900'
+                    : isDark ? 'text-gray-400 hover:text-white hover:bg-gray-700' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-200'
+                    }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <rect x="3" y="3" width="18" height="18" rx="2" strokeWidth={2} />
+                    <line x1="9" y1="3" x2="9" y2="21" strokeWidth={2} />
+                  </svg>
+                </button>
+
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 mb-1 flex-wrap">
+                    <h1 className={`text-lg lg:text-xl font-bold uppercase truncate ${isDark ? 'text-white' : 'text-gray-900'}`}>
+                      {activeBoard ? activeBoard.title : 'No boards yet'}
+                    </h1>
+                    {(activeBoard?.user?.username || activeBoard?.ownerUsername) && (
+                      <span className={`text-xs flex-shrink-0 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>
+                        by {(activeBoard?.user?.username || activeBoard?.ownerUsername || '').charAt(0).toUpperCase() + (activeBoard?.user?.username || activeBoard?.ownerUsername || '').slice(1)}
+                      </span>
+                    )}
+                  </div>
+                  {(() => {
+                    const total = columns.reduce((acc, col) => acc + (col.tasks || []).length, 0);
+                    const done = columns.filter(col => col.title?.toLowerCase() === 'done').reduce((acc, col) => acc + (col.tasks || []).length, 0);
+                    const pct = total > 0 ? Math.round((done / total) * 100) : 0;
+                    return total > 0 ? (
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <div className={`w-32 lg:w-48 h-1.5 rounded-full ${isDark ? 'bg-gray-700' : 'bg-gray-300'}`}>
+                          <div className={`h-1.5 rounded-full transition-all duration-500 ${pct === 100 ? 'bg-green-400' : 'bg-pink-700'}`} style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{done}/{total} tasks</span>
+                        <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${pct === 100 ? 'bg-green-500 text-white' : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-300 text-gray-700'}`}>{pct}%</span>
+                        {pct === 100 && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500 text-white">All done!</span>}
+                      </div>
+                    ) : (
+                      <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Track your team's progress</p>
+                    );
+                  })()}
+                </div>
               </div>
-              <span className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{done}/{total} tasks</span>
-              <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                pct === 100 ? 'bg-green-500 text-white' : isDark ? 'bg-gray-700 text-gray-400' : 'bg-gray-300 text-gray-700'
-              }`}>{pct}%</span>
-              {pct === 100 && <span className="text-xs px-2 py-0.5 rounded-full bg-green-500 text-white">All done!</span>}
+
+              {activeBoard && <div className="flex-shrink-0 hidden md:block"><AddColumnButton boardId={activeBoard._id} onColumnAdded={handleColumnAdded} /></div>}
+              {!activeBoard && (
+                <button onClick={() => setShowCreateModal(true)} className="flex-shrink-0 bg-pink-700 hover:bg-pink-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200">
+                  + Create your first board
+                </button>
+              )}
             </div>
-          ) : (
-            <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Track your team's progress</p>
-          );
-        })()}
-      </div>
-    </div>
 
-    {/* + Add Column button — always top right, never overlaps */}
-    {activeBoard && (
-      <div className="flex-shrink-0">
-        <AddColumnButton boardId={activeBoard._id} onColumnAdded={handleColumnAdded} />
-      </div>
-    )}
+            {/* Filter bar */}
+            {activeBoard && (
+              <div className="mt-4 md:mt-3 flex items-center justify-between gap-2">
 
-    {!activeBoard && (
-      <button
-        onClick={() => setShowCreateModal(true)}
-        className="flex-shrink-0 bg-pink-700 hover:bg-pink-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200"
-      >
-        + Create your first board
-      </button>
-    )}
-  </div>
+                {/* Left: search + filter icon */}
+                <div className="flex items-center gap-2">
+                  <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition duration-200 ${isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
+                    </svg>
+                    <input type="text" placeholder="Search..." value={filter.search} onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))} className="bg-transparent outline-none text-sm w-24 placeholder-gray-400" />
+                  </div>
 
-  {/* Filter bar */}
-  {activeBoard && (
-    <div className="flex items-center gap-2 flex-wrap">
+                  {/* Mobile filter icon button */}
+                  <button
+                    onClick={() => setShowFilterPanel(true)}
+                    className={`md:hidden relative flex items-center justify-center w-9 h-9 rounded-full border transition duration-200 ${hasActiveFilters ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+                    </svg>
+                    {hasActiveFilters && <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-pink-500"></span>}
+                  </button>
+                </div>
 
-      {/* Search */}
-      <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border text-sm transition duration-200 ${isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
-        <svg xmlns="http://www.w3.org/2000/svg" className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M21 21l-4.35-4.35M17 11A6 6 0 105 11a6 6 0 0012 0z" />
-        </svg>
-        <input
-          type="text"
-          placeholder="Search..."
-          value={filter.search}
-          onChange={(e) => setFilter(prev => ({ ...prev, search: e.target.value }))}
-          className="bg-transparent outline-none text-sm w-24 placeholder-gray-400"
-        />
-      </div>
+                {/* Mobile Add Column button — right side */}
+                <div className="md:hidden flex-shrink-0">
+                  <AddColumnButton boardId={activeBoard._id} onColumnAdded={handleColumnAdded} />
+                </div>
 
-      {/* Priority */}
-      <select
-        value={filter.priority}
-        onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))}
-        className={`px-3 py-1.5 rounded-full border text-sm transition duration-200 ${filter.priority
-          ? 'border-pink-500 text-pink-400 bg-pink-500/10'
-          : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'
-        }`}
-      >
-        <option value="">Priority</option>
-        <option value="high">High</option>
-        <option value="medium">Medium</option>
-        <option value="low">Low</option>
-      </select>
+                {/* Desktop pills */}
+                <div className="hidden md:flex items-center gap-2 flex-wrap">
+                  <select value={filter.priority} onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))} className={`px-3 py-1.5 rounded-full border text-sm transition duration-200 ${filter.priority ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
+                    <option value="">Priority</option>
+                    <option value="high">High</option>
+                    <option value="medium">Medium</option>
+                    <option value="low">Low</option>
+                  </select>
 
-      {/* Assignee */}
-      <select
-        value={filter.assignee}
-        onChange={(e) => setFilter(prev => ({ ...prev, assignee: e.target.value }))}
-        className={`px-3 py-1.5 rounded-full border text-sm transition duration-200 ${filter.assignee
-          ? 'border-pink-500 text-pink-400 bg-pink-500/10'
-          : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'
-        }`}
-      >
-        <option value="">Assignee</option>
-        {members.map(member => (
-          <option key={member._id} value={member._id}>{member.username}</option>
-        ))}
-      </select>
+                  <select value={filter.assignee} onChange={(e) => setFilter(prev => ({ ...prev, assignee: e.target.value }))} className={`px-3 py-1.5 rounded-full border text-sm transition duration-200 ${filter.assignee ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
+                    <option value="">Assignee</option>
+                    {members.map(member => (<option key={member._id} value={member._id}>{member.username}</option>))}
+                  </select>
 
-      {/* Start Date */}
-      <div className={`flex items-center gap-1 px-2 py-1.5 rounded-full border text-sm transition duration-200 ${filter.startDate
-        ? 'border-pink-500 text-pink-400 bg-pink-500/10'
-        : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'
-      }`}>
-        <span className="text-xs">Start</span>
-        <input
-          type="date"
-          value={filter.startDate}
-          onChange={(e) => setFilter(prev => ({ ...prev, startDate: e.target.value }))}
-          className="bg-transparent outline-none text-xs w-[110px]"
-        />
-      </div>
+                  <div className={`flex items-center gap-1 px-2 py-1.5 rounded-full border text-sm transition duration-200 ${filter.startDate ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
+                    <span className="text-xs">Start</span>
+                    <input type="date" value={filter.startDate} onChange={(e) => setFilter(prev => ({ ...prev, startDate: e.target.value }))} className="bg-transparent outline-none text-xs w-[110px]" />
+                  </div>
 
-      {/* Due Date */}
-      <div className={`flex items-center gap-1 px-2 py-1.5 rounded-full border text-sm transition duration-200 ${filter.dueDate
-        ? 'border-pink-500 text-pink-400 bg-pink-500/10'
-        : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'
-      }`}>
-        <span className="text-xs">Due</span>
-        <input
-          type="date"
-          value={filter.dueDate}
-          onChange={(e) => setFilter(prev => ({ ...prev, dueDate: e.target.value }))}
-          className="bg-transparent outline-none text-xs w-[110px]"
-        />
-      </div>
+                  <div className={`flex items-center gap-1 px-2 py-1.5 rounded-full border text-sm transition duration-200 ${filter.dueDate ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
+                    <span className="text-xs">Due</span>
+                    <input type="date" value={filter.dueDate} onChange={(e) => setFilter(prev => ({ ...prev, dueDate: e.target.value }))} className="bg-transparent outline-none text-xs w-[110px]" />
+                  </div>
 
-      {/* Label */}
-      <select
-        value={filter.label}
-        onChange={(e) => setFilter(prev => ({ ...prev, label: e.target.value }))}
-        className={`px-3 py-1.5 pr-7 rounded-full border text-sm transition duration-200 ${filter.label
-          ? 'border-pink-500 text-pink-400 bg-pink-500/10'
-          : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'
-        }`}
-      >
-        <option value="">Label</option>
-        <option value="Bug">Bug</option>
-        <option value="Frontend">Frontend</option>
-        <option value="Backend">Backend</option>
-        <option value="Documentation">Documentation</option>
-        <option value="DevOps">DevOps</option>
-        <option value="Design">Design</option>
-        <option value="Testing">Testing</option>
-        <option value="Feature">Feature</option>
-        <option value="Other">Other</option>
-      </select>
+                  <select value={filter.label} onChange={(e) => setFilter(prev => ({ ...prev, label: e.target.value }))} className={`px-3 py-1.5 rounded-full border text-sm transition duration-200 ${filter.label ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
+                    <option value="">Label</option>
+                    {labels.map(l => <option key={l} value={l}>{l}</option>)}
+                  </select>
 
-      {/* Clear */}
-      {(filter.search || filter.priority || filter.assignee || filter.startDate || filter.dueDate || filter.label) && (
-        <button
-          onClick={() => setFilter({ priority: '', search: '', assignee: '', startDate: '', dueDate: '', label: '' })}
-          className={`px-3 py-1.5 rounded-full border text-xs transition duration-200 ${isDark ? 'border-gray-600 text-gray-400 hover:text-white hover:border-gray-400' : 'border-gray-200 text-gray-400 hover:text-gray-900'}`}
-        >
-          Clear ×
-        </button>
-      )}
-    </div>
-  )}
-</div>
+                  {hasActiveFilters && (
+                    <button onClick={clearFilters} className={`px-3 py-1.5 rounded-full border text-xs transition duration-200 ${isDark ? 'border-gray-600 text-gray-400 hover:text-white hover:border-gray-400' : 'border-gray-200 text-gray-400 hover:text-gray-900'}`}>
+                      Clear ×
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+          </div>
 
           {activeBoard && (
             <div className="px-6">
-              <AiBanner
-                boardId={activeBoard._id}
-                columns={columns}
-                onPrioritiesUpdated={handlePrioritiesUpdated}
-              />
+              <AiBanner boardId={activeBoard._id} columns={columns} onPrioritiesUpdated={handlePrioritiesUpdated} />
             </div>
           )}
 
-          {/* Empty state */}
           {boards.length === 0 && (
             <div className="flex flex-col items-center justify-center flex-1 gap-4">
               <p className={`text-xl ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>No boards yet!</p>
-              <button
-                onClick={() => setShowCreateModal(true)}
-                className="bg-pink-700 hover:bg-pink-800 text-white px-6 py-3 rounded-lg font-medium transition duration-200"
-              >
+              <button onClick={() => setShowCreateModal(true)} className="bg-pink-700 hover:bg-pink-800 text-white px-6 py-3 rounded-lg font-medium transition duration-200">
                 + Create your first board
               </button>
             </div>
           )}
 
-          {/* Kanban Board */}
           {activeBoard && (
-            <DndContext
-              sensors={sensors}
-              collisionDetection={closestCenter}
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragEnd={handleDragEnd}
-            >
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragStart={handleDragStart} onDragOver={handleDragOver} onDragEnd={handleDragEnd}>
               <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
-                <div className="flex gap-4 p-6 overflow-x-auto touch-pan-x" style={{ width: '100%', boxSizing: 'border-box' }}>
+                <div className="flex gap-4 p-6 overflow-x-auto touch-pan-x items-start" style={{ width: '100%', boxSizing: 'border-box' }}>
                   {columns.map(column => (
                     <SortableColumnWrapper key={column._id} column={column}>
                       {({ dragHandleProps }) => (
@@ -694,10 +511,68 @@ function BoardPage() {
       </div>
 
       {showCreateModal && (
-        <CreateBoardModal
-          onClose={() => setShowCreateModal(false)}
-          onBoardCreated={handleBoardCreated}
-        />
+        <CreateBoardModal onClose={() => setShowCreateModal(false)} onBoardCreated={handleBoardCreated} />
+      )}
+
+      {/* Mobile filter panel */}
+      {showFilterPanel && (
+        <div className="fixed inset-0 z-50 md:hidden">
+          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowFilterPanel(false)} />
+          <div className={`absolute top-0 right-0 bottom-0 w-72 flex flex-col shadow-xl ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
+            <div className={`flex items-center justify-between px-4 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <h3 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>Filters</h3>
+              <button onClick={() => setShowFilterPanel(false)} className={`text-xl leading-none ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>×</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5">
+              <div>
+                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Priority</label>
+                {['high', 'medium', 'low'].map(p => (
+                  <label key={p} className="flex items-center gap-3 py-1.5 cursor-pointer">
+                    <input type="radio" name="priority" value={p} checked={filter.priority === p} onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))} className="accent-pink-500" />
+                    <span className={`text-sm capitalize ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{p}</span>
+                  </label>
+                ))}
+                {filter.priority && <button onClick={() => setFilter(prev => ({ ...prev, priority: '' }))} className="text-xs text-pink-400 mt-1">Clear priority</button>}
+              </div>
+
+              <div>
+                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Assignee</label>
+                <select value={filter.assignee} onChange={(e) => setFilter(prev => ({ ...prev, assignee: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}>
+                  <option value="">All assignees</option>
+                  {members.map(member => (<option key={member._id} value={member._id}>{member.username}</option>))}
+                </select>
+              </div>
+
+              <div>
+                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Label</label>
+                <select value={filter.label} onChange={(e) => setFilter(prev => ({ ...prev, label: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}>
+                  <option value="">All labels</option>
+                  {labels.map(l => (<option key={l} value={l}>{l}</option>))}
+                </select>
+              </div>
+
+              <div>
+                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start Date</label>
+                <input type="date" value={filter.startDate} onChange={(e) => setFilter(prev => ({ ...prev, startDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`} />
+              </div>
+
+              <div>
+                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Due Date</label>
+                <input type="date" value={filter.dueDate} onChange={(e) => setFilter(prev => ({ ...prev, dueDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`} />
+              </div>
+            </div>
+
+            <div className={`px-4 py-4 border-t flex gap-3 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
+              <button onClick={() => { clearFilters(); setShowFilterPanel(false); }} className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition duration-200 ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
+                Clear all
+              </button>
+              <button onClick={() => setShowFilterPanel(false)} className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-pink-700 hover:bg-pink-800 text-white transition duration-200">
+                Apply
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
