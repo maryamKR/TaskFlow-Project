@@ -19,7 +19,14 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (response) => response, // pass through successful responses
   (error) => {
-    if (error.response?.status === 401) {
+    const originalRequest = error.config;
+    
+    // If we get a 401, and it's NOT from the login route (where 401 means bad credentials)
+    if (
+      error.response?.status === 401 && 
+      originalRequest && 
+      !originalRequest.url.includes('/auth/login')
+    ) {
       // Token expired or invalid — clear everything and redirect
       localStorage.removeItem('token');
       localStorage.removeItem('username');
