@@ -1,16 +1,7 @@
 import { io } from "socket.io-client";
 
-// Guarding development variables with explicit fallback and protocol normalization
-const normalizeSocketUrl = (url) => {
-  if (!url) return 'http://localhost:5000';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  
-  // Use http for localhost, https for production
-  const protocol = url.includes('localhost') ? 'http://' : 'https://';
-  return `${protocol}${url}`;
-};
-
-const SOCKET_URL = normalizeSocketUrl(process.env.REACT_APP_SOCKET_URL);
+// Guarding development variables with explicit fallback
+const SOCKET_URL = process.env.REACT_APP_SOCKET_URL || 'http://localhost:5000';
 
 const socket = io(SOCKET_URL, {
   autoConnect: false,

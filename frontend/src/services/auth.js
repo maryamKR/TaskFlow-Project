@@ -1,16 +1,7 @@
 import axios from 'axios';
 import socket from "../socket";
 
-const normalizeUrl = (url) => {
-  if (!url) return '';
-  if (url.startsWith('http://') || url.startsWith('https://')) return url;
-  
-  // Use http for localhost, https for production
-  const protocol = url.includes('localhost') ? 'http://' : 'https://';
-  return `${protocol}${url}`;
-};
-
-const API_URL = normalizeUrl(process.env.REACT_APP_API_URL);
+const API_URL = process.env.REACT_APP_API_URL;
 
 export const api = axios.create({
   baseURL: API_URL,
