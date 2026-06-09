@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect } from 'react';
 import { useSearchParams, Link } from 'react-router-dom';
-import { getBoardById, getBoardMembers } from '../services/board';
+import { getBoardById } from '../services/board';
 import Navbar from '../components/Navbar';
 import { useTheme } from '../context/ThemeContext';
 
@@ -22,7 +22,6 @@ function TaskListPage() {
   const boardId = searchParams.get('boardId');
   const [board, setBoard] = useState(null);
   const [columns, setColumns] = useState([]);
-  const [members, setMembers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filterPriority, setFilterPriority] = useState('');
@@ -39,8 +38,6 @@ function TaskListPage() {
         const b = await getBoardById(boardId);
         setBoard(b);
         setColumns(b.columns || []);
-        const m = await getBoardMembers(boardId);
-        setMembers(Array.isArray(m) ? m : []);
       } catch (err) {
         console.error(err);
       } finally {

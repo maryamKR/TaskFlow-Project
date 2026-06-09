@@ -29,7 +29,11 @@ function TaskDetailModal({ task, members, onClose, onTaskUpdated }) {
   const [showActivityModal, setShowActivityModal] = useState(false);
   const [toast, setToast] = useState(null);
 
-  useEffect(() => { fetchComments(); }, []);
+  useEffect(() => { 
+    fetchComments(); 
+  }, 
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  []);
 
   useEffect(() => {
     socket.on("comment_added", ({ taskId, comment }) => {
