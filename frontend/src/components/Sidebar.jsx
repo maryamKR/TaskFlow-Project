@@ -153,13 +153,15 @@ function Sidebar({
                             </span>
                           </div>
                         </div>
-                        <button
-                          onClick={() => handleRemoveMember(member._id)}
-                          disabled={removingId === member._id}
-                          className={`text-xs transition duration-200 ${isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}
-                        >
-                          {removingId === member._id ? '·' : '×'}
-                        </button>
+                        {!memberIsOwner && (
+                          <button
+                            onClick={() => handleRemoveMember(member._id)}
+                            disabled={removingId === member._id}
+                            className={`text-xs transition duration-200 ${isDark ? 'text-gray-600 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}
+                          >
+                            {removingId === member._id ? '·' : '×'}
+                          </button>
+                        )}
                       </div>
                     );
                   })
