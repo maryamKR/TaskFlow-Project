@@ -3,6 +3,8 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { getBoardById, getBoardMembers } from '../services/board';
 import Navbar from '../components/Navbar';
 import { useTheme } from '../context/ThemeContext';
+import FilterPanel from '../components/FilterPanel';
+
 
 const priorityColors = {
   high: 'text-red-400',
@@ -31,6 +33,8 @@ function TaskListPage() {
   const [filterStartDate, setFilterStartDate] = useState('');
   const [filterDueDate, setFilterDueDate] = useState('');
   const [sortBy, setSortBy] = useState('');
+  const [showFilterPanel, setShowFilterPanel] = useState(false);
+
 
   useEffect(() => {
     if (!boardId) return;
@@ -101,63 +105,102 @@ function TaskListPage() {
           </p>
         </div>
 
-        {/* Filters */}
-        <div className={`flex flex-col gap-3 p-4 rounded-xl mb-6 ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}>
-          <input
-            type="text"
-            placeholder="Search tasks..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className={`${inputClass} w-full`}
-          />
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-            <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className={inputClass}>
-              <option value="">All priorities</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
-            <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={inputClass}>
-              <option value="">All statuses</option>
-              {columns.map(col => (
-                <option key={col._id} value={col.title}>{col.title}</option>
-              ))}
-            </select>
-            <select value={filterLabel} onChange={(e) => setFilterLabel(e.target.value)} className={inputClass}>
-              <option value="">All labels</option>
-              <option value="Bug">Bug</option>
-              <option value="Frontend">Frontend</option>
-              <option value="Backend">Backend</option>
-              <option value="Documentation">Documentation</option>
-              <option value="DevOps">DevOps</option>
-              <option value="Design">Design</option>
-              <option value="Testing">Testing</option>
-              <option value="Feature">Feature</option>
-              <option value="Other">Other</option>
-            </select>
-            <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={inputClass}>
-              <option value="">Sort by...</option>
-              <option value="dueDate">Due date</option>
-              <option value="priority">Priority</option>
-              <option value="title">Title</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-2">
-            <div className="flex flex-col gap-1">
-              <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start Date</label>
-              <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className={inputClass} />
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Due Date</label>
-              <input type="date" value={filterDueDate} onChange={(e) => setFilterDueDate(e.target.value)} className={inputClass} />
-            </div>
-          </div>
-          {hasFilters && (
-            <button onClick={clearAll} className={`text-sm text-left transition duration-200 ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>
-              Clear ×
-            </button>
-          )}
-        </div>
+        {/* Filters — desktop */}
+<div className={`hidden md:flex flex-col gap-3 p-4 rounded-xl mb-6 ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}>
+  <input type="text" placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${inputClass} w-full`} />
+  <div className="grid grid-cols-4 gap-2">
+    <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className={inputClass}>
+      <option value="">All priorities</option>
+      <option value="high">High</option>
+      <option value="medium">Medium</option>
+      <option value="low">Low</option>
+    </select>
+    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={inputClass}>
+      <option value="">All statuses</option>
+      {columns.map(col => (<option key={col._id} value={col.title}>{col.title}</option>))}
+    </select>
+    <select value={filterLabel} onChange={(e) => setFilterLabel(e.target.value)} className={inputClass}>
+      <option value="">All labels</option>
+      {['Bug','Frontend','Backend','Documentation','DevOps','Design','Testing','Feature','Other'].map(l => <option key={l} value={l}>{l}</option>)}
+    </select>
+    <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={inputClass}>
+      <option value="">Sort by...</option>
+      <option value="dueDate">Due date</option>
+      <option value="priority">Priority</option>
+      <option value="title">Title</option>
+    </select>
+  </div>
+  <div className="grid grid-cols-2 gap-2">
+    <div className="flex flex-col gap-1">
+      <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start Date</label>
+      <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className={inputClass} />
+    </div>
+    <div className="flex flex-col gap-1">
+      <label className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Due Date</label>
+      <input type="date" value={filterDueDate} onChange={(e) => setFilterDueDate(e.target.value)} className={inputClass} />
+    </div>
+  </div>
+  {hasFilters && <button onClick={clearAll} className={`text-sm text-left ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-500 hover:text-gray-900'}`}>Clear ×</button>}
+</div>
+
+{/* Filters — mobile search + filter button */}
+<div className="md:hidden flex items-center gap-2 mb-4">
+  <input type="text" placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${inputClass} flex-1`} />
+  <button
+    onClick={() => setShowFilterPanel(true)}
+    className={`relative flex items-center justify-center w-10 h-10 rounded-lg border transition duration-200 flex-shrink-0 ${hasFilters ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-700 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}
+  >
+    <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+      <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
+    </svg>
+    {hasFilters && <span className="absolute top-0 right-0 w-2 h-2 rounded-full bg-pink-500"></span>}
+  </button>
+</div>
+
+{/* Mobile filter panel */}
+<FilterPanel show={showFilterPanel} onClose={() => setShowFilterPanel(false)} onClear={clearAll}>
+  <div>
+    <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Priority</label>
+    {['high', 'medium', 'low'].map(p => (
+      <label key={p} className="flex items-center gap-3 py-1.5 cursor-pointer">
+        <input type="radio" name="fp-priority" value={p} checked={filterPriority === p} onChange={(e) => setFilterPriority(e.target.value)} className="accent-pink-500" />
+        <span className={`text-sm capitalize ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{p}</span>
+      </label>
+    ))}
+    {filterPriority && <button onClick={() => setFilterPriority('')} className="text-xs text-pink-400 mt-1">Clear priority</button>}
+  </div>
+  <div>
+    <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Status</label>
+    <select value={filterStatus} onChange={(e) => setFilterStatus(e.target.value)} className={`w-full ${inputClass}`}>
+      <option value="">All statuses</option>
+      {columns.map(col => (<option key={col._id} value={col.title}>{col.title}</option>))}
+    </select>
+  </div>
+  <div>
+    <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Label</label>
+    <select value={filterLabel} onChange={(e) => setFilterLabel(e.target.value)} className={`w-full ${inputClass}`}>
+      <option value="">All labels</option>
+      {['Bug','Frontend','Backend','Documentation','DevOps','Design','Testing','Feature','Other'].map(l => <option key={l} value={l}>{l}</option>)}
+    </select>
+  </div>
+  <div>
+    <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Sort by</label>
+    <select value={sortBy} onChange={(e) => setSortBy(e.target.value)} className={`w-full ${inputClass}`}>
+      <option value="">None</option>
+      <option value="dueDate">Due date</option>
+      <option value="priority">Priority</option>
+      <option value="title">Title</option>
+    </select>
+  </div>
+  <div>
+    <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start Date</label>
+    <input type="date" value={filterStartDate} onChange={(e) => setFilterStartDate(e.target.value)} className={`w-full ${inputClass}`} />
+  </div>
+  <div>
+    <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Due Date</label>
+    <input type="date" value={filterDueDate} onChange={(e) => setFilterDueDate(e.target.value)} className={`w-full ${inputClass}`} />
+  </div>
+</FilterPanel>
 
         {/* Table */}
         <div className={`rounded-xl overflow-x-auto border ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>

@@ -18,6 +18,7 @@ import {
   moveTask, reorderColumns, reorderTasks
 } from '../services/board';
 import AiBanner from '../components/AiBanner';
+import FilterPanel from '../components/FilterPanel';
 
 const normalizeTasks = (cols) =>
   cols.map(col => ({
@@ -515,65 +516,48 @@ function BoardPage() {
       )}
 
       {/* Mobile filter panel */}
-      {showFilterPanel && (
-        <div className="fixed inset-0 z-50 md:hidden">
-          <div className="absolute inset-0 bg-black bg-opacity-50" onClick={() => setShowFilterPanel(false)} />
-          <div className={`absolute top-0 right-0 bottom-0 w-72 flex flex-col shadow-xl ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
-            <div className={`flex items-center justify-between px-4 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-              <h3 className={`text-sm font-bold uppercase tracking-wider ${isDark ? 'text-white' : 'text-gray-900'}`}>Filters</h3>
-              <button onClick={() => setShowFilterPanel(false)} className={`text-xl leading-none ${isDark ? 'text-gray-400 hover:text-white' : 'text-gray-400 hover:text-gray-900'}`}>×</button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-5">
-              <div>
-                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Priority</label>
-                {['high', 'medium', 'low'].map(p => (
-                  <label key={p} className="flex items-center gap-3 py-1.5 cursor-pointer">
-                    <input type="radio" name="priority" value={p} checked={filter.priority === p} onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))} className="accent-pink-500" />
-                    <span className={`text-sm capitalize ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{p}</span>
-                  </label>
-                ))}
-                {filter.priority && <button onClick={() => setFilter(prev => ({ ...prev, priority: '' }))} className="text-xs text-pink-400 mt-1">Clear priority</button>}
-              </div>
-
-              <div>
-                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Assignee</label>
-                <select value={filter.assignee} onChange={(e) => setFilter(prev => ({ ...prev, assignee: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}>
-                  <option value="">All assignees</option>
-                  {members.map(member => (<option key={member._id} value={member._id}>{member.username}</option>))}
-                </select>
-              </div>
-
-              <div>
-                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Label</label>
-                <select value={filter.label} onChange={(e) => setFilter(prev => ({ ...prev, label: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}>
-                  <option value="">All labels</option>
-                  {labels.map(l => (<option key={l} value={l}>{l}</option>))}
-                </select>
-              </div>
-
-              <div>
-                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start Date</label>
-                <input type="date" value={filter.startDate} onChange={(e) => setFilter(prev => ({ ...prev, startDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`} />
-              </div>
-
-              <div>
-                <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Due Date</label>
-                <input type="date" value={filter.dueDate} onChange={(e) => setFilter(prev => ({ ...prev, dueDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`} />
-              </div>
-            </div>
-
-            <div className={`px-4 py-4 border-t flex gap-3 ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
-              <button onClick={() => { clearFilters(); setShowFilterPanel(false); }} className={`flex-1 py-2.5 rounded-lg text-sm font-medium border transition duration-200 ${isDark ? 'border-gray-600 text-gray-300 hover:bg-gray-700' : 'border-gray-200 text-gray-600 hover:bg-gray-100'}`}>
-                Clear all
-              </button>
-              <button onClick={() => setShowFilterPanel(false)} className="flex-1 py-2.5 rounded-lg text-sm font-medium bg-pink-700 hover:bg-pink-800 text-white transition duration-200">
-                Apply
-              </button>
-            </div>
-          </div>
+      <FilterPanel 
+        show={showFilterPanel} 
+        onClose={() => setShowFilterPanel(false)} 
+        onClear={clearFilters}
+      >
+        <div>
+          <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Priority</label>
+          {['high', 'medium', 'low'].map(p => (
+            <label key={p} className="flex items-center gap-3 py-1.5 cursor-pointer">
+              <input type="radio" name="board-priority" value={p} checked={filter.priority === p} onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))} className="accent-pink-500" />
+              <span className={`text-sm capitalize ${isDark ? 'text-gray-300' : 'text-gray-700'}`}>{p}</span>
+            </label>
+          ))}
+          {filter.priority && <button onClick={() => setFilter(prev => ({ ...prev, priority: '' }))} className="text-xs text-pink-400 mt-1">Clear priority</button>}
         </div>
-      )}
+
+        <div>
+          <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Assignee</label>
+          <select value={filter.assignee} onChange={(e) => setFilter(prev => ({ ...prev, assignee: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}>
+            <option value="">All assignees</option>
+            {members.map(member => (<option key={member._id} value={member._id}>{member.username}</option>))}
+          </select>
+        </div>
+
+        <div>
+          <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Label</label>
+          <select value={filter.label} onChange={(e) => setFilter(prev => ({ ...prev, label: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`}>
+            <option value="">All labels</option>
+            {labels.map(l => (<option key={l} value={l}>{l}</option>))}
+          </select>
+        </div>
+
+        <div>
+          <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Start Date</label>
+          <input type="date" value={filter.startDate} onChange={(e) => setFilter(prev => ({ ...prev, startDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`} />
+        </div>
+
+        <div>
+          <label className={`text-xs font-semibold uppercase tracking-wider mb-2 block ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>Due Date</label>
+          <input type="date" value={filter.dueDate} onChange={(e) => setFilter(prev => ({ ...prev, dueDate: e.target.value }))} className={`w-full px-3 py-2 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-pink-500 ${isDark ? 'bg-gray-700 text-white' : 'bg-gray-100 text-gray-900'}`} />
+        </div>
+      </FilterPanel>
     </div>
   );
 }
