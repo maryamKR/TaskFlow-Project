@@ -383,7 +383,7 @@ function BoardPage() {
                 </div>
               </div>
 
-              {activeBoard && <div className="flex-shrink-0 hidden md:block"><AddColumnButton boardId={activeBoard._id} onColumnAdded={handleColumnAdded} /></div>}
+              {activeBoard && <div className="flex-shrink-0 hidden lg:block"><AddColumnButton boardId={activeBoard._id} onColumnAdded={handleColumnAdded} /></div>}
               {!activeBoard && (
                 <button onClick={() => setShowCreateModal(true)} className="flex-shrink-0 bg-pink-700 hover:bg-pink-800 text-white px-4 py-2 rounded-lg text-sm font-medium transition duration-200">
                   + Create your first board
@@ -407,7 +407,7 @@ function BoardPage() {
                   {/* Mobile filter icon button */}
                   <button
                     onClick={() => setShowFilterPanel(true)}
-                    className={`md:hidden relative flex items-center justify-center w-9 h-9 rounded-full border transition duration-200 ${hasActiveFilters ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}
+                    className={`lg:hidden relative flex items-center justify-center w-9 h-9 rounded-full border transition duration-200 ${hasActiveFilters ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}
                   >
                     <svg xmlns="http://www.w3.org/2000/svg" className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2a1 1 0 01-.293.707L13 13.414V19a1 1 0 01-.553.894l-4 2A1 1 0 017 21v-7.586L3.293 6.707A1 1 0 013 6V4z" />
@@ -417,12 +417,12 @@ function BoardPage() {
                 </div>
 
                 {/* Mobile Add Column button — right side */}
-                <div className="md:hidden flex-shrink-0">
+                <div className="lg:hidden flex-shrink-0">
                   <AddColumnButton boardId={activeBoard._id} onColumnAdded={handleColumnAdded} />
                 </div>
 
                 {/* Desktop pills */}
-                <div className="hidden md:flex items-center gap-2 flex-wrap">
+                <div className="hidden lg:flex items-center gap-2 flex-wrap">
                   <select value={filter.priority} onChange={(e) => setFilter(prev => ({ ...prev, priority: e.target.value }))} className={`px-3 py-1.5 rounded-full border text-sm transition duration-200 ${filter.priority ? 'border-pink-500 text-pink-400 bg-pink-500/10' : isDark ? 'border-gray-600 bg-gray-800 text-gray-400' : 'border-gray-200 bg-white text-gray-500'}`}>
                     <option value="">Priority</option>
                     <option value="high">High</option>

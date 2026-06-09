@@ -103,7 +103,7 @@ function TaskListPage() {
         </div>
 
         {/* Filters — desktop */}
-<div className={`hidden md:flex flex-col gap-3 p-4 rounded-xl mb-6 ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}>
+<div className={`hidden lg:flex flex-col gap-3 p-4 rounded-xl mb-6 ${isDark ? 'bg-gray-800' : 'bg-white border border-gray-200'}`}>
   <input type="text" placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${inputClass} w-full`} />
   <div className="grid grid-cols-4 gap-2">
     <select value={filterPriority} onChange={(e) => setFilterPriority(e.target.value)} className={inputClass}>
@@ -141,7 +141,7 @@ function TaskListPage() {
 </div>
 
 {/* Filters — mobile search + filter button */}
-<div className="md:hidden flex items-center gap-2 mb-4">
+<div className="lg:hidden flex items-center gap-2 mb-4">
   <input type="text" placeholder="Search tasks..." value={search} onChange={(e) => setSearch(e.target.value)} className={`${inputClass} flex-1`} />
   <button
     onClick={() => setShowFilterPanel(true)}

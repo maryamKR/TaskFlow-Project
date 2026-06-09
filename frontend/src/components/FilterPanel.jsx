@@ -5,7 +5,7 @@ function FilterPanel({ show, onClose, onClear, children }) {
   if (!show) return null;
 
   return (
-    <div className="fixed inset-0 z-50 md:hidden">
+    <div className="fixed inset-0 z-50 lg:hidden">
       <div className="absolute inset-0 bg-black bg-opacity-50" onClick={onClose} />
       <div className={`absolute top-0 right-0 bottom-0 w-72 flex flex-col shadow-xl ${isDark ? 'bg-gray-800' : 'bg-white'}`}>
         <div className={`flex items-center justify-between px-4 py-4 border-b ${isDark ? 'border-gray-700' : 'border-gray-200'}`}>
