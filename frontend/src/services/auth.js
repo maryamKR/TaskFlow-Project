@@ -15,6 +15,24 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Response interceptor — handle expired/invalid token
+api.interceptors.response.use(
+  (response) => response, // pass through successful responses
+  (error) => {
+    if (error.response?.status === 401) {
+      // Token expired or invalid — clear everything and redirect
+      localStorage.removeItem('token');
+      localStorage.removeItem('username');
+      localStorage.removeItem('email');
+      localStorage.removeItem('userId');
+      localStorage.removeItem('lastActiveBoardId');
+      socket.disconnect();
+      window.location.href = '/';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export const register = async (name, email, password) => {
   const response = await api.post('/auth/register', {
     username: name, email, password
@@ -39,5 +57,6 @@ export const logout = () => {
   localStorage.removeItem('username');
   localStorage.removeItem('email');
   localStorage.removeItem('userId');
+  localStorage.removeItem('lastActiveBoardId');
   socket.disconnect();
 };
