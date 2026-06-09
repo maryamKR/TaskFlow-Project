@@ -4,7 +4,7 @@ const User = require("../models/User");
 const { hasBoardAccess } = require("../utils/boardAuth");
 const notifyAndEmit = require("../utils/notifyAndEmit");
 const { notifyOwner } = require("../utils/notifyOwner");
-
+const { getIO } = require("../socket");
 const {
   sendInviteEmail,
   sendUnregisteredInviteEmail,
@@ -102,6 +102,17 @@ exports.inviteMember = async (req, res) => {
     message: `You have been invited to the board: ${board.title}`,
     type: "BOARD_INVITATION",
     boardId: board._id.toString(),
+  });
+
+
+  // Emit socket event to update invited user's board list instantly
+  getIO().to(`user:${userToInvite._id}`).emit("board_invite_accepted", {
+      board: {
+          _id: board._id,
+          title: board.title,
+          user: board.user,
+          coworkers: board.coworkers,
+      }
   });
 
   // Notify the board owner that the user has joined (in-app record)
