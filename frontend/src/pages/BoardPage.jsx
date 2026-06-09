@@ -289,9 +289,18 @@ function BoardPage() {
       }
       try {
         await moveTask(active.id, sourceCol._id, destColId);
-        const destCol = columns.find(c => c._id === destColId);
-        const isDone = destCol?.title?.toLowerCase() === 'done';
-        setColumns(prev => prev.map(col => ({ ...col, tasks: col.tasks.map(t => t._id === active.id || t.id === active.id ? { ...t, isDone } : t) })));
+        setColumns(prev => {
+          const destCol = prev.find(c => c._id === destColId);
+          const isDone = destCol?.title?.toLowerCase() === 'done';
+          return prev.map(col => ({
+              ...col,
+              tasks: col.tasks.map(t =>
+                  t._id === active.id || t.id === active.id
+                      ? { ...t, isDone }
+                      : t
+              )
+        }));
+      });
       } catch (err) { console.error('Task move failed:', err); }
     }
   };
