@@ -208,17 +208,6 @@ function Column({ id, title, color, tasks, onTaskCreated, onTaskDeleted, onColum
     'bg-orange-400': '#fb923c',
   };
 
-  const borderColorMap = {
-    'bg-gray-400': 'border-gray-500',
-    'bg-blue-400': 'border-blue-500',
-    'bg-green-400': 'border-green-500',
-    'bg-yellow-400': 'border-yellow-500',
-    'bg-red-400': 'border-red-500',
-    'bg-purple-400': 'border-purple-500',
-    'bg-pink-500': 'border-pink-500',
-    'bg-orange-400': 'border-orange-400',
-  };
-
   const taskIds = tasks.map(t => t.id);
 
   const handleDeleteColumn = async () => {

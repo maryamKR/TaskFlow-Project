@@ -8,7 +8,7 @@ import {
 import socket from '../socket';
 
 function Navbar() {
-  const token = localStorage.getItem('token');
+  
   const { isDark, toggleTheme } = useTheme();
 
   const getUsername = () => {

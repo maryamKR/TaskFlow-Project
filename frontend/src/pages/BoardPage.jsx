@@ -74,10 +74,10 @@ function BoardPage() {
   const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
   const isOwner = activeBoard?.user === currentUserId || activeBoard?.user?._id === currentUserId;
 
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     if (!token) { window.location.href = '/'; return; }
     fetchBoards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   useEffect(() => {
@@ -94,6 +94,7 @@ function BoardPage() {
       });
     });
     return () => { socket.off("board_invite_accepted"); };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -155,6 +156,7 @@ function BoardPage() {
       socket.off("member_offline"); socket.off("new_notification"); socket.off("comment_added");
       socket.off("member_joined");
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeBoard?._id]);
 
   const fetchBoards = async () => {

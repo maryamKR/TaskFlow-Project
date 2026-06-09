@@ -1,8 +1,6 @@
 import { useEffect } from 'react';
-import { useTheme } from '../context/ThemeContext';
 
 function Toast({ message, type = 'error', onClose }) {
-  const { isDark } = useTheme();
 
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);

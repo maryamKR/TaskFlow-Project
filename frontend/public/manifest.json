@@ -1,0 +1,9 @@
+{
+  "short_name": "TaskFlow",
+  "name": "TaskFlow — Project Management",
+  "icons": [],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#be185d",
+  "background_color": "#111827"
+}
