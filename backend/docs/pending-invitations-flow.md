@@ -126,7 +126,7 @@ const boardsWithPendingInvites = await Board.find({ pendingInvites: cleanEmail }
 | `sendInviteEmail` | Registered user invited | `inviteTemplate` | Board owner's email |
 | `sendUnregisteredInviteEmail` | Unregistered email invited | `inviteUnregisteredTemplate` | Board owner's email |
 
-Both emails are sent from the platform SMTP account (`EMAIL_USER`) but the `Reply-To` header is set to the board owner's email address, so any reply from the recipient goes directly to the owner.
+Both emails are sent via the Brevo API (`BREVO_SENDER_EMAIL`) but the `Reply-To` header is set to the board owner's email address, so any reply from the recipient goes directly to the owner.
 
 ---
 
@@ -137,13 +137,13 @@ Both emails are sent from the platform SMTP account (`EMAIL_USER`) but the `Repl
 | Requester is not board owner | 403 | `"Only the board owner can invite members"` |
 | Email is already an active coworker | 400 | `"User is already a member"` |
 | Email is already in pendingInvites | 400 | `"User is already invited"` |
-| SMTP failure | Non-fatal | Logged to server console; board state unchanged |
+| Brevo API failure | Non-fatal | Logged to server console; board state unchanged |
 
 ---
 
-## SMTP Notes
+## Email Notes
 
-- **Gmail App Password Required:** `EMAIL_PASS` must be a 16-character App Password, not your normal Gmail password. Remove all spaces from the code before pasting it into `.env`.
+- **Verified Sender Required:** `BREVO_SENDER_EMAIL` must be a verified sender in your Brevo account.
 - **Reply-To Header:** Replies go directly to the board owner, not to the platform email address.
 
-See [`email-service.md`](./email-service.md) for complete SMTP setup instructions.
+See [`email-service.md`](./email-service.md) for complete Brevo setup instructions.

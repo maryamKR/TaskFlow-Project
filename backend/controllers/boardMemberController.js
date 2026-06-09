@@ -114,7 +114,12 @@ exports.inviteMember = async (req, res) => {
 
   // Call Nodemailer service to deliver the out-of-app email alert
   try {
-    await sendInviteEmail(userToInvite.email, board.title, req.user.username);
+    await sendInviteEmail(
+      userToInvite.email,
+      board.title,
+      req.user.username,
+      req.user.email,
+    );
   } catch (emailErr) {
     console.error("Failed to send invitation email:", emailErr.message);
   }

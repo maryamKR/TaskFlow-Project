@@ -1,11 +1,14 @@
 /**
  * HTML email template for board invitations.
  *
- * @param {string} boardTitle  - The name of the board the user is being invited to.
- * @param {string} inviterName - The username of the person sending the invite.
+ * @param {string} boardTitle   - The name of the board the user is being invited to.
+ * @param {string} inviterName  - The username of the person sending the invite.
+ * @param {string} frontendUrl  - The base URL of the frontend application.
  * @returns {string} Full HTML string ready to send as an email body.
  */
-const inviteTemplate = (boardTitle, inviterName) => `
+const inviteTemplate = (boardTitle, inviterName, frontendUrl) => {
+  const baseUrl = frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -28,7 +31,7 @@ const inviteTemplate = (boardTitle, inviterName) => `
           <!-- Body -->
           <tr>
             <td style="padding:40px;">
-              <h2 style="margin:0 0 12px;color:#1f2937;font-size:22px;font-weight:600;">You've been invited! 🎉</h2>
+              <h2 style="margin:0 0 12px;color:#1f2937;font-size:22px;font-weight:600;">You've been invited!</h2>
               <p style="margin:0 0 20px;color:#6b7280;font-size:15px;line-height:1.6;">
                 <strong style="color:#111827;">${inviterName}</strong> has invited you to collaborate on the board:
               </p>
@@ -38,7 +41,7 @@ const inviteTemplate = (boardTitle, inviterName) => `
               <p style="margin:0 0 28px;color:#6b7280;font-size:14px;line-height:1.6;">
                 Log in to your TaskFlow account to view the board and start collaborating with your team.
               </p>
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}"
+              <a href="${baseUrl}"
                  style="display:inline-block;background:#be185d;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
                 Open TaskFlow →
               </a>
@@ -59,6 +62,7 @@ const inviteTemplate = (boardTitle, inviterName) => `
 </body>
 </html>
 `;
+};
 
 /**
  * HTML email template for password reset requests.
@@ -89,7 +93,7 @@ const passwordResetTemplate = (resetUrl) => `
           <!-- Body -->
           <tr>
             <td style="padding:40px;">
-              <h2 style="margin:0 0 12px;color:#1f2937;font-size:22px;font-weight:600;">Password Reset Request 🔐</h2>
+              <h2 style="margin:0 0 12px;color:#1f2937;font-size:22px;font-weight:600;">Password Reset Request</h2>
               <p style="margin:0 0 20px;color:#6b7280;font-size:15px;line-height:1.6;">
                 We received a request to reset your TaskFlow password. Click the button below to set a new password.
                 This link will expire in <strong style="color:#111827;">10 minutes</strong>.
@@ -122,12 +126,15 @@ const passwordResetTemplate = (resetUrl) => `
 /**
  * HTML email template for overdue task notifications.
  *
- * @param {string} taskTitle  - The title of the overdue task.
- * @param {string} dueDate    - The formatted due date of the task.
- * @param {string} boardTitle  - The title of the board the task belongs to.
+ * @param {string} taskTitle    - The title of the overdue task.
+ * @param {string} dueDate      - The formatted due date of the task.
+ * @param {string} boardTitle   - The title of the board the task belongs to.
+ * @param {string} frontendUrl  - The base URL of the frontend application.
  * @returns {string} Full HTML string ready to send as an email body.
  */
-const overdueTaskTemplate = (taskTitle, dueDate, boardTitle) => `
+const overdueTaskTemplate = (taskTitle, dueDate, boardTitle, frontendUrl) => {
+  const baseUrl = frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -161,7 +168,7 @@ const overdueTaskTemplate = (taskTitle, dueDate, boardTitle) => `
               <p style="margin:0 0 28px;color:#6b7280;font-size:14px;line-height:1.6;">
                 Please log in to TaskFlow to complete or reschedule the task.
               </p>
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}"
+              <a href="${baseUrl}"
                  style="display:inline-block;background:#dc2626;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
                 View Task on TaskFlow →
               </a>
@@ -182,15 +189,19 @@ const overdueTaskTemplate = (taskTitle, dueDate, boardTitle) => `
 </body>
 </html>
 `;
+};
 
 /**
  * HTML email template for inviting unregistered users to join and collaborate.
  *
- * @param {string} boardTitle  - The name of the board the user is being invited to.
- * @param {string} inviterName - The username of the person sending the invite.
+ * @param {string} boardTitle   - The name of the board the user is being invited to.
+ * @param {string} inviterName  - The username of the person sending the invite.
+ * @param {string} frontendUrl  - The base URL of the frontend application.
  * @returns {string} Full HTML string ready to send as an email body.
  */
-const inviteUnregisteredTemplate = (boardTitle, inviterName) => `
+const inviteUnregisteredTemplate = (boardTitle, inviterName, frontendUrl) => {
+  const baseUrl = frontendUrl || process.env.FRONTEND_URL || 'http://localhost:3000';
+  return `
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -213,14 +224,14 @@ const inviteUnregisteredTemplate = (boardTitle, inviterName) => `
           <!-- Body -->
           <tr>
             <td style="padding:40px;">
-              <h2 style="margin:0 0 12px;color:#1f2937;font-size:22px;font-weight:600;">You've been invited! 🎉</h2>
+              <h2 style="margin:0 0 12px;color:#1f2937;font-size:22px;font-weight:600;">You've been invited!</h2>
               <p style="margin:0 0 20px;color:#6b7280;font-size:15px;line-height:1.6;">
                 <strong style="color:#111827;">${inviterName}</strong> has invited you to collaborate on the board <strong style="color:#111827;">"${boardTitle}"</strong>.
               </p>
               <p style="margin:0 0 28px;color:#6b7280;font-size:14px;line-height:1.6;">
                 It looks like you don't have a TaskFlow account yet. Register now using this email address to instantly gain access to the board and start working together.
               </p>
-              <a href="${process.env.FRONTEND_URL || 'http://localhost:5173'}"
+              <a href="${baseUrl}/register"
                  style="display:inline-block;background:#be185d;color:#ffffff;text-decoration:none;padding:14px 32px;border-radius:8px;font-size:15px;font-weight:600;letter-spacing:0.3px;">
                 Create Free Account →
               </a>
@@ -241,5 +252,6 @@ const inviteUnregisteredTemplate = (boardTitle, inviterName) => `
 </body>
 </html>
 `;
+};
 
 module.exports = { inviteTemplate, passwordResetTemplate, overdueTaskTemplate, inviteUnregisteredTemplate };

@@ -28,7 +28,7 @@ A real-time collaborative Kanban project management application built on the MER
 | Database | MongoDB Atlas (Mongoose ODM) |
 | Auth | JWT Bearer Tokens, bcryptjs |
 | Validation | Zod schemas |
-| Email | Nodemailer (SMTP / Gmail) |
+| Email | Brevo HTTP API |
 | AI | Google Gemini API (`gemini-2.5-flash`) |
 | Security | Helmet, CORS, express-rate-limit |
 | Testing | Jest, Supertest (unit + integration) |
@@ -41,7 +41,7 @@ A real-time collaborative Kanban project management application built on the MER
 
 - Node.js v18+
 - A [MongoDB Atlas](https://mongodb.com/atlas) cluster (free tier works)
-- A Gmail account with an [App Password](https://myaccount.google.com/apppasswords)
+- A [Brevo](https://brevo.com) account and API key
 - A [Google Gemini API key](https://aistudio.google.com/app/apikey)
 
 ### 1. Clone the repository
@@ -66,17 +66,14 @@ JWT_SECRET=your_secure_random_secret
 
 GEMINI_API_KEY=your_gemini_api_key
 
-EMAIL_HOST=smtp.gmail.com
-EMAIL_PORT=587
-EMAIL_SECURE=false
-EMAIL_USER=your_app_email@gmail.com
-EMAIL_PASS=your16charapppassword
+BREVO_API_KEY=your_brevo_api_key_here
+BREVO_SENDER_EMAIL=your_verified_brevo_email@domain.com
 
 FRONTEND_URL=http://localhost:3000
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
 ```
 
-> **Note:** `EMAIL_PASS` is a Gmail App Password, not your normal Gmail password. Remove all spaces from the 16-character code (e.g. `xxxxxxxxxxxxxxxx`).
+> **Note:** `BREVO_SENDER_EMAIL` must be an email address or domain that you have verified in your Brevo account dashboard.
 
 ### 3. Install dependencies
 
@@ -170,7 +167,7 @@ See [`backend/docs/API.md`](./backend/docs/API.md) for the complete endpoint ref
 | [`backend/docs/architecture.md`](./backend/docs/architecture.md) | System design, security layers, real-time architecture |
 | [`backend/docs/documentation.md`](./backend/docs/documentation.md) | Detailed controller, middleware, and utility reference |
 | [`backend/docs/schema.md`](./backend/docs/schema.md) | ER diagram, collection indexes, notification types |
-| [`backend/docs/email-service.md`](./backend/docs/email-service.md) | Email setup, SMTP config, cron job |
+| [`backend/docs/email-service.md`](./backend/docs/email-service.md) | Email setup (Brevo API), cron job |
 | [`backend/docs/pending-invitations-flow.md`](./backend/docs/pending-invitations-flow.md) | Board invitation workflow for registered and unregistered users |
 
 ---

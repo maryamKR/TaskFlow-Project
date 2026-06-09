@@ -54,7 +54,7 @@ Initiates the password reset flow.
 4. Hashes the token using `SHA-256` before storing it on the user document (prevents token exposure if the database is compromised).
 5. Sets `resetPasswordExpire` to 10 minutes from now.
 6. Saves the user and sends the **unhashed** token in the reset URL via `sendPasswordResetEmail()`.
-7. **Rollback on email failure:** If the SMTP call throws, the token and expiry are cleared from the user document before re-throwing, preventing orphaned reset tokens.
+7. **Rollback on email failure:** If the Brevo API call throws, the token and expiry are cleared from the user document before re-throwing, preventing orphaned reset tokens.
 
 **Rate limiting:** Maximum 3 requests per hour per IP (`passwordResetLimiter`).
 
@@ -401,8 +401,9 @@ Shared resolver used by task and comment controllers to reduce boilerplate:
 4. Returns `{ task, column, board }` for the caller to use
 
 ### `emailService.js`
-Wraps three Nodemailer `transporter.sendMail()` calls:
-- `sendInviteEmail(toEmail, boardTitle, inviterName, inviterEmail)` — board invitation
+Wraps four Brevo API calls via `fetch`:
+- `sendInviteEmail(toEmail, boardTitle, inviterName, inviterEmail)` — board invitation for registered user
+- `sendUnregisteredInviteEmail(toEmail, boardTitle, inviterName, inviterEmail)` — sign-up invite for unregistered email
 - `sendPasswordResetEmail(toEmail, resetUrl)` — password reset link
 - `sendOverdueTaskEmail(toEmail, taskTitle, dueDate, boardTitle)` — overdue alert
 

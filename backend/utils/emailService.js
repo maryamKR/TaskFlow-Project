@@ -1,21 +1,55 @@
-const nodemailer = require("nodemailer");
 const { inviteTemplate, passwordResetTemplate, overdueTaskTemplate, inviteUnregisteredTemplate } = require("./emailTemplates");
 
+const FRONTEND_URL = process.env.FRONTEND_URL || "http://localhost:3000";
+
 /**
- * Creates and returns a configured nodemailer transporter.
- * Reads SMTP credentials from environment variables.
- * Supports any SMTP provider (Gmail, Brevo, AWS SES, etc.)
+ * Sends an email using the Brevo HTTP API.
+ * This is used instead of SMTP to ensure compatibility with environments
+ * that block outbound SMTP connections (like Railway hobby tier).
+ *
+ * @param {Object} payload The email payload
+ * @param {Array<{email: string, name?: string}>} payload.to Recipient list
+ * @param {Object} [payload.replyTo] Optional reply-to address {email, name}
+ * @param {string} payload.subject Email subject
+ * @param {string} payload.htmlContent Email HTML body
  */
-const createTransporter = () => {
-  return nodemailer.createTransport({
-    host: process.env.EMAIL_HOST,
-    port: parseInt(process.env.EMAIL_PORT, 10) || 587,
-    secure: process.env.EMAIL_SECURE === "true", // true for port 465, false for 587
-    auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS,
+const sendBrevoEmail = async ({ to, replyTo, subject, htmlContent }) => {
+  const apiKey = process.env.BREVO_API_KEY;
+  const senderEmail = process.env.BREVO_SENDER_EMAIL || "notifications@taskflow.com";
+  const senderName = process.env.BREVO_SENDER_NAME || "TaskFlow";
+
+  if (!apiKey) {
+    console.warn("[Email] BREVO_API_KEY is not set. Email not sent.");
+    return;
+  }
+
+  const payload = {
+    sender: { name: senderName, email: senderEmail },
+    to,
+    subject,
+    htmlContent,
+  };
+
+  if (replyTo) {
+    payload.replyTo = replyTo;
+  }
+
+  const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json",
+      "api-key": apiKey,
     },
+    body: JSON.stringify(payload),
   });
+
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(`Brevo API Error: ${response.status} - ${JSON.stringify(errorData)}`);
+  }
+
+  return response.json();
 };
 
 /**
@@ -28,13 +62,11 @@ const createTransporter = () => {
  */
 const sendInviteEmail = async (toEmail, boardTitle, inviterName, inviterEmail) => {
   try {
-    const transporter = createTransporter();
-    await transporter.sendMail({
-      from: `"TaskFlow" <${process.env.EMAIL_USER}>`,
-      to: toEmail,
-      replyTo: inviterEmail,  // Replies go to the board owner, not the platform
+    await sendBrevoEmail({
+      to: [{ email: toEmail }],
+      replyTo: { email: inviterEmail },
       subject: `${inviterName} invited you to "${boardTitle}" on TaskFlow`,
-      html: inviteTemplate(boardTitle, inviterName),
+      htmlContent: inviteTemplate(boardTitle, inviterName, FRONTEND_URL),
     });
     console.log(`[Email] Invite sent to ${toEmail} for board "${boardTitle}"`);
   } catch (err) {
@@ -51,17 +83,16 @@ const sendInviteEmail = async (toEmail, boardTitle, inviterName, inviterEmail) =
  */
 const sendPasswordResetEmail = async (toEmail, resetUrl) => {
   try {
-    const transporter = createTransporter();
-    await transporter.sendMail({
-      from: `"TaskFlow" <${process.env.EMAIL_USER}>`,
-      to: toEmail,
+    await sendBrevoEmail({
+      to: [{ email: toEmail }],
       subject: "Reset Your TaskFlow Password",
-      html: passwordResetTemplate(resetUrl),
+      htmlContent: passwordResetTemplate(resetUrl),
     });
     console.log(`[Email] Password reset link sent to ${toEmail}`);
   } catch (err) {
     // Log but don't crash — the token is still valid even if email fails
     console.error(`[Email] Failed to send password reset to ${toEmail}:`, err.message);
+    throw err; // Re-throw to allow controller to rollback token
   }
 };
 
@@ -75,12 +106,10 @@ const sendPasswordResetEmail = async (toEmail, resetUrl) => {
  */
 const sendOverdueTaskEmail = async (toEmail, taskTitle, dueDate, boardTitle) => {
   try {
-    const transporter = createTransporter();
-    await transporter.sendMail({
-      from: `"TaskFlow" <${process.env.EMAIL_USER}>`,
-      to: toEmail,
+    await sendBrevoEmail({
+      to: [{ email: toEmail }],
       subject: `Overdue Task Alert: "${taskTitle}"`,
-      html: overdueTaskTemplate(taskTitle, dueDate, boardTitle),
+      htmlContent: overdueTaskTemplate(taskTitle, dueDate, boardTitle, FRONTEND_URL),
     });
     console.log(`[Email] Overdue task alert sent to ${toEmail} for task "${taskTitle}"`);
   } catch (err) {
@@ -98,13 +127,11 @@ const sendOverdueTaskEmail = async (toEmail, taskTitle, dueDate, boardTitle) => 
  */
 const sendUnregisteredInviteEmail = async (toEmail, boardTitle, inviterName, inviterEmail) => {
   try {
-    const transporter = createTransporter();
-    await transporter.sendMail({
-      from: `"TaskFlow" <${process.env.EMAIL_USER}>`,
-      to: toEmail,
-      replyTo: inviterEmail,
+    await sendBrevoEmail({
+      to: [{ email: toEmail }],
+      replyTo: { email: inviterEmail },
       subject: `${inviterName} invited you to join TaskFlow and collaborate on "${boardTitle}"`,
-      html: inviteUnregisteredTemplate(boardTitle, inviterName),
+      htmlContent: inviteUnregisteredTemplate(boardTitle, inviterName, FRONTEND_URL),
     });
     console.log(`[Email] Unregistered invite sent to ${toEmail} for board "${boardTitle}"`);
   } catch (err) {
