@@ -1,14 +1,13 @@
 ﻿import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer,
   PieChart, Pie, Cell, Legend
 } from 'recharts';
 import Navbar from '../components/Navbar';
 import { useTheme } from '../context/ThemeContext';
 import { getBoards, getBoardById } from '../services/board';
 
-const PRIORITY_COLORS = { high: '#EF4444', medium: '#F59E0B', low: '#10B981' };
 const COLUMN_COLORS = ['#3B82F6', '#8B5CF6', '#F59E0B', '#10B981', '#EF4444', '#EC4899'];
 
 function StatCard({ label, value, color, isDark }) {
@@ -33,6 +32,7 @@ function DashboardPage() {
   useEffect(() => {
     if (!token) { navigate('/'); return; }
     fetchBoards();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token]);
 
   const fetchBoards = async () => {

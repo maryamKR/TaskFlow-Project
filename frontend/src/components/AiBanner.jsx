@@ -25,7 +25,9 @@ function AiBanner({ boardId, columns, onPrioritiesUpdated }) {
 
     // Skip the network request if data hasn't changed AND we haven't hit our 15-minute time limit
     if (!forceRequest && currentSignature === lastTaskSignature.current && timeSinceLastForce < FORCE_RE_EVALUATE_INTERVAL) {
-      console.log("AI Banner: Data hasn't changed and 15-minute interval hasn't expired. Skipping fetch.");
+      if (process.env.NODE_ENV !== 'production') {
+        console.log("AI Banner: Data hasn't changed and 15-minute interval hasn't expired. Skipping fetch.");
+      }
       return;
     }
 
@@ -44,11 +46,13 @@ function AiBanner({ boardId, columns, onPrioritiesUpdated }) {
   // 1. Initial Load Hook
   useEffect(() => {
     handleFetchInsight(true); // Force an initial insight generation on board load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId]); // Only triggers when switching to a completely different board
 
   // 2. Automated Background Timer Hook (5-minute cycle)
   useEffect(() => {
     const timer = setInterval(() => {
+      // eslint-disable-next-line no-console
       console.log("AI Banner: Running automated background check...");
       
       const now = Date.now();
@@ -61,6 +65,7 @@ function AiBanner({ boardId, columns, onPrioritiesUpdated }) {
     }, CHECK_INTERVAL);
 
     return () => clearInterval(timer); // Clean up the timer when leaving the page
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [boardId, columns]);
 
   const handleBulkPrioritize = async () => {
