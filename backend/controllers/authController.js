@@ -93,11 +93,17 @@ exports.registerUser = async (req, res, next) => {
     expiresIn: "30d",
   });
 
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  });
+
   res.status(201).json({
     _id: user._id,
     username: user.username,
     email: user.email,
-    token,
   });
 };
 
@@ -123,11 +129,45 @@ exports.loginUser = async (req, res, next) => {
     expiresIn: "30d",
   });
 
+  res.cookie("token", token, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+    maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+  });
+
   res.json({
     _id: user._id,
     username: user.username,
     email: user.email,
-    token,
+  });
+};
+
+// @desc    Logout user / clear cookie
+// @route   POST /api/auth/logout
+// @access  Public
+exports.logoutUser = (req, res) => {
+  res.clearCookie("token", {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === "production",
+    sameSite: process.env.NODE_ENV === "production" ? "none" : "strict",
+  });
+  res.status(200).json({ message: "Logged out successfully" });
+};
+
+// @desc    Get current user profile
+// @route   GET /api/auth/me
+// @access  Private
+exports.getMe = async (req, res, next) => {
+  const user = await User.findById(req.user._id).select("-password");
+  if (!user) {
+    res.status(404);
+    throw new Error("User not found");
+  }
+  res.status(200).json({
+    _id: user._id,
+    username: user.username,
+    email: user.email,
   });
 };
 

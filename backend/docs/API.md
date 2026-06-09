@@ -8,9 +8,9 @@ http://localhost:5000/api
 ```
 
 ## Authentication
-All routes except `/auth/register` and `/auth/login` require a signed JWT Bearer token in the Authorization header:
+All routes except `/auth/register` and `/auth/login` require an active session via an httpOnly `token` cookie:
 ```
-Authorization: Bearer <your_jwt_token>
+Cookie: token=<your_jwt_token>
 ```
 Tokens are issued on registration and login and are valid for **30 days**.
 
@@ -72,10 +72,10 @@ Creates a new account. If the registered email matches any `pendingInvites`, the
 {
   "_id": "60d5ec...",
   "username": "johndoe",
-  "email": "john@example.com",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "email": "john@example.com"
 }
 ```
+*(Also returns a `Set-Cookie` header containing the JWT session)*
 
 **Error `400`:** Email or username already exists.
 
@@ -102,12 +102,46 @@ Authenticates an existing user and returns a JWT token.
 {
   "_id": "60d5ec...",
   "username": "johndoe",
-  "email": "john@example.com",
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "email": "john@example.com"
 }
 ```
+*(Also returns a `Set-Cookie` header containing the JWT session)*
 
 **Error `401`:** Invalid email or password (generic message — prevents user enumeration).
+
+---
+
+### Logout User
+```
+POST /auth/logout
+```
+Clears the user's `httpOnly` session cookie to securely log them out.
+
+**Response `200`:**
+```json
+{
+  "success": true,
+  "message": "Logged out successfully"
+}
+```
+*(Also returns a `Set-Cookie` header to clear the token)*
+
+---
+
+### Get Current User (Me)
+```
+GET /api/auth/me
+```
+Retrieves the currently authenticated user's profile using the session cookie. Requires an active `httpOnly` cookie.
+
+**Response `200`:**
+```json
+{
+  "_id": "60d5ec...",
+  "username": "johndoe",
+  "email": "john@example.com"
+}
+```
 
 ---
 

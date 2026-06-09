@@ -1,4 +1,4 @@
-const { registerUser, loginUser, forgotPassword, resetPassword } = require("../../controllers/authController");
+const { registerUser, loginUser, forgotPassword, resetPassword, logoutUser, getMe } = require("../../controllers/authController");
 const User = require("../../models/User");
 const Board = require("../../models/Board");
 const jwt = require("jsonwebtoken");
@@ -18,6 +18,7 @@ describe("authController", () => {
   beforeEach(() => {
     process.env.JWT_SECRET = "test-secret";
     process.env.FRONTEND_URL = "http://localhost:3000";
+    process.env.NODE_ENV = "test";
   });
 
   // ═══════════════════════════════════════
@@ -38,7 +39,7 @@ describe("authController", () => {
 
       expect(User.create).toHaveBeenCalledWith({ username: "newuser", email: "new@test.com", password: "123456" });
       expect(res.status).toHaveBeenCalledWith(201);
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ token: "mock-token" }));
+      expect(res.cookie).toHaveBeenCalledWith("token", "mock-token", expect.objectContaining({ httpOnly: true }));
     });
 
     it("should auto-join pending board invites on registration", async () => {
@@ -107,7 +108,7 @@ describe("authController", () => {
 
       await loginUser(req, res);
 
-      expect(res.json).toHaveBeenCalledWith(expect.objectContaining({ token: "mock-token" }));
+      expect(res.cookie).toHaveBeenCalledWith("token", "mock-token", expect.objectContaining({ httpOnly: true }));
     });
 
     it("should throw 401 when email not found", async () => {
@@ -129,6 +130,49 @@ describe("authController", () => {
 
       await expect(loginUser(req, res)).rejects.toThrow("Invalid email or password");
       expect(res.status).toHaveBeenCalledWith(401);
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // logoutUser
+  // ═══════════════════════════════════════
+  describe("logoutUser", () => {
+    it("should clear the token cookie", async () => {
+      const req = mockReq();
+      const res = mockRes();
+
+      await logoutUser(req, res);
+
+      expect(res.clearCookie).toHaveBeenCalledWith("token", expect.objectContaining({ httpOnly: true }));
+      expect(res.status).toHaveBeenCalledWith(200);
+    });
+  });
+
+  // ═══════════════════════════════════════
+  // getMe
+  // ═══════════════════════════════════════
+  describe("getMe", () => {
+    it("should return the current user profile", async () => {
+      const req = mockReq({ user: { _id: fakeId(1) } });
+      const res = mockRes();
+
+      const mockUser = { _id: fakeId(1), username: "me", email: "me@test.com" };
+      User.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(mockUser) });
+
+      await getMe(req, res);
+
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(mockUser);
+    });
+
+    it("should throw 404 when user is not found", async () => {
+      const req = mockReq({ user: { _id: fakeId(9) } });
+      const res = mockRes();
+
+      User.findById.mockReturnValue({ select: jest.fn().mockResolvedValue(null) });
+
+      await expect(getMe(req, res)).rejects.toThrow("User not found");
+      expect(res.status).toHaveBeenCalledWith(404);
     });
   });
 

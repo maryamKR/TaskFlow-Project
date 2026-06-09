@@ -24,8 +24,8 @@ Client                          Backend                              Database
   │                                │  ├─ Remove from pendingInvites    >│
   │                                │  ├─ Create BOARD_INVITATION notif >│
   │                                │  └─ Create BOARD_INVITATION notif     >│  (owner, via notifyOwner)
-  │                                │─ Sign JWT (30d) ──────────────────│
-  │<── 201 { _id, username, email, token } ───────────────────────────│
+  │                                │─ Sign JWT & Set httpOnly Cookie ──│
+  │<── 201 { _id, username, email } + Set-Cookie ─────────────────────│
 ```
 
 **Rate limit:** 5 requests/hour/IP. Exceeding returns `429`.
@@ -44,13 +44,13 @@ Client                          Backend                              Database
   │                                │─ Validate (Zod) ──────────────────│
   │                                │─ Find user by email (+password) ──>│
   │                                │─ bcrypt.compare(password, hash) ──│
-  │                                │─ Sign JWT (30d) ──────────────────│
-  │<── 200 { _id, username, email, token } ───────────────────────────│
+  │                                │─ Sign JWT & Set httpOnly Cookie ──│
+  │<── 200 { _id, username, email } + Set-Cookie ─────────────────────│
 ```
 
 **Client-side after login:**
-1. Saves token to `localStorage`
-2. Establishes Socket.IO connection with `socket.auth = { token }`
+1. Stores user in React `AuthContext`
+2. Establishes Socket.IO connection (cookie automatically sent with `withCredentials: true`)
 3. Emits `join_user(userId)` to subscribe to personal notification room
 
 **Rate limit:** 10 requests/15 minutes/IP.
@@ -369,7 +369,7 @@ See [pending-invitations-flow.md](./pending-invitations-flow.md) for the complet
 | Rate limiting — login | `loginLimiter` (10/15min/IP) | Credential brute-force attacks |
 | Rate limiting — reset | `passwordResetLimiter` (3/hr/IP) | SMTP abuse, token flood |
 | Input validation | Zod schemas (all mutations) | Malformed data, MongoDB operator injection |
-| Authentication | JWT Bearer tokens (30-day) | Unauthorised API access |
+| Authentication | httpOnly secure cookies (JWT, 30-day) | Unauthorised API access, XSS attacks |
 | Password storage | `bcryptjs` (10 salt rounds) | Rainbow table attacks |
 | Enumeration guard | Generic 200 on forgot-password | Probing registered email addresses |
 | Access control | `hasBoardAccess()` + owner checks | Privilege escalation by coworkers |

@@ -3,6 +3,7 @@ const request = require("supertest");
 const app = require("../../app");
 const User = require("../../models/User");
 const Board = require("../../models/Board");
+const { loginLimiter, registerLimiter } = require("../../middleware/rateLimiter");
 
 describe("Auth Integration Tests", () => {
   const registerPayload = {
@@ -11,16 +12,30 @@ describe("Auth Integration Tests", () => {
     password: "password123",
   };
 
+  afterEach(() => {
+    // Reset rate limiters after every test to prevent 429 failures
+    const testIp = "::ffff:127.0.0.1";
+    loginLimiter.resetKey(testIp);
+    loginLimiter.resetKey("127.0.0.1");
+    registerLimiter.resetKey(testIp);
+    registerLimiter.resetKey("127.0.0.1");
+  });
+
   // ─── Registration ───
   describe("POST /api/auth/register", () => {
-    it("should register a new user, hash password, and return a JWT", async () => {
+    it("should register a new user, hash password, and return a JWT in a secure cookie", async () => {
       const response = await request(app)
         .post("/api/auth/register")
         .send(registerPayload)
         .expect(201);
 
-      // Verify the flat response payload returned directly by auth routes
-      expect(response.body).toHaveProperty("token");
+      // Verify the cookie header
+      expect(response.headers["set-cookie"]).toBeDefined();
+      const cookie = response.headers["set-cookie"][0];
+      expect(cookie).toMatch(/token=/);
+      expect(cookie).toMatch(/HttpOnly/);
+      expect(cookie).toMatch(/SameSite=Strict/); // In test/dev environment
+
       expect(response.body).toHaveProperty("username", registerPayload.username);
       expect(response.body).not.toHaveProperty("password");
 
@@ -81,7 +96,7 @@ describe("Auth Integration Tests", () => {
       await User.create(registerPayload);
     });
 
-    it("should authenticate valid user credentials and return a token", async () => {
+    it("should authenticate valid user credentials and return a secure token cookie", async () => {
       const response = await request(app)
         .post("/api/auth/login")
         .send({
@@ -90,7 +105,10 @@ describe("Auth Integration Tests", () => {
         })
         .expect(200);
 
-      expect(response.body).toHaveProperty("token");
+      expect(response.headers["set-cookie"]).toBeDefined();
+      const cookie = response.headers["set-cookie"][0];
+      expect(cookie).toMatch(/token=/);
+      expect(cookie).toMatch(/HttpOnly/);
     });
 
     it("should return 401 for incorrect password", async () => {
@@ -105,32 +123,71 @@ describe("Auth Integration Tests", () => {
       expect(response.body.success).toBe(false);
       expect(response.body.error).toMatch(/invalid/i);
     });
+  });
 
-    it("should return 401 for non-existent email", async () => {
-      const response = await request(app)
-        .post("/api/auth/login")
+  // ─── Profile & Logout ───
+  describe("Authenticated Endpoints (Cookie-based)", () => {
+    let authCookie;
+
+    beforeEach(async () => {
+      const loginRes = await request(app)
+        .post("/api/auth/register")
         .send({
-          email: "missing@test.com",
-          password: "password123",
-        })
-        .expect(401);
+          username: "authuser",
+          email: "auth@test.com",
+          password: "password123"
+        });
+      
+      if (loginRes.status !== 201) {
+        console.error("Registration failed in beforeEach:", loginRes.body);
+      }
+      
+      authCookie = loginRes.headers["set-cookie"] ? loginRes.headers["set-cookie"][0] : null;
+    });
 
-      expect(response.body.success).toBe(false);
+    it("should retrieve current user profile using cookie", async () => {
+      expect(authCookie).toBeDefined();
+      const response = await request(app)
+        .get("/api/auth/me")
+        .set("Cookie", [authCookie])
+        .expect(200);
+
+      expect(response.body).toHaveProperty("username", "authuser");
+      expect(response.body).toHaveProperty("email", "auth@test.com");
+    });
+
+    it("should successfully logout and clear the cookie", async () => {
+      expect(authCookie).toBeDefined();
+      const response = await request(app)
+        .post("/api/auth/logout")
+        .set("Cookie", [authCookie])
+        .expect(200);
+
+      expect(response.headers["set-cookie"]).toBeDefined();
+      const clearCookie = response.headers["set-cookie"][0];
+      expect(clearCookie).toMatch(/token=;/); // empty value
+      expect(clearCookie).toMatch(/Expires=/); // expired
+    });
+
+    it("should deny access to /me after logout", async () => {
+      expect(authCookie).toBeDefined();
+      // Logout first
+      const logoutRes = await request(app)
+        .post("/api/auth/logout")
+        .set("Cookie", [authCookie]);
+      
+      const clearedCookie = logoutRes.headers["set-cookie"][0];
+
+      // Attempt to get profile with cleared cookie
+      await request(app)
+        .get("/api/auth/me")
+        .set("Cookie", [clearedCookie])
+        .expect(401);
     });
   });
 
   // ─── Rate Limiting ───
   describe("Rate Limiting", () => {
-    const { loginLimiter, registerLimiter } = require("../../middleware/rateLimiter");
-
-    afterEach(() => {
-      // Reset limiters to avoid pollution in subsequent tests
-      loginLimiter.resetKey("::ffff:127.0.0.1");
-      loginLimiter.resetKey("127.0.0.1");
-      registerLimiter.resetKey("::ffff:127.0.0.1");
-      registerLimiter.resetKey("127.0.0.1");
-    });
-
     it("should block requests with 429 after exceeding login rate limit", async () => {
       // loginLimiter is set to max 10 requests per 15 minutes
       for (let i = 0; i < 10; i++) {

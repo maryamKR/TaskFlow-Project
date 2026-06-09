@@ -4,12 +4,16 @@ const User = require('../models/User');
 const protect = async (req, res, next) => {
     let token;
 
-    // 1. Check if the incoming request has an Authorization header starting with 'Bearer'
-    if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
-        try {
-            // Split "Bearer <token_string>" to isolate the actual token
-            token = req.headers.authorization.split(' ')[1];
+    // 1. Check if the incoming request has a token in cookies or Authorization header
+    if (req.cookies && req.cookies.token) {
+        token = req.cookies.token;
+    } else if (req.headers.authorization && req.headers.authorization.startsWith('Bearer')) {
+        // Split "Bearer <token_string>" to isolate the actual token
+        token = req.headers.authorization.split(' ')[1];
+    }
 
+    if (token) {
+        try {
             // 2. Decode and verify the token signature
             const decoded = jwt.verify(token, process.env.JWT_SECRET);
 

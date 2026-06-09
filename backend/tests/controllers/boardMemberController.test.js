@@ -13,6 +13,13 @@ jest.mock("../../utils/boardAuth");
 jest.mock("../../utils/notifyAndEmit");
 jest.mock("../../utils/notifyOwner");
 jest.mock("../../utils/emailService");
+jest.mock("../../socket", () => ({
+  getIO: jest.fn().mockReturnValue({
+    to: jest.fn().mockReturnValue({
+      emit: jest.fn(),
+    }),
+  }),
+}));
 
 describe("boardMemberController", () => {
   beforeEach(() => {

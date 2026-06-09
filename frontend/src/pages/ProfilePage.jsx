@@ -1,22 +1,22 @@
-﻿import { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import { useTheme } from '../context/ThemeContext';
-import { getProfileFromStorage, getMyBoards } from '../services/profile';
+import { useAuth } from '../context/AuthContext';
+import { getMyBoards } from '../services/profile';
 
 function ProfilePage() {
   const { isDark } = useTheme();
+  const { user, logout } = useAuth();
   const navigate = useNavigate();
-  const [profile] = useState(getProfileFromStorage());
   const [boards, setBoards] = useState([]);
   const [stats, setStats] = useState({ totalBoards: 0, totalTasks: 0, completedTasks: 0, highPriorityTasks: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (!token) { window.location.href = '/'; return; }
+    if (!user) return;
     fetchStats();
-  }, []);
+  }, [user]);
 
   const fetchStats = async () => {
     try {
@@ -41,14 +41,13 @@ function ProfilePage() {
   };
 
   // Dynamic role tag
-  const token = localStorage.getItem('token');
-  const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
-  const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
+  const currentUserId = user?._id || user?.id;
   const isOwnerOfAnyBoard = boards.some(
     board => board.user === currentUserId || board.user?._id === currentUserId
   );
 
-  const initials = profile.username.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+  const username = user?.username || 'User';
+  const initials = username.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
 
   if (loading) return (
     <div className={`min-h-screen flex items-center justify-center ${isDark ? 'bg-gray-900' : 'bg-gray-100'}`}>
@@ -89,8 +88,8 @@ function ProfilePage() {
             {initials}
           </div>
           <div className="flex flex-col gap-1">
-            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{profile.username}</h2>
-            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{profile.email || 'No email saved'}</p>
+            <h2 className={`text-xl font-bold ${isDark ? 'text-white' : 'text-gray-900'}`}>{username}</h2>
+            <p className={`text-sm ${isDark ? 'text-gray-400' : 'text-gray-500'}`}>{user?.email || 'No email saved'}</p>
             {/* Dynamic role tag */}
             <span className={`mt-2 inline-block text-xs px-3 py-1 rounded-full w-fit ${
               isOwnerOfAnyBoard
@@ -175,12 +174,7 @@ function ProfilePage() {
             <p className={`text-xs mt-0.5 ${isDark ? 'text-gray-500' : 'text-gray-400'}`}>Log out of your account</p>
           </div>
           <button
-            onClick={() => {
-              localStorage.removeItem('token');
-              localStorage.removeItem('username');
-              localStorage.removeItem('email');
-              window.location.href = '/';
-            }}
+            onClick={logout}
             className="bg-red-600/20 hover:bg-red-600/40 text-red-400 px-4 py-2 rounded-lg text-sm transition duration-200"
           >
             Logout

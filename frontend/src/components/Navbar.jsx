@@ -1,4 +1,5 @@
-﻿import { useTheme } from '../context/ThemeContext';
+import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import { useState, useEffect, useRef } from 'react';
 import {
@@ -10,12 +11,9 @@ import socket from '../socket';
 function Navbar() {
   
   const { isDark, toggleTheme } = useTheme();
+  const { user, logout } = useAuth();
 
-  const getUsername = () => {
-    const username = localStorage.getItem('username') || 'User';
-    return username.charAt(0).toUpperCase() + username.slice(1);
-  };
-  const username = getUsername();
+  const username = user?.username ? user.username.charAt(0).toUpperCase() + user.username.slice(1) : 'User';
 
   const [notifications, setNotifications] = useState([]);
   const [showDropdown, setShowDropdown] = useState(false);
@@ -86,12 +84,6 @@ function Navbar() {
       await deleteReadNotifications();
       setNotifications(prev => prev.filter(n => !n.isRead));
     } catch (err) { console.error(err); }
-  };
-
-  const handleLogout = () => {
-    localStorage.removeItem('token');
-    localStorage.removeItem('username');
-    window.location.href = '/';
   };
 
   const unreadCount = notifications.filter(n => !n.isRead).length;
@@ -219,7 +211,7 @@ function Navbar() {
             <Link to="/profile" className={`text-sm transition duration-200 ${isDark ? 'text-gray-300 hover:text-white' : 'text-gray-700 hover:text-gray-900'}`}>
               {username}
             </Link>
-            <button onClick={handleLogout} className={`text-sm transition duration-200 ${isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}>
+            <button onClick={logout} className={`text-sm transition duration-200 ${isDark ? 'text-gray-400 hover:text-red-400' : 'text-gray-500 hover:text-red-500'}`}>
               Logout
             </button>
           </div>
@@ -268,7 +260,7 @@ function Navbar() {
             Profile
           </Link>
           <button
-            onClick={handleLogout}
+            onClick={logout}
             className="text-sm font-medium px-2 py-1.5 rounded-lg text-left text-red-400 hover:bg-red-400/10 transition duration-200"
           >
             Logout

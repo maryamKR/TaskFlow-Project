@@ -1,6 +1,7 @@
-﻿import { useState } from 'react';
+import { useState } from 'react';
 import { deleteBoard, inviteMember, removeMember } from '../services/board';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import Toast from './Toast';
 
 function Sidebar({
@@ -19,9 +20,8 @@ function Sidebar({
   const [toast, setToast] = useState(null);
   const [boardToDelete, setBoardToDelete] = useState(null);
 
-  const token = localStorage.getItem('token');
-  const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
-  const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
+  const { user } = useAuth();
+  const currentUserId = user?._id || user?.id;
   const isOwner = activeBoard?.user === currentUserId || activeBoard?.user?._id === currentUserId;
 
   const handleDeleteBoard = async () => {

@@ -13,6 +13,7 @@ import Column from '../components/Column';
 import CreateBoardModal from '../components/CreateBoardModal';
 import AddColumnButton from '../components/AddColumnButton';
 import { useTheme } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
 import {
   getBoards, getBoardById, getBoardMembers,
   moveTask, reorderColumns, reorderTasks
@@ -69,24 +70,17 @@ function BoardPage() {
     activationConstraint: { distance: 8 },
   }));
 
-  const token = localStorage.getItem('token');
-  const tokenPayload = token ? JSON.parse(atob(token.split('.')[1])) : null;
-  const currentUserId = tokenPayload?.id || tokenPayload?._id || tokenPayload?.userId;
+  const { user } = useAuth();
+  const currentUserId = user?._id || user?.id;
   const isOwner = activeBoard?.user === currentUserId || activeBoard?.user?._id === currentUserId;
 
   useEffect(() => {
-    if (!token) { window.location.href = '/'; return; }
+    if (!user) return;
     fetchBoards();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+  }, [user]);
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      socket.auth = { token };
-      socket.connect();
-      socket.emit("join_user", currentUserId);
-    }
     socket.on("board_invite_accepted", ({ board }) => {
       setBoards(prev => {
         if (prev.some(b => b._id === board._id)) return prev;
@@ -169,7 +163,7 @@ function BoardPage() {
         loadBoard(startId);
       } else setLoading(false);
     } catch (err) {
-      if (err.response?.status === 401) { localStorage.removeItem('token'); window.location.href = '/'; }
+      if (err.response?.status === 401) { window.location.href = '/'; }
       else { setError('Cannot connect to server.'); setLoading(false); }
     }
   };

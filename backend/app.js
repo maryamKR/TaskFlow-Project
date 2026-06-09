@@ -4,6 +4,7 @@ dotenv.config();
 const express = require("express");
 const cors = require("cors");
 const helmet = require("helmet");
+const cookieParser = require("cookie-parser");
 
 const authRoutes = require("./routes/authRoutes");
 const boardRoutes = require("./routes/boardRoutes");
@@ -62,6 +63,7 @@ app.use(
 
 // Body parser middleware
 app.use(express.json());
+app.use(cookieParser());
 
 // Test Route
 app.get("/api/test", (req, res) => {

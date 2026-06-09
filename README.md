@@ -26,7 +26,7 @@ A real-time collaborative Kanban project management application built on the MER
 | Frontend | React 19, React Router, Axios, Socket.IO Client, @dnd-kit, Recharts, TailwindCSS |
 | Backend | Node.js, Express 5, Socket.IO, node-cron |
 | Database | MongoDB Atlas (Mongoose ODM) |
-| Auth | JWT Bearer Tokens, bcryptjs |
+| Auth | httpOnly Cookies (JWT), bcryptjs |
 | Validation | Zod schemas |
 | Email | Brevo HTTP API |
 | AI | Google Gemini API (`gemini-2.5-flash`) |
@@ -148,7 +148,7 @@ See [`backend/docs/API.md`](./backend/docs/API.md) for the complete endpoint ref
 
 | Section | Endpoints |
 |---|---|
-| Auth | `POST /auth/register`, `/auth/login`, `/auth/forgot-password`, `/auth/reset-password/:token` |
+| Auth | `POST /auth/register`, `/auth/login`, `/auth/logout`, `/auth/me`, `/auth/forgot-password`, `/auth/reset-password/:token` |
 | Boards | `GET/POST /boards`, `GET/DELETE /boards/:id`, `PUT /boards/:id/reorder` |
 | Members | `GET /boards/:id/members`, `POST /boards/:id/invite`, `DELETE /boards/:id/members/:memberId` |
 | Columns | `GET/POST /columns`, `PUT/DELETE /columns/:id` |
@@ -175,7 +175,7 @@ See [`backend/docs/API.md`](./backend/docs/API.md) for the complete endpoint ref
 
 ## Security
 
-- All endpoints protected by JWT Bearer token authentication
+- All endpoints protected by secure httpOnly cookie authentication (JWT)
 - Rate limiting on `/login` (10/15min), `/register` (5/hr), `/forgot-password` (3/hr)
 - Input validated via Zod schemas before controllers execute
 - HTTP headers hardened with Helmet

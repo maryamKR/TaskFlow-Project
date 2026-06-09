@@ -11,7 +11,7 @@ This document provides detailed descriptions of all controllers, middleware, mod
 Manages user identity, session tokens, and password recovery.
 
 #### `registerUser(req, res)`
-Creates a new user account and returns an immediate JWT token.
+Creates a new user account and sets an immediate JWT token in an httpOnly cookie.
 
 **Step-by-step logic:**
 1. Extracts `{ username, email, password }` from the validated request body.
@@ -23,9 +23,9 @@ Creates a new user account and returns an immediate JWT token.
    - Saves the board
    - Sends a `BOARD_INVITATION` notification to the new user via `notifyAndEmit()`
    - Sends an `OWNER_ALERT` notification to the board owner via `notifyOwner()`
-5. Signs and returns a JWT: `jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' })`
+5. Signs a JWT and sets it as an httpOnly, secure, sameSite: 'strict' cookie on the response.
 
-**Response:** `201 Created` with `{ _id, username, email, token }`
+**Response:** `201 Created` with `{ _id, username, email }` and `Set-Cookie` header.
 
 ---
 
@@ -36,11 +36,26 @@ Authenticates an existing user.
 1. Extracts `{ email, password }` from the validated request body.
 2. Queries the User by email using `.select('+password')` — the password field is hidden by default (`select: false` in schema) and must be explicitly included for comparison.
 3. Calls `user.matchPassword(password)` (instance method on User model using `bcrypt.compare`).
-4. If credentials are valid, signs and returns a JWT.
+4. If credentials are valid, signs a JWT and sets it as an httpOnly cookie.
 
 **Security note:** Returns `401 Invalid email or password` for both non-existent email AND wrong password — a generic message that prevents user enumeration.
 
-**Response:** `200 OK` with `{ _id, username, email, token }`
+**Response:** `200 OK` with `{ _id, username, email }` and `Set-Cookie` header.
+
+---
+
+#### `logoutUser(req, res)`
+Logs the user out by clearing the session cookie.
+Sets an empty `token` cookie with an immediate expiration date (`expires: new Date(0)`).
+
+**Response:** `200 OK` with success message.
+
+---
+
+#### `getMe(req, res)`
+Returns the profile of the currently authenticated user based on their session cookie.
+
+**Response:** `200 OK` with `{ _id, username, email }`.
 
 ---
 
@@ -277,7 +292,7 @@ Bulk-analyses all tasks on a board using Google Gemini. Sends every task's `id`,
 ### Auth Middleware (`middleware/authMiddleware.js`)
 
 #### `protect`
-Guards all private routes. Extracts the token from the `Authorization: Bearer <token>` header, verifies it with `jwt.verify()`, and attaches the user document to `req.user`. Returns `401 Unauthorized` for missing, malformed, or expired tokens.
+Guards all private routes. Extracts the token from the `req.cookies.token` (or fallback `Authorization` header), verifies it with `jwt.verify()`, and attaches the user document to `req.user`. Returns `401 Unauthorized` for missing, malformed, or expired tokens.
 
 ### Rate Limiter (`middleware/rateLimiter.js`)
 

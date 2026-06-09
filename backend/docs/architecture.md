@@ -77,7 +77,7 @@ backend/
 │   │   ├── columnValidator.js
 │   │   ├── commentValidator.js
 │   │   └── taskValidator.js
-│   ├── authMiddleware.js        # JWT Bearer token verification
+│   ├── authMiddleware.js        # JWT token verification
 │   ├── errorHandler.js          # Centralised error normaliser
 │   ├── rateLimiter.js           # express-rate-limit: login, register, reset
 │   └── validate.js              # Zod schema runner middleware factory
@@ -141,7 +141,7 @@ When `node server.js` (or `nodemon server.js`) starts:
 - `Strict-Transport-Security` — enforces HTTPS (when in production)
 
 ### B. Cross-Origin Access — CORS
-The CORS policy reads allowed origins from `process.env.ALLOWED_ORIGINS` (comma-separated). In development, it defaults to `http://localhost:5173` and `http://localhost:3000`. Credentials (cookies) are permitted so that future cookie-based flows work seamlessly.
+The CORS policy reads allowed origins from `process.env.ALLOWED_ORIGINS` (comma-separated). In development, it defaults to `http://localhost:5173` and `http://localhost:3000`. Credentials (cookies) are permitted so that the httpOnly cookie flow works seamlessly.
 
 ### C. Rate Limiting — express-rate-limit
 Three separate limiters protect authentication entry points from automated attacks:
@@ -161,9 +161,14 @@ Every data-mutating endpoint passes through a `validate(schema)` middleware befo
 - Trim strings and reject empty values
 - Return specific field-level error messages on failure
 
-### E. Authentication — JWT Bearer Tokens
-- **Issuance:** On successful registration or login, `jwt.sign({ id: user._id }, JWT_SECRET, { expiresIn: '30d' })` generates a signed token.
-- **Verification:** `authMiddleware.js` intercepts all protected routes. It extracts the `Bearer <token>` string, verifies the signature against `JWT_SECRET`, and attaches the decoded user object to `req.user`.
+### E. Authentication — httpOnly Cookies
+- **Issuance:** On successful registration or login, the server generates a JWT token and sets it in an `httpOnly` cookie named `token`.
+- **Cookie Security:**
+  - `httpOnly: true`: Prevents client-side JavaScript from accessing the token, mitigating XSS risks.
+  - `secure`: Set to `true` in production (requires HTTPS).
+  - `sameSite`: Set to `strict` in development and `none` in production (to support cross-origin frontend-backend deployments).
+- **Verification:** `authMiddleware.js` intercepts all protected routes. It first checks for the `token` in `req.cookies`. If present, it verifies the signature against `JWT_SECRET` and attaches the decoded user object to `req.user`.
+- **Bearer Fallback:** For compatibility with non-browser clients and automated testing, the middleware still supports the `Authorization: Bearer <token>` header if no cookie is present.
 - **Password Storage:** Passwords are hashed using `bcryptjs` with 10 salt rounds inside a Mongoose `pre('save')` hook — they are never stored in plain text and are excluded from all queries via `select: false`.
 
 ### F. Enumeration Protection

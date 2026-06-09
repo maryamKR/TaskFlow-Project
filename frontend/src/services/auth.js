@@ -5,14 +5,7 @@ const API_URL = process.env.REACT_APP_API_URL;
 
 export const api = axios.create({
   baseURL: API_URL,
-});
-
-api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  return config;
+  withCredentials: true,
 });
 
 // Response interceptor — handle expired/invalid token
@@ -27,14 +20,11 @@ api.interceptors.response.use(
       originalRequest && 
       !originalRequest.url.includes('/auth/login')
     ) {
-      // Token expired or invalid — clear everything and redirect
-      localStorage.removeItem('token');
-      localStorage.removeItem('username');
-      localStorage.removeItem('email');
-      localStorage.removeItem('userId');
-      localStorage.removeItem('lastActiveBoardId');
+      // Token expired or invalid — disconnect socket and redirect
       socket.disconnect();
-      window.location.href = '/';
+      if (window.location.pathname !== '/') {
+        window.location.href = '/';
+      }
     }
     return Promise.reject(error);
   }
@@ -49,21 +39,23 @@ export const register = async (name, email, password) => {
 
 export const login = async (email, password) => {
   const response = await api.post('/auth/login', { email, password });
-  const { token, username, _id } = response.data;
-  localStorage.setItem('token', token);
-  socket.auth = { token };
-  socket.connect();
-  localStorage.setItem('username', username);
-  localStorage.setItem('email', email);
-  localStorage.setItem('userId', _id);
   return response.data;
 };
 
-export const logout = () => {
-  localStorage.removeItem('token');
-  localStorage.removeItem('username');
-  localStorage.removeItem('email');
-  localStorage.removeItem('userId');
-  localStorage.removeItem('lastActiveBoardId');
-  socket.disconnect();
+export const logout = async () => {
+  try {
+    await api.post('/auth/logout');
+  } catch (err) {
+    console.error('Logout failed', err);
+  } finally {
+    socket.disconnect();
+    if (window.location.pathname !== '/') {
+        window.location.href = '/';
+    }
+  }
+};
+
+export const getMe = async () => {
+  const response = await api.get('/auth/me');
+  return response.data;
 };
