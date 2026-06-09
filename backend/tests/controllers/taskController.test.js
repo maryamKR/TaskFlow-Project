@@ -69,7 +69,7 @@ describe("taskController", () => {
       const req = mockReq({ body: { title: "Task", columnId: fakeId(10) } });
       const res = mockRes();
 
-      Column.findById.mockResolvedValue({ _id: fakeId(10), title: "Done", board: fakeId(1) });
+      Column.findById.mockResolvedValue({ _id: fakeId(10), title: "Done", type: "done", board: fakeId(1), tasks: [], save: jest.fn() });
 
       await expect(createTask(req, res)).rejects.toThrow("cannot be created directly in the Done column");
       expect(res.status).toHaveBeenCalledWith(400);
@@ -350,7 +350,7 @@ describe("taskController", () => {
 
       Column.findById
         .mockResolvedValueOnce({ _id: fakeId(10), board: fakeId(1) }) // source
-        .mockResolvedValueOnce({ _id: fakeId(11), board: fakeId(1), title: "Done" }); // dest
+        .mockResolvedValueOnce({ _id: fakeId(11), board: fakeId(1), title: "Done", type: "done" }); // dest
       Board.findById
         .mockResolvedValue({ _id: fakeId(1), user: fakeId(1) });
       hasBoardAccess.mockReturnValue(true);

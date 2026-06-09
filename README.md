@@ -23,7 +23,7 @@ A real-time collaborative Kanban project management application built on the MER
 
 | Layer | Technology |
 |---|---|
-| Frontend | React 18, React Router, Axios, Socket.IO Client, @dnd-kit, Recharts, TailwindCSS |
+| Frontend | React 19, React Router, Axios, Socket.IO Client, @dnd-kit, Recharts, TailwindCSS |
 | Backend | Node.js, Express 5, Socket.IO, node-cron |
 | Database | MongoDB Atlas (Mongoose ODM) |
 | Auth | JWT Bearer Tokens, bcryptjs |
@@ -104,7 +104,7 @@ cd backend
 npm test
 ```
 
-The test suite includes **259 unit and integration tests** covering all controllers, middleware, validators, utilities, and end-to-end HTTP flows. All tests run sequentially (`--runInBand`) to respect MongoDB Atlas connection limits.
+The test suite includes **257 unit and integration tests** covering all controllers, middleware, validators, utilities, and end-to-end HTTP flows. All tests run sequentially (`--runInBand`) to respect MongoDB Atlas connection limits.
 
 ---
 
@@ -129,12 +129,13 @@ TaskFlow-Project/
 │   ├── tests/                # Jest unit + Supertest integration tests
 │   ├── server.js             # Application bootstrap
 │   └── socket.js             # Socket.IO room management
-├── src/                      # React frontend
-│   ├── components/           # Reusable UI components
-│   ├── context/              # ThemeContext
-│   ├── pages/                # Route-level page components
-│   ├── services/             # Axios API service functions
-│   └── socket.js             # Socket.IO client setup
+├── frontend/                 # React frontend
+│   └── src/
+│       ├── components/       # Reusable UI components
+│       ├── context/          # ThemeContext
+│       ├── pages/            # Route-level page components
+│       ├── services/         # Axios API service functions
+│       └── socket.js         # Socket.IO client setup
 ```
 
 ---
