@@ -10,17 +10,17 @@ export const api = axios.create({
 
 // Response interceptor — handle expired/invalid token
 api.interceptors.response.use(
-  (response) => response, // pass through successful responses
+  (response) => response,
   (error) => {
     const originalRequest = error.config;
-    
-    // If we get a 401, and it's NOT from the login route (where 401 means bad credentials)
+
     if (
-      error.response?.status === 401 && 
-      originalRequest && 
-      !originalRequest.url.includes('/auth/login')
+      error.response?.status === 401 &&
+      originalRequest &&
+      !originalRequest.url.includes('/auth/login') &&
+      !originalRequest.url.includes('/auth/register') &&
+      !originalRequest.url.includes('/auth/me')
     ) {
-      // Token expired or invalid — disconnect socket and redirect
       socket.disconnect();
       if (window.location.pathname !== '/') {
         window.location.href = '/';
@@ -50,7 +50,7 @@ export const logout = async () => {
   } finally {
     socket.disconnect();
     if (window.location.pathname !== '/') {
-        window.location.href = '/';
+      window.location.href = '/';
     }
   }
 };
