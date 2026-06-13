@@ -433,18 +433,26 @@ const moveTask = async (req, res) => {
   // Update target column pointer state, isDone evaluation, and state logs
   const isDone = destColumn.type === 'done';
 
-  await Task.findByIdAndUpdate(
-    taskId,
-    {
-      column: destinationColumnId,
-      isDone,
-      $push: {
-        activityLog: {
-          action: ` : Moved ${task.title}  to column "${destColumn.title}"`,
-          performedBy: req.user._id,
-        },
+  const updatePayload = {
+    column: destinationColumnId,
+    isDone,
+    $push: {
+      activityLog: {
+        action: ` : Moved ${task.title}  to column "${destColumn.title}"`,
+        performedBy: req.user._id,
       },
     },
+  };
+
+  if (isDone && !task.isDone) {
+    updatePayload.completedAt = new Date();
+  } else if (!isDone && task.isDone) {
+    updatePayload.completedAt = null;
+  }
+
+  await Task.findByIdAndUpdate(
+    taskId,
+    updatePayload,
     { runValidators: true },
   );
 

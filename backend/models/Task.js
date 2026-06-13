@@ -59,6 +59,10 @@ const taskSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    completedAt: {
+      type: Date,
+      default: null,
+    },
     // Tracks whether an overdue notification email has already been sent for this task
     // Prevents the daily cron job from re-sending the same overdue email every day
     overdueEmailSent: {
