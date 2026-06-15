@@ -23,6 +23,7 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
   const priorityColors = { high: 'text-red-400', medium: 'text-yellow-400', low: 'text-green-400' };
 
   const getDueDateStyle = () => {
+    if (task.isDone) return 'done';
     if (!task.dueDate) return null;
     const daysUntilDue = (new Date(task.dueDate) - new Date()) / (1000 * 60 * 60 * 24);
     if (daysUntilDue < 0) return 'overdue';
@@ -32,6 +33,7 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
   const dueDateStatus = getDueDateStyle();
 
   const cardBorderClass = () => {
+    if (dueDateStatus === 'done') return isDark ? 'bg-gray-700/50' : 'bg-gray-50/50 border border-gray-200';
     if (dueDateStatus === 'overdue') return isDark ? 'border border-red-500 bg-red-950/30' : 'border border-red-400 bg-red-50';
     if (dueDateStatus === 'soon') return isDark ? 'border border-orange-400 bg-orange-950/20' : 'border border-orange-300 bg-orange-50';
     return isDark ? 'bg-gray-700 hover:bg-gray-600' : 'bg-gray-50 hover:bg-gray-100 border border-gray-200';
@@ -92,14 +94,18 @@ function TaskCard({ task, onTaskDeleted, onTaskUpdated, members, isOwner }) {
             )}
           </div>
 
-          {(task.startDate || task.dueDate) && (
+          {(task.startDate || task.dueDate || task.isDone) && (
               <div className="flex items-center gap-2 mt-1 ml-6">
                   {/* Calendar icon */}
                   <svg xmlns="http://www.w3.org/2000/svg" className="w-3 h-3 text-gray-400 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                   </svg>
 
-                  {dueDateStatus === 'overdue' ? (
+                  {task.isDone ? (
+                      <span className={`text-xs ${isDark ? 'text-green-400/80' : 'text-green-600'} font-medium`}>
+                          Completed {task.completedAt ? new Date(task.completedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : ''}
+                      </span>
+                  ) : dueDateStatus === 'overdue' ? (
                       <span
                           className="text-xs text-red-400 font-medium cursor-help"
                           title={`Original due date: ${new Date(task.dueDate).toLocaleDateString()}`}
